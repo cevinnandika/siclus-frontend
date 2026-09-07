@@ -11,31 +11,30 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
     apiService
       .getRiwayatDriver()
       .then((res) => {
-        if (res.data) {
-          const formattedData = res.data.map((item) => {
-            const isShiftClosed = item.trip_sessions?.some(sesi => sesi.jam_tiba_kantor !== null);
-            return {
-              ...item,
-              driverName: "ANDA",
-              date: item.tanggal,
-              trayek: item.trayek,
-              bus: item.bus,
-              submittedAt: isShiftClosed ? "SELESAI DIREKAM" : (item.trip_sessions?.length > 0 ? "SEDANG BERJALAN" : "BELUM DIMULAI"),
-            };
-          });
+        const rawList = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+        const formattedData = rawList.map((item) => {
+          const isShiftClosed = item.trip_sessions?.some(sesi => sesi.jam_tiba_kantor !== null);
+          return {
+            ...item,
+            driverName: user?.nama_lengkap || user?.nama || user?.name || "Driver",
+            date: item.tanggal,
+            trayek: item.trayek,
+            bus: item.bus,
+            submittedAt: isShiftClosed ? "SELESAI DIREKAM" : (item.trip_sessions?.length > 0 ? "SEDANG BERJALAN" : "BELUM DIMULAI"),
+          };
+        });
 
-          // --- KODE FILTER BARU ---
-          // Hanya simpan laporan yang statusnya sudah Selesai Direkam
-          const filteredData = formattedData.filter(report => report.submittedAt === "SELESAI DIREKAM");
+        // --- KODE FILTER BARU ---
+        // Hanya simpan laporan yang statusnya sudah Selesai Direkam
+        const filteredData = formattedData.filter(report => report.submittedAt === "SELESAI DIREKAM");
 
-          // Urutkan dan set ke state
-          filteredData.sort((a, b) => new Date(b.created_at || b.tanggal) - new Date(a.created_at || a.tanggal));
-          setReports(filteredData);
-        }
+        // Urutkan dan set ke state
+        filteredData.sort((a, b) => new Date(b.created_at || b.tanggal) - new Date(a.created_at || a.tanggal));
+        setReports(filteredData);
         setIsLoading(false);
       })
       .catch((err) => {
-        console.error("Gagal menarik data riwayat pengemudi:", err);
+        console.error("Gagal menarik data riwayat driver:", err);
         setIsLoading(false);
       });
   }, [user]);
@@ -47,6 +46,8 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
       </div>
     );
   }
+
+  const driverInitial = (user?.nama_lengkap || user?.nama || user?.name || "P").charAt(0).toUpperCase();
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto mt-2">
@@ -66,7 +67,7 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
                 className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer border border-white flex items-center justify-between"
               >
                 <div className="flex items-center gap-5">
-                  <div className="w-12 h-12 rounded-full bg-[#00206B] flex items-center justify-center text-white font-black text-lg flex-shrink-0 shadow-sm">A</div>
+                  <div className="w-12 h-12 rounded-full bg-[#00206B] flex items-center justify-center text-white font-black text-lg flex-shrink-0 shadow-sm">{driverInitial}</div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-black text-[#00206B] uppercase tracking-wide truncate">LAPORAN OPERASIONAL</h3>
                     <div className="flex items-center gap-2 mt-1">

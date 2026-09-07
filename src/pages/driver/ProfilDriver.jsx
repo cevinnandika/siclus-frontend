@@ -53,7 +53,7 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
   return (
     <div className="space-y-6 text-left max-w-3xl mx-auto pb-6 relative">
       <div className="space-y-1">
-        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">Profil Pengemudi</h2>
+        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">Profil Driver</h2>
         <p className="text-sm text-slate-400 font-semibold mt-0.5">Kelola informasi data diri operasional Anda</p>
       </div>
       <div className="bg-white border border-slate-100 rounded-3xl shadow-sm relative overflow-hidden">
@@ -102,14 +102,14 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
           </div>
 
           <h3 className="mt-4 text-2xl font-black text-[#00206B]">
-            {user?.nama_lengkap || user?.nama || user?.name || "Nama Pengemudi"}
+            {user?.nama_lengkap || user?.nama || user?.name || "Nama Driver"}
           </h3>
-          <span className="bg-blue-50 text-blue-600 font-bold px-4 py-1.5 rounded-full text-xs mt-2 uppercase tracking-wide border border-blue-100">{user?.role || "Pengemudi"}</span>
+          <span className="bg-blue-50 text-blue-600 font-bold px-4 py-1.5 rounded-full text-xs mt-2 uppercase tracking-wide border border-blue-100">{user?.role || "Driver"}</span>
 
-          {/* GRID INFO PENGEMUDI (Tanpa Armada Default) */}
+          {/* GRID INFO DRIVER (Tanpa Armada Default) */}
           <div className="mt-8 grid grid-cols-2 gap-3 w-full">
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">ID Pengemudi</span>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">ID Driver</span>
               <span className="font-extrabold text-[#00206B] text-sm truncate block">{user?.id || "-"}</span>
             </div>
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left">

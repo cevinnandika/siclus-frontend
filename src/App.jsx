@@ -24,12 +24,21 @@ import DetailLaporan from "./pages/driver/DetailLaporan";
 import ProfilDriver from "./pages/driver/ProfilDriver";
 
 // (PROTECTED ROUTE)
+const isRoleMatch = (userRole, allowedRole) => {
+  if (!userRole) return false;
+  const u = userRole.toLowerCase();
+  const a = allowedRole.toLowerCase();
+  if (a === "driver") return u === "driver" || u === "pengemudi";
+  return u === a;
+};
+
 const ProtectedRoute = ({ user, allowedRole, children }) => {
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  if (user.role.toLowerCase() !== allowedRole.toLowerCase()) {
-    return <Navigate to={user.role.toLowerCase() === "admin" ? "/admin/dashboard" : "/driver/beranda"} replace />;
+  if (!isRoleMatch(user.role, allowedRole)) {
+    const isAdmin = (user.role || "").toLowerCase() === "admin";
+    return <Navigate to={isAdmin ? "/admin/dashboard" : "/driver/beranda"} replace />;
   }
   return children;
 };
@@ -58,7 +67,24 @@ function App() {
     const savedUser = localStorage.getItem("siclus_user");
 
     if (token && savedUser) {
-      setUser(JSON.parse(savedUser));
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+
+      if (parsedUser?.role?.toLowerCase() !== "admin") {
+        apiService
+          .getJadwalDriver()
+          .then((resJadwal) => {
+            if (resJadwal && resJadwal.data) {
+              const jadwalPagi = resJadwal.data.find((j) => j.tipe_sesi === "PAGI");
+              const jadwalSiang = resJadwal.data.find((j) => j.tipe_sesi === "SIANG");
+              setShiftRules({
+                pagi: jadwalPagi ? parseInt(jadwalPagi.batas_keluar_dishub.split(":")[0]) : 5,
+                siang: jadwalSiang ? parseInt(jadwalSiang.batas_keluar_dishub.split(":")[0]) : 12,
+              });
+            }
+          })
+          .catch((err) => console.error("Gagal refresh jadwal:", err));
+      }
     }
     setIsInitializing(false);
   }, []);
@@ -93,6 +119,9 @@ function App() {
     localStorage.removeItem("siclus_user");
     localStorage.removeItem("siclus_shift");
     localStorage.removeItem("siclus_locked");
+    localStorage.removeItem("siclus_draft_step");
+    localStorage.removeItem("siclus_draft_form");
+    localStorage.removeItem("siclus_active_laporan_id");
     setUser(null);
     setTripStatus("belum_mulai");
     navigate("/login");

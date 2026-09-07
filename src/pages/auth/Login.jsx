@@ -42,9 +42,15 @@ const Login = ({ onLoginSuccess }) => {
       }, 500);
     } catch (err) {
       if (err.response && err.response.data && err.response.data.detail) {
-        setError(err.response.data.detail);
+        if (Array.isArray(err.response.data.detail)) {
+          setError(err.response.data.detail.map((d) => `${d.loc?.slice(-1)[0]}: ${d.msg}`).join(", "));
+        } else if (typeof err.response.data.detail === "string") {
+          setError(err.response.data.detail);
+        } else {
+          setError("Format data login tidak valid.");
+        }
       } else {
-        setError("Terjadi kesalahan!");
+        setError(err.message || "Terjadi kesalahan!");
       }
     } finally {
       setIsLoading(false);
@@ -88,7 +94,7 @@ const Login = ({ onLoginSuccess }) => {
             </div>
           </div>
           <div className="space-y-1 group">
-            <label className="text-[11px] sm:text-sm font-bold text-[#00206B] ml-1 uppercase tracking-wide">ID Pengemudi / Email</label>
+            <label className="text-[11px] sm:text-sm font-bold text-[#00206B] ml-1 uppercase tracking-wide">ID Driver / Email</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 sm:pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#00206B] transition-colors">
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>

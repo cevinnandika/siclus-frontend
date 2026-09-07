@@ -191,8 +191,10 @@ const DetailLaporan = ({ report }) => {
             <h2 className="text-3xl font-black text-[#00206B] uppercase tracking-tighter">{report.tanggal || report.date || "TANGGAL KOSONG"}</h2>
             <div className="flex items-center gap-4 mt-3">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-[#00206B] flex items-center justify-center text-white font-black text-xs">A</div>
-                <span className="text-sm font-black text-slate-700 uppercase">{report.driverName || "ANDA"}</span>
+                <div className="w-7 h-7 rounded-full bg-[#00206B] flex items-center justify-center text-white font-black text-xs">
+                  {(report.driverName || "D").charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm font-black text-slate-700 uppercase">{report.driverName || "DRIVER"}</span>
               </div>
               <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
               <span className="text-sm font-black text-slate-500 uppercase">
@@ -227,7 +229,19 @@ const DetailLaporan = ({ report }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-3xl p-6 shadow-sm">
-          <h3 className="text-sm font-black text-[#00206B] uppercase tracking-widest mb-6">SESI BERANGKAT (PAGI)</h3>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-sm font-black text-[#00206B] uppercase tracking-widest">SESI BERANGKAT (PAGI)</h3>
+            {/* RENDER BADGE STATUS KEDISIPLINAN DI SINI */}
+            {String(sesiPagi?.status_waktu || "").toUpperCase() === "TERLAMBAT" ? (
+              <span className="bg-rose-100 text-rose-600 border border-rose-200 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                ⚠️ Terlambat
+              </span>
+            ) : String(sesiPagi?.status_waktu || "").toUpperCase() === "TEPAT WAKTU" ? (
+              <span className="bg-emerald-100 text-emerald-600 border border-emerald-200 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                ✅ Tepat Waktu
+              </span>
+            ) : null}
+          </div>
           {sesiPagi ? (
             <div>
               {/* CP1: Inject nopol_kendaraan dan foto_awal */}
@@ -243,7 +257,19 @@ const DetailLaporan = ({ report }) => {
         </div>
 
         <div className="bg-white rounded-3xl p-6 shadow-sm">
-          <h3 className="text-sm font-black text-[#00206B] uppercase tracking-widest mb-6">SESI PULANG (SIANG)</h3>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-sm font-black text-[#00206B] uppercase tracking-widest">SESI PULANG (SIANG)</h3>
+            {/* RENDER BADGE STATUS KEDISIPLINAN DI SINI */}
+            {String(sesiSiang?.status_waktu || "").toUpperCase() === "TERLAMBAT" ? (
+              <span className="bg-rose-100 text-rose-600 border border-rose-200 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                ⚠️ Terlambat
+              </span>
+            ) : String(sesiSiang?.status_waktu || "").toUpperCase() === "TEPAT WAKTU" ? (
+              <span className="bg-emerald-100 text-emerald-600 border border-emerald-200 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                ✅ Tepat Waktu
+              </span>
+            ) : null}
+          </div>
           {sesiSiang ? (
             <div>
               {/* CP1: Inject nopol_kendaraan dan foto_awal */}

@@ -6,16 +6,24 @@ const ManageDriver = ({ onBack }) => {
   // sesuaikan nama variabel di bawah ini dengan UI Tab yang sudah ada. 
   const [activeTab, setActiveTab] = useState('supir');  
   const [drivers, setDrivers] = useState([]); 
-  const [jadwals, setJadwals] = useState([]);
   const [isLoading, setIsLoading] = useState(true); 
   const [isLoadingJadwals, setIsLoadingJadwals] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // --- STATE JADWAL CUT-OFF (SESUAI INSTRUKSI) ---
+  const [showJadwalModal, setShowJadwalModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editJadwalId, setEditJadwalId] = useState(null);
+  const [jadwalList, setJadwalList] = useState([]);
+  const jadwals = jadwalList;
+  const setJadwals = setJadwalList;
 
   // Alerts / Notifications
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
 
   const showToast = (message, type = "success") => {
-    setToast({ show: true, message, type });
+    const msgStr = typeof message === "string" ? message : JSON.stringify(message);
+    setToast({ show: true, message: msgStr, type });
     setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3500);
   };
 
@@ -31,22 +39,25 @@ const ManageDriver = ({ onBack }) => {
     name: "",
     email: "",
     password: "",
-    role: "pengemudi",
+    role: "driver",
     trayek: "",
     bus: "",
   };
   const [userForm, setUserForm] = useState(initialUserForm);
 
-  // --- MODAL STATES: JADWAL ---
-  const [showEditJadwalModal, setShowEditJadwalModal] = useState(false);
-  const [selectedJadwal, setSelectedJadwal] = useState(null);
+  // --- FORM STATE: JADWAL ---
   const initialJadwalForm = {
     trayek: "",
     tipe_sesi: "PAGI",
-    batas_keluar_dishub: "06:00",
-    batas_tiba_start: "06:30",
+    batas_keluar_dishub: "",
+    batas_tiba_start: "",
   };
-  const [jadwalForm, setJadwalForm] = useState(initialJadwalForm);
+  const [formJadwal, setFormJadwal] = useState({
+    trayek: "",
+    tipe_sesi: "PAGI",
+    batas_keluar_dishub: "",
+    batas_tiba_start: "",
+  });
 
   const fetchDrivers = async () => {
     setIsLoading(true);
@@ -69,14 +80,13 @@ const ManageDriver = ({ onBack }) => {
       setDrivers(dataSupir);
 
       if (dataSupir.length === 0) {
-        // Tampilkan notifikasi jika backend sukses tapi mengirim array kosong
         console.warn("Server merespons sukses, tapi data supir kosong dari database.");
       }
     } catch (error) {
-      console.error("Gagal menarik data pengemudi:", error);
-      // Munculkan pop-up error di layar Klien agar tahu API-nya bermasalah
-      alert("BOS, BACKEND ERROR NIH: " + (error.response?.data?.detail || error.message));
+      console.error("Gagal menarik data driver:", error);
       setDrivers([]);
+      const errMsg = error.response?.data?.detail || error.message || "Gagal menarik data driver";
+      showToast(typeof errMsg === "string" ? errMsg : "Gagal menarik data driver", "error");
     } finally {
       setIsLoading(false);
     }
@@ -90,16 +100,20 @@ const ManageDriver = ({ onBack }) => {
     setIsLoadingJadwals(true);
     try {
       const res = await apiService.getJadwalAdmin();
+      let data = [];
       if (Array.isArray(res)) {
-        setJadwals(res);
-      } else if (res && res.data) {
-        setJadwals(res.data);
-      } else {
-        setJadwals([]);
+        data = res;
+      } else if (res && Array.isArray(res.data)) {
+        data = res.data;
+      } else if (res && Array.isArray(res.jadwal)) {
+        data = res.jadwal;
+      } else if (res && Array.isArray(res.items)) {
+        data = res.items;
       }
+      setJadwalList(data);
     } catch (err) {
       console.error("Gagal mengambil data jadwal:", err);
-      setJadwals([]);
+      setJadwalList([]);
       showToast("Gagal memuat data jadwal cut-off", "error");
     } finally {
       setIsLoadingJadwals(false);
@@ -129,7 +143,7 @@ const ManageDriver = ({ onBack }) => {
       name: namaSupir,
       email: u.email || "",
       password: "", // kosongkan jika tidak ingin ganti password
-      role: "pengemudi",
+      role: "driver",
       trayek: u.trayek || "",
       bus: u.bus || u.armada || "",
     });
@@ -141,26 +155,26 @@ const ManageDriver = ({ onBack }) => {
     setIsSubmitting(true);
     try {
       const generatedId = userForm.id?.trim() || `DRV-${Math.floor(1000 + Math.random() * 9000)}`;
-      const namaPengemudi = userForm.nama || userForm.name || userForm.nama_lengkap || "";
+      const namaDriver = userForm.nama || userForm.name || userForm.nama_lengkap || "";
 
       // Payload MATCH 100% dengan skema Pydantic backend
       const payload = {
         id: generatedId, // WAJIB ADA
-        nama_lengkap: namaPengemudi, // PERHATIKAN: Backend meminta 'nama_lengkap', bukan 'nama'
+        nama_lengkap: namaDriver, // PERHATIKAN: Backend meminta 'nama_lengkap', bukan 'nama'
         email: userForm.email, // WAJIB format email
         password: userForm.password, // WAJIB ADA
-        role: "pengemudi",
+        role: "driver",
         trayek: userForm.trayek || null,
-        bus: userForm.bus || null,
+        bus: null,
       };
 
       await apiService.createUserAdmin(payload);
-      showToast(`Pengemudi ${payload.nama_lengkap} berhasil ditambahkan!`);
+      showToast(`Driver ${payload.nama_lengkap} berhasil ditambahkan!`);
       setShowAddUserModal(false);
       fetchDrivers();
     } catch (err) {
       console.error("Gagal menambahkan user:", err);
-      let errorMsg = "Gagal menambahkan pengemudi. Periksa koneksi/data.";
+      let errorMsg = "Gagal menambahkan driver. Periksa koneksi/data.";
       if (err.response?.data?.detail) {
         if (Array.isArray(err.response.data.detail)) {
           errorMsg = err.response.data.detail.map((d) => `${d.loc?.slice(-1)[0]}: ${d.msg}`).join(", ");
@@ -179,14 +193,14 @@ const ManageDriver = ({ onBack }) => {
     if (!selectedUser) return;
     setIsSubmitting(true);
     try {
-      const namaPengemudi = userForm.nama || userForm.name || userForm.nama_lengkap || "";
+      const namaDriver = userForm.nama || userForm.name || userForm.nama_lengkap || "";
       const payload = {
         id: userForm.id || selectedUser.id || selectedUser.id_supir,
-        nama_lengkap: namaPengemudi,
+        nama_lengkap: namaDriver,
         email: userForm.email,
-        role: "pengemudi",
+        role: "driver",
         trayek: userForm.trayek || null,
-        bus: userForm.bus || null,
+        bus: null,
       };
       if (userForm.password && userForm.password.trim() !== "") {
         payload.password = userForm.password;
@@ -194,12 +208,12 @@ const ManageDriver = ({ onBack }) => {
 
       const targetId = selectedUser.id || selectedUser._id || selectedUser.id_supir;
       await apiService.updateUserAdmin(targetId, payload);
-      showToast(`Data pengemudi ${payload.nama_lengkap} berhasil diperbarui!`);
+      showToast(`Data driver ${payload.nama_lengkap} berhasil diperbarui!`);
       setShowEditUserModal(false);
       fetchDrivers();
     } catch (err) {
       console.error("Gagal update user:", err);
-      let errorMsg = "Gagal memperbarui pengemudi";
+      let errorMsg = "Gagal memperbarui driver";
       if (err.response?.data?.detail) {
         if (Array.isArray(err.response.data.detail)) {
           errorMsg = err.response.data.detail.map((d) => `${d.loc?.slice(-1)[0]}: ${d.msg}`).join(", ");
@@ -219,42 +233,77 @@ const ManageDriver = ({ onBack }) => {
     try {
       const targetId = userToDelete.id || userToDelete._id || userToDelete.id_supir;
       await apiService.deleteUserAdmin(targetId);
-      showToast(`Akun pengemudi ${userToDelete.nama_lengkap || userToDelete.nama || userToDelete.name} berhasil dihapus!`);
+      showToast(`Akun driver ${userToDelete.nama_lengkap || userToDelete.nama || userToDelete.name} berhasil dihapus!`);
       setUserToDelete(null);
       fetchDrivers();
     } catch (err) {
       console.error("Gagal hapus user:", err);
-      showToast("Gagal menghapus pengemudi", "error");
+      showToast("Gagal menghapus driver", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   // --- HANDLER JADWAL (TAB 2) ---
-  const handleOpenEditJadwal = (j) => {
-    setSelectedJadwal(j);
-    setJadwalForm({
-      trayek: j.trayek || "",
-      tipe_sesi: j.tipe_sesi || j.sesi || "PAGI",
-      batas_keluar_dishub: j.batas_keluar_dishub || "06:00",
-      batas_tiba_start: j.batas_tiba_start || "06:30",
+  const handleOpenAddJadwal = () => {
+    setIsEditMode(false);
+    setEditJadwalId(null);
+    setFormJadwal({
+      trayek: "",
+      tipe_sesi: "PAGI",
+      batas_keluar_dishub: "",
+      batas_tiba_start: "",
     });
-    setShowEditJadwalModal(true);
+    setShowJadwalModal(true);
   };
+  const handleEditClick = (jadwal) => {
+    setFormJadwal({
+      trayek: jadwal?.trayek || "",
+      tipe_sesi: (jadwal?.tipe_sesi || jadwal?.sesi || "PAGI").toUpperCase(),
+      batas_keluar_dishub: jadwal?.batas_keluar_dishub || "",
+      batas_tiba_start: jadwal?.batas_tiba_start || "",
+    });
+    setIsEditMode(true);
+    setEditJadwalId(jadwal?.id || jadwal?._id);
+    setShowJadwalModal(true);
+  };
+  const handleOpenEditJadwal = handleEditClick;
 
-  const handleUpdateJadwal = async (e) => {
+  const handleSubmitJadwal = async (e) => {
     e.preventDefault();
-    if (!selectedJadwal) return;
     setIsSubmitting(true);
     try {
-      const targetId = selectedJadwal.id || selectedJadwal._id;
-      await apiService.updateJadwalAdmin(targetId, jadwalForm);
-      showToast(`Jadwal cut-off Trayek ${jadwalForm.trayek} berhasil diperbarui!`);
-      setShowEditJadwalModal(false);
+      const payload = {
+        trayek: (formJadwal?.trayek || "").trim(),
+        tipe_sesi: (formJadwal?.tipe_sesi || "PAGI").toUpperCase(),
+        batas_keluar_dishub: formJadwal?.batas_keluar_dishub || "",
+        batas_tiba_start: formJadwal?.batas_tiba_start || "",
+      };
+
+      if (isEditMode) {
+        await apiService.updateJadwalAdmin(editJadwalId, payload);
+        showToast(`Jadwal cut-off Trayek ${payload.trayek} berhasil diperbarui!`);
+      } else {
+        await apiService.createJadwalAdmin(payload);
+        showToast(`Jadwal cut-off Trayek ${payload.trayek} (${payload.tipe_sesi}) berhasil ditambahkan!`);
+      }
+
+      setShowJadwalModal(false);
+      setIsEditMode(false);
+      setEditJadwalId(null);
+      setFormJadwal(initialJadwalForm);
       fetchJadwals();
     } catch (err) {
-      console.error("Gagal update jadwal:", err);
-      showToast("Gagal memperbarui batas jadwal cut-off", "error");
+      console.error("Gagal menyimpan jadwal:", err);
+      let errorMsg = isEditMode ? "Gagal memperbarui jadwal cut-off" : "Gagal menambahkan jadwal cut-off";
+      if (err.response?.data?.detail) {
+        if (Array.isArray(err.response.data.detail)) {
+          errorMsg = err.response.data.detail.map((d) => `${d.loc?.slice(-1)[0]}: ${d.msg}`).join(", ");
+        } else if (typeof err.response.data.detail === "string") {
+          errorMsg = err.response.data.detail;
+        }
+      }
+      showToast(errorMsg, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -282,11 +331,11 @@ const ManageDriver = ({ onBack }) => {
           Kelola Pengguna & Jadwal
         </h2>
         <p className="text-sm text-slate-400 font-semibold mt-0.5">
-          Manajemen master akun pengemudi dan konfigurasi toleransi waktu cut-off operasional
+          Manajemen master akun driver dan konfigurasi toleransi waktu cut-off operasional
         </p>
       </div>
 
-      {/* Navigation Tabs (Tab 1: DAFTAR SUPIR | Tab 2: JADWAL CUT-OFF) */}
+      {/* Navigation Tabs (Tab 1: DAFTAR DRIVER | Tab 2: JADWAL CUT-OFF) */}
       <div className="flex items-center gap-2 bg-slate-200/70 p-1.5 rounded-2xl max-w-md">
         <button
           onClick={() => setActiveTab("supir")}
@@ -297,9 +346,9 @@ const ManageDriver = ({ onBack }) => {
           }`}
         >
           <span>🚌</span>
-          <span>Daftar Supir</span>
+          <span>Daftar Driver</span>
           <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-white/20 font-extrabold">
-            {drivers.length}
+            {(drivers || []).length}
           </span>
         </button>
 
@@ -314,20 +363,20 @@ const ManageDriver = ({ onBack }) => {
           <span>⏱️</span>
           <span>Jadwal Cut-Off</span>
           <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-white/20 font-extrabold">
-            {jadwals.length}
+            {(jadwalList || []).length}
           </span>
         </button>
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 1: DAFTAR SUPIR                                                      */}
+      {/* TAB 1: DAFTAR DRIVER                                                     */}
       {/* ========================================================================= */}
       {activeTab === "supir" && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border-2 border-slate-200 rounded-2xl p-5 shadow-sm">
             <div>
               <h3 className="text-base font-black text-[#00206B] m-0 uppercase tracking-wide">
-                Master Data Pengemudi
+                Master Data Driver
               </h3>
               <p className="text-xs text-slate-400 font-semibold mt-0.5">
                 Kelola kredensial login, penugasan trayek, dan armada bus
@@ -340,20 +389,20 @@ const ManageDriver = ({ onBack }) => {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              + TAMBAH SUPIR BARU
+              + TAMBAH DRIVER BARU
             </button>
           </div>
 
-          {/* TAB 1 CONTENT: DAFTAR SUPIR TABLE */}
+          {/* TAB 1 CONTENT: DAFTAR DRIVER TABLE */}
           <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 shadow-sm">
             {isLoading ? (
-              <div className="text-center py-10 font-bold text-[#00206B] animate-pulse">Memuat data pengemudi...</div>
-            ) : drivers.length > 0 ? (
+              <div className="text-center py-10 font-bold text-[#00206B] animate-pulse">Memuat data driver...</div>
+            ) : (drivers || []).length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b-2 border-slate-200 bg-slate-50">
-                      <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase rounded-tl-xl">Nama Pengemudi</th>
+                      <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase rounded-tl-xl">Nama Driver</th>
                       <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase">Email Terdaftar</th>
                       <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase text-center">Trayek</th>
                       <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase text-center">Armada</th>
@@ -361,12 +410,12 @@ const ManageDriver = ({ onBack }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {(drivers || []).map((driver) => (
-                      <tr key={driver.id || driver._id || driver.id_supir} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                        <td className="py-4 px-5 font-black text-[#00206B] uppercase">{driver.nama_lengkap || driver.nama || driver.name || "-"}</td>
-                        <td className="py-4 px-5 text-sm font-bold text-slate-500">{driver.email || "-"}</td>
-                        <td className="py-4 px-5 text-center text-sm font-black text-[#00206B] uppercase">{driver.trayek || "-"}</td>
-                        <td className="py-4 px-5 text-center text-sm font-bold text-slate-600 uppercase">{driver.bus || driver.armada || "-"}</td>
+                    {(drivers || []).map((driver, index) => (
+                      <tr key={driver?.id || driver?._id || driver?.id_supir || index} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                        <td className="py-4 px-5 font-black text-[#00206B] uppercase">{driver?.nama_lengkap || driver?.nama || driver?.name || "-"}</td>
+                        <td className="py-4 px-5 text-sm font-bold text-slate-500">{driver?.email || "-"}</td>
+                        <td className="py-4 px-5 text-center text-sm font-black text-[#00206B] uppercase">{driver?.trayek || "-"}</td>
+                        <td className="py-4 px-5 text-center text-sm font-bold text-slate-600 uppercase">{driver?.bus || driver?.armada || "-"}</td>
                         <td className="py-4 px-5 text-center space-x-2">
                           <button
                             onClick={() => handleOpenEditUser(driver)}
@@ -389,8 +438,8 @@ const ManageDriver = ({ onBack }) => {
             ) : (
               <div className="text-center py-12 flex flex-col items-center justify-center">
                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-2xl">🚌</div>
-                 <h3 className="text-lg font-black text-[#00206B]">Belum Ada Data Pengemudi</h3>
-                 <p className="text-sm text-slate-400 font-medium mt-1">Klik tombol "+ TAMBAH SUPIR BARU" untuk mendaftarkan akun pengemudi pertama.</p>
+                 <h3 className="text-lg font-black text-[#00206B]">Belum Ada Data Driver</h3>
+                 <p className="text-sm text-slate-400 font-medium mt-1">Klik tombol "+ TAMBAH DRIVER BARU" untuk mendaftarkan akun driver pertama.</p>
               </div>
             )}
           </div>
@@ -402,13 +451,29 @@ const ManageDriver = ({ onBack }) => {
       {/* ========================================================================= */}
       {activeTab === "jadwal" && (
         <div className="space-y-4">
-          <div className="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-sm">
-            <h3 className="text-base font-black text-[#00206B] m-0 uppercase tracking-wide">
-              Konfigurasi Batas Waktu Cut-Off Per Trayek
-            </h3>
-            <p className="text-xs text-slate-400 font-semibold mt-0.5">
-              Tentukan batas toleransi waktu keberangkatan dari Dishub dan tiba di titik start untuk deteksi keterlambatan otomatis
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border-2 border-slate-200 rounded-2xl p-5 shadow-sm">
+            <div>
+              <h3 className="text-base font-black text-[#00206B] m-0 uppercase tracking-wide">
+                Konfigurasi Batas Waktu Cut-Off Per Trayek
+              </h3>
+              <p className="text-xs text-slate-400 font-semibold mt-0.5">
+                Tentukan batas toleransi waktu keberangkatan dari Dishub dan tiba di titik start untuk deteksi keterlambatan otomatis
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setIsEditMode(false); // Pastikan bukan dalam mode edit
+                setEditJadwalId(null);
+                setFormJadwal({ trayek: "", tipe_sesi: "PAGI", batas_keluar_dishub: "", batas_tiba_start: "" }); // Kosongkan form
+                setShowJadwalModal(true); // Tampilkan modal
+              }}
+              className="bg-[#00206B] hover:bg-[#00174E] text-white font-black py-3.5 px-5 rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              + TAMBAH JADWAL BARU
+            </button>
           </div>
 
           {/* Tabel Jadwal */}
@@ -417,14 +482,14 @@ const ManageDriver = ({ onBack }) => {
               <div className="p-16 text-center text-[#00206B] font-bold animate-pulse">
                 Memuat Konfigurasi Jadwal... ⏳
               </div>
-            ) : jadwals.length === 0 ? (
-              <div className="p-16 text-center space-y-3">
-                <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mx-auto text-2xl">
+            ) : (jadwalList || []).length === 0 ? (
+              <div className="p-16 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mx-auto text-2xl">
                   ⏱️
                 </div>
                 <h4 className="text-base font-extrabold text-slate-700 m-0">Belum Ada Jadwal Dikonfigurasi</h4>
                 <p className="text-xs text-slate-400 font-semibold max-w-sm mx-auto">
-                  Belum ada data cut-off jadwal operasional di server.
+                  Belum ada data cut-off jadwal operasional di server. Silakan gunakan tombol di atas untuk menambahkan jadwal pertama.
                 </p>
               </div>
             ) : (
@@ -433,48 +498,46 @@ const ManageDriver = ({ onBack }) => {
                   <thead>
                     <tr className="bg-slate-50/80 border-b-2 border-slate-200">
                       <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase tracking-wider">TRAYEK</th>
-                      <th className="py-4 px-4 text-xs font-black text-[#00206B] uppercase tracking-wider">SESI</th>
-                      <th className="py-4 px-4 text-xs font-black text-[#00206B] uppercase tracking-wider">BATAS KELUAR DISHUB</th>
-                      <th className="py-4 px-4 text-xs font-black text-[#00206B] uppercase tracking-wider">BATAS TIBA START</th>
+                      <th className="py-4 px-4 text-xs font-black text-[#00206B] uppercase tracking-wider text-center">SESI</th>
+                      <th className="py-4 px-4 text-xs font-black text-[#00206B] uppercase tracking-wider text-center">BATAS KELUAR</th>
+                      <th className="py-4 px-4 text-xs font-black text-[#00206B] uppercase tracking-wider text-center">BATAS TIBA START</th>
                       <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase tracking-wider text-center">AKSI</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {(jadwals || []).map((item, idx) => (
-                      <tr key={item.id || item._id || idx} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-4 px-5">
-                          <span className="font-extrabold text-sm text-[#00206B]">
-                            {item.trayek || item.nama_trayek || `Trayek ${item.id || idx + 1}`}
+                    {(jadwalList || []).map((jadwal, index) => (
+                      <tr key={jadwal?.id || jadwal?._id || index} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-4 px-5 font-black text-sm text-[#00206B] uppercase">
+                          {jadwal?.trayek || jadwal?.nama_trayek || `Trayek ${jadwal?.id || index + 1}`}
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span className={`inline-block px-3 py-1 rounded-xl text-xs font-black uppercase ${
+                            (jadwal?.tipe_sesi || jadwal?.sesi || "").toUpperCase() === "PAGI"
+                              ? "bg-amber-50 text-amber-700 border border-amber-200"
+                              : "bg-blue-50 text-blue-700 border border-blue-200"
+                          }`}>
+                            {jadwal?.tipe_sesi || jadwal?.sesi || "PAGI"}
                           </span>
                         </td>
-                        <td className="py-4 px-4">
-                          <span className="inline-block px-3 py-1 rounded-xl text-xs font-black uppercase bg-slate-100 text-slate-700 border border-slate-200">
-                            {item.tipe_sesi || item.sesi || "PAGI"}
+                        <td className="py-4 px-4 text-center">
+                          <span className="inline-block text-xs font-black text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg">
+                            🕒 {jadwal?.batas_keluar_dishub || "-"} WIB
                           </span>
                         </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg">
-                              🕒 {item.batas_keluar_dishub || "-"} WIB
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
-                              📍 {item.batas_tiba_start || "-"} WIB
-                            </span>
-                          </div>
+                        <td className="py-4 px-4 text-center">
+                          <span className="inline-block text-xs font-black text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                            📍 {jadwal?.batas_tiba_start || "-"} WIB
+                          </span>
                         </td>
                         <td className="py-4 px-5 text-center">
                           <button
-                            onClick={() => handleOpenEditJadwal(item)}
+                            onClick={() => handleEditClick(jadwal)}
                             className="inline-flex items-center gap-1.5 bg-[#00206B] hover:bg-[#00174E] text-white text-xs font-extrabold px-3.5 py-2 rounded-xl shadow-sm active:scale-95 transition-all cursor-pointer"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                             </svg>
-                            <span>Edit Toleransi</span>
+                            <span>Edit</span>
                           </button>
                         </td>
                       </tr>
@@ -498,7 +561,7 @@ const ManageDriver = ({ onBack }) => {
                 <span className="text-[10px] font-black uppercase text-[#00206B] tracking-wider block">
                   REGISTRASI DRIVER
                 </span>
-                <h3 className="text-xl font-black text-[#00206B] m-0">Tambah Supir Baru</h3>
+                <h3 className="text-xl font-black text-[#00206B] m-0">Tambah Driver Baru</h3>
               </div>
               <button
                 onClick={() => setShowAddUserModal(false)}
@@ -512,7 +575,7 @@ const ManageDriver = ({ onBack }) => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                    ID Pengemudi
+                    ID Driver
                   </label>
                   <input
                     type="text"
@@ -566,33 +629,18 @@ const ManageDriver = ({ onBack }) => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                    Trayek Tugas
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={userForm.trayek}
-                    onChange={(e) => setUserForm({ ...userForm, trayek: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
-                    placeholder="Trayek A"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                    Armada / Nopol Bus
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={userForm.bus}
-                    onChange={(e) => setUserForm({ ...userForm, bus: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
-                    placeholder="Bus 07 (S 1772 SP)"
-                  />
-                </div>
+              <div>
+                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                  Trayek Tugas
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={userForm.trayek}
+                  onChange={(e) => setUserForm({ ...userForm, trayek: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
+                  placeholder="Trayek A"
+                />
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
@@ -608,7 +656,7 @@ const ManageDriver = ({ onBack }) => {
                   disabled={isSubmitting}
                   className="px-6 py-3 rounded-xl bg-[#00206B] hover:bg-[#00174E] text-white font-black text-xs uppercase tracking-wider shadow-md cursor-pointer disabled:opacity-50"
                 >
-                  {isSubmitting ? "Menyimpan..." : "Simpan Pengemudi"}
+                  {isSubmitting ? "Menyimpan..." : "Simpan Driver"}
                 </button>
               </div>
             </form>
@@ -617,7 +665,7 @@ const ManageDriver = ({ onBack }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: EDIT SUPIR                                                        */}
+      {/* MODAL: EDIT DRIVER                                                       */}
       {/* ========================================================================= */}
       {showEditUserModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-[fadeIn_0.2s]">
@@ -625,9 +673,9 @@ const ManageDriver = ({ onBack }) => {
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
                 <span className="text-[10px] font-black uppercase text-amber-700 tracking-wider block">
-                  PERBARUI PENGEMUDI
+                  PERBARUI DRIVER
                 </span>
-                <h3 className="text-xl font-black text-[#00206B] m-0">Edit Data Pengemudi</h3>
+                <h3 className="text-xl font-black text-[#00206B] m-0">Edit Data Driver</h3>
               </div>
               <button
                 onClick={() => setShowEditUserModal(false)}
@@ -677,31 +725,17 @@ const ManageDriver = ({ onBack }) => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                    Trayek
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={userForm.trayek}
-                    onChange={(e) => setUserForm({ ...userForm, trayek: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                    Armada / Bus
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={userForm.bus}
-                    onChange={(e) => setUserForm({ ...userForm, bus: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
-                  />
-                </div>
+              <div>
+                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                  Trayek
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={userForm.trayek}
+                  onChange={(e) => setUserForm({ ...userForm, trayek: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
+                />
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
@@ -735,9 +769,9 @@ const ManageDriver = ({ onBack }) => {
               🗑️
             </div>
             <div>
-              <h3 className="text-lg font-black text-[#00206B] m-0">Hapus Akun Pengemudi?</h3>
+              <h3 className="text-lg font-black text-[#00206B] m-0">Hapus Akun Driver?</h3>
               <p className="text-xs text-slate-500 font-semibold mt-1">
-                Apakah Anda yakin ingin menghapus akun pengemudi{" "}
+                Apakah Anda yakin ingin menghapus akun driver{" "}
                 <span className="font-black text-rose-600">{userToDelete.nama_lengkap || userToDelete.nama || userToDelete.name}</span>? Tindakan ini tidak dapat dibatalkan.
               </p>
             </div>
@@ -761,27 +795,34 @@ const ManageDriver = ({ onBack }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: EDIT JADWAL CUT-OFF                                               */}
+      {/* MODAL: FORM JADWAL CUT-OFF (TAMBAH & EDIT GOD MODE)                      */}
       {/* ========================================================================= */}
-      {showEditJadwalModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-[fadeIn_0.2s]">
+      {showJadwalModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-[fadeIn_0.2s]">
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 my-8">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <span className="text-[10px] font-black uppercase text-amber-700 tracking-wider block">
-                  KONFIGURASI CUT-OFF
+                <span className={`text-[10px] font-black uppercase tracking-wider block ${isEditMode ? "text-amber-700" : "text-[#00206B]"}`}>
+                  {isEditMode ? "EDIT CUT-OFF (GOD MODE)" : "KONFIGURASI CUT-OFF"}
                 </span>
-                <h3 className="text-xl font-black text-[#00206B] m-0">Edit Toleransi Jadwal</h3>
+                <h3 className="text-xl font-black text-[#00206B] m-0">
+                  {isEditMode ? "Edit Toleransi Jadwal" : "Tambah Jadwal Baru"}
+                </h3>
               </div>
               <button
-                onClick={() => setShowEditJadwalModal(false)}
-                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors"
+                type="button"
+                onClick={() => {
+                  setShowJadwalModal(false);
+                  setIsEditMode(false);
+                  setEditJadwalId(null);
+                }}
+                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleUpdateJadwal} className="space-y-4">
+            <form onSubmit={handleSubmitJadwal} className="space-y-4">
               <div>
                 <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
                   Trayek
@@ -789,19 +830,20 @@ const ManageDriver = ({ onBack }) => {
                 <input
                   type="text"
                   required
-                  value={jadwalForm.trayek}
-                  onChange={(e) => setJadwalForm({ ...jadwalForm, trayek: e.target.value })}
+                  value={formJadwal?.trayek || ""}
+                  onChange={(e) => setFormJadwal({ ...(formJadwal || {}), trayek: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
+                  placeholder="cth: AEROX, Trayek A"
                 />
               </div>
 
               <div>
                 <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                  Sesi Operasional
+                  Tipe Sesi
                 </label>
                 <select
-                  value={jadwalForm.tipe_sesi}
-                  onChange={(e) => setJadwalForm({ ...jadwalForm, tipe_sesi: e.target.value })}
+                  value={formJadwal?.tipe_sesi || "PAGI"}
+                  onChange={(e) => setFormJadwal({ ...(formJadwal || {}), tipe_sesi: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
                 >
                   <option value="PAGI">PAGI</option>
@@ -817,31 +859,35 @@ const ManageDriver = ({ onBack }) => {
                   <input
                     type="time"
                     required
-                    value={jadwalForm.batas_keluar_dishub}
-                    onChange={(e) => setJadwalForm({ ...jadwalForm, batas_keluar_dishub: e.target.value })}
+                    value={formJadwal?.batas_keluar_dishub || ""}
+                    onChange={(e) => setFormJadwal({ ...(formJadwal || {}), batas_keluar_dishub: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-black text-rose-700 focus:bg-white focus:outline-none focus:border-[#00206B]"
                   />
-                  <span className="text-[10px] text-slate-400 font-semibold mt-0.5 block">Format: JJ:MM</span>
+                  <span className="text-[10px] text-slate-400 font-semibold mt-0.5 block">Format: JJ:MM (cth: 06:00)</span>
                 </div>
                 <div>
                   <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                    Batas Tiba Start
+                    Batas Tiba di Titik Start
                   </label>
                   <input
                     type="time"
                     required
-                    value={jadwalForm.batas_tiba_start}
-                    onChange={(e) => setJadwalForm({ ...jadwalForm, batas_tiba_start: e.target.value })}
+                    value={formJadwal?.batas_tiba_start || ""}
+                    onChange={(e) => setFormJadwal({ ...(formJadwal || {}), batas_tiba_start: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-black text-amber-800 focus:bg-white focus:outline-none focus:border-[#00206B]"
                   />
-                  <span className="text-[10px] text-slate-400 font-semibold mt-0.5 block">Format: JJ:MM</span>
+                  <span className="text-[10px] text-slate-400 font-semibold mt-0.5 block">Format: JJ:MM (cth: 06:30)</span>
                 </div>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowEditJadwalModal(false)}
+                  onClick={() => {
+                    setShowJadwalModal(false);
+                    setIsEditMode(false);
+                    setEditJadwalId(null);
+                  }}
                   className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase cursor-pointer"
                 >
                   Batal
@@ -851,7 +897,7 @@ const ManageDriver = ({ onBack }) => {
                   disabled={isSubmitting}
                   className="px-6 py-3 rounded-xl bg-[#00206B] hover:bg-[#00174E] text-white font-black text-xs uppercase tracking-wider shadow-md cursor-pointer disabled:opacity-50"
                 >
-                  {isSubmitting ? "Menyimpan..." : "Simpan Toleransi"}
+                  {isSubmitting ? "Menyimpan..." : isEditMode ? "Simpan Perubahan" : "Simpan Jadwal"}
                 </button>
               </div>
             </form>

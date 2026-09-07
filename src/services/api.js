@@ -25,7 +25,8 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    // Jangan redirect jika request gagal berasal dari proses login itu sendiri
+    if (error.response && error.response.status === 401 && !error.config?.url?.includes("/auth/login")) {
       localStorage.removeItem("siclus_token");
       localStorage.removeItem("siclus_user");
       window.location.href = "/login";
@@ -44,6 +45,10 @@ export const apiService = {
   // ==========================================
   // ZONA DRIVER
   // ==========================================
+  getProfilDriver: async () => {
+    const response = await apiClient.get("/driver/profil");
+    return response.data;
+  },
   getJadwalDriver: async () => {
     const response = await apiClient.get("/driver/jadwal");
     return response.data;
@@ -64,13 +69,17 @@ export const apiService = {
     const response = await apiClient.post("/laporan/mulai", data);
     return response.data;
   },
+  mulaiLaporanHarian: async (data) => {
+    const response = await apiClient.post("/laporan/mulai", data);
+    return response.data;
+  },
   submitInspeksi: async (laporanId, data) => {
     const response = await apiClient.post(`/laporan/inspeksi?laporan_id=${laporanId}`, data);
     return response.data;
   },
   uploadSelfie: async (fileBlob) => {
     const formData = new FormData();
-    formData.append("foto", fileBlob);
+    formData.append("foto", fileBlob, "selfie.jpg");
     const response = await apiClient.post("/laporan/upload-selfie", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
@@ -99,6 +108,7 @@ export const apiService = {
   getDashboardAdmin: async () => (await apiClient.get("/admin/dashboard")).data,
   getRekapAdmin: async () => (await apiClient.get("/admin/rekap")).data,
   getRiwayatHarianAdmin: async () => (await apiClient.get("/admin/riwayat-harian")).data,
+  getPantauanHarian: async () => (await apiClient.get("/admin/riwayat-harian")).data,
   exportExcelAdmin: async () => {
     const res = await apiClient.get("/admin/export-excel", { responseType: 'blob' });
     const url = window.URL.createObjectURL(new Blob([res.data]));

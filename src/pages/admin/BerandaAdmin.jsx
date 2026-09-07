@@ -29,7 +29,7 @@ const BerandaAdmin = ({ user }) => {
         // Support response structure either { data: {...} } or direct {...}
         const data = resDashboard.data || resDashboard;
         setDashboardData({
-          total_supir_terdaftar: data.total_supir_terdaftar ?? data.total_supir ?? data.total_pengemudi ?? 0,
+          total_supir_terdaftar: data.total_supir_terdaftar ?? data.total_driver ?? data.total_supir ?? data.total_pengemudi ?? 0,
           total_supir_jalan: data.total_supir_jalan ?? data.jalan_hari_ini ?? data.supir_aktif ?? 0,
           total_supir_telat: data.total_supir_telat ?? data.telat_hari_ini ?? data.supir_telat ?? 0,
         });
@@ -39,7 +39,44 @@ const BerandaAdmin = ({ user }) => {
       const resHarian = await apiService.getRiwayatHarianAdmin();
       if (resHarian) {
         const rawList = resHarian.data || (Array.isArray(resHarian) ? resHarian : []);
-        setRiwayatHarian(rawList);
+        const flattened = [];
+        rawList.forEach((group) => {
+          (group.laporan || []).forEach((lap) => {
+            const sessions = lap.trip_sessions || [];
+            if (sessions.length > 0) {
+              sessions.forEach((sesi) => {
+                flattened.push({
+                  id: sesi.id || lap.id,
+                  tanggal: group.tanggal || lap.tanggal,
+                  id_supir: lap.id_supir,
+                  nama_supir: lap.users?.nama || lap.nama_supir || lap.id_supir,
+                  trayek: lap.trayek || "-",
+                  bus: lap.bus || "-",
+                  tipe_sesi: sesi.tipe_sesi || "PAGI",
+                  status_kedisiplinan: sesi.status_waktu || "TEPAT WAKTU",
+                  status: sesi.status_waktu,
+                  jam_berangkat_kantor: sesi.jam_berangkat_kantor,
+                  jam_berangkat_start: sesi.jam_berangkat_start,
+                  jam_tiba_finish: sesi.jam_tiba_finish,
+                  jam_tiba_kantor: sesi.jam_tiba_kantor,
+                });
+              });
+            } else {
+              flattened.push({
+                id: lap.id,
+                tanggal: group.tanggal || lap.tanggal,
+                id_supir: lap.id_supir,
+                nama_supir: lap.users?.nama || lap.nama_supir || lap.id_supir,
+                trayek: lap.trayek || "-",
+                bus: lap.bus || "-",
+                tipe_sesi: "PAGI",
+                status_operasional: "BELUM_JALAN",
+                status: "belum_mulai",
+              });
+            }
+          });
+        });
+        setRiwayatHarian(flattened);
       }
     } catch (error) {
       console.error("Gagal mengambil data dashboard admin:", error);
@@ -53,7 +90,7 @@ const BerandaAdmin = ({ user }) => {
     fetchData();
   }, []);
 
-  // Filter pengemudi yang terdeteksi TERLAMBAT atau BELUM MEMULAI SESI
+  // Filter driver yang terdeteksi TERLAMBAT atau BELUM MEMULAI SESI
   const lateOrNotStartedList = riwayatHarian.filter((item) => {
     const isLate =
       item.status_kedisiplinan === "TERLAMBAT" ||
@@ -107,7 +144,7 @@ const BerandaAdmin = ({ user }) => {
               <span className="text-3xl font-black text-[#00206B]">
                 {isLoading ? "..." : dashboardData.total_supir_terdaftar}
               </span>
-              <span className="text-xs font-bold text-slate-400">Pengemudi</span>
+              <span className="text-xs font-bold text-slate-400">Driver</span>
             </div>
             <p className="text-[11px] font-semibold text-slate-500">Terdaftar di sistem master data</p>
           </div>
@@ -126,7 +163,7 @@ const BerandaAdmin = ({ user }) => {
               </span>
               <span className="text-xs font-bold text-emerald-600">Armada Aktif</span>
             </div>
-            <p className="text-[11px] font-semibold text-emerald-600/80">Pengemudi sedang bertugas</p>
+            <p className="text-[11px] font-semibold text-emerald-600/80">Driver sedang bertugas</p>
           </div>
           <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 flex-shrink-0 text-2xl shadow-inner">
             🟢
@@ -163,7 +200,7 @@ const BerandaAdmin = ({ user }) => {
                 Peringatan Kedisiplinan Terkini
               </h3>
               <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                Pemantauan toleransi waktu CP1 & CP2 pengemudi hari ini
+                Pemantauan toleransi waktu CP1 & CP2 driver hari ini
               </p>
             </div>
           </div>
@@ -181,15 +218,15 @@ const BerandaAdmin = ({ user }) => {
             <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto text-xl font-black">
               ✓
             </div>
-            <h4 className="text-base font-extrabold text-emerald-800 m-0">Semua Pengemudi Disiplin & Tepat Waktu</h4>
+            <h4 className="text-base font-extrabold text-emerald-800 m-0">Semua Driver Disiplin & Tepat Waktu</h4>
             <p className="text-xs text-emerald-600 font-semibold max-w-md mx-auto">
-              Tidak ada pengemudi yang terdeteksi terlambat pada CP1/CP2 untuk jadwal hari ini.
+              Tidak ada driver yang terdeteksi terlambat pada CP1/CP2 untuk jadwal hari ini.
             </p>
           </div>
         ) : (
           <div className="space-y-3">
             {displayAlerts.map((item, index) => {
-              const driverName = item.nama_supir || item.nama || item.driver_name || item.id_supir || `Pengemudi #${index + 1}`;
+              const driverName = item.nama_supir || item.nama || item.driver_name || item.id_supir || `Driver #${index + 1}`;
               const trayek = item.trayek || item.nama_trayek || "-";
               const bus = item.bus || item.armada || item.nopol || "-";
               const sesi = item.tipe_sesi || item.sesi || "PAGI";

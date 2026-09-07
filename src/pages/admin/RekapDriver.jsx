@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import * as XLSX from "xlsx";
 import { apiService } from "../../services/api";
 
 const RekapAdmin = () => {
@@ -45,10 +46,12 @@ const RekapAdmin = () => {
     // 2. Grouping per Supir
     const groups = filtered.reduce((acc, curr) => {
       const supirId = curr.id_supir || curr.user_id || "ANONIM";
+      const driverName = curr.users?.nama || curr.users?.name || curr.nama_supir || curr.nama || supirId;
       if (!acc[supirId]) {
         acc[supirId] = {
           id_supir: supirId,
-          nama_supir: curr.users?.nama || curr.users?.name || curr.nama_supir || curr.nama || supirId,
+          nama_supir: driverName,
+          nama_lengkap: driverName,
           trayek_utama: curr.trayek || curr.users?.trayek || "-",
           bus_utama: curr.bus || curr.users?.bus || "-",
           total_hari_jalan: 0,
@@ -56,17 +59,20 @@ const RekapAdmin = () => {
           total_telat: 0,
           total_tepat: 0,
           list_laporan: [],
+          riwayat: [],
         };
       }
 
       acc[supirId].total_hari_jalan += 1;
-      acc[supirId].list_laporan.push(curr);
 
       // Hitung Metrik dari Sesi
+      let passengerCount = 0;
+      let isLate = false;
+
       if (curr.trip_sessions && curr.trip_sessions.length > 0) {
         curr.trip_sessions.forEach((sesi) => {
-          acc[supirId].total_penumpang += sesi.jumlah_penumpang || 0;
-          const isLate =
+          passengerCount += sesi.jumlah_penumpang || 0;
+          const late =
             sesi.status_waktu === "TERLAMBAT" ||
             sesi.status_kedisiplinan === "TERLAMBAT" ||
             sesi.status?.toUpperCase() === "TERLAMBAT" ||
@@ -75,16 +81,19 @@ const RekapAdmin = () => {
             sesi.cp1_late ||
             sesi.cp2_late;
 
-          if (isLate) {
+          if (late) {
             acc[supirId].total_telat += 1;
+            isLate = true;
           } else {
             acc[supirId].total_tepat += 1;
           }
         });
+        acc[supirId].total_penumpang += passengerCount;
       } else {
         // Fallback jika tidak ada trip_sessions terpisah
-        acc[supirId].total_penumpang += curr.jumlah_penumpang || 0;
-        const isLate =
+        passengerCount = curr.jumlah_penumpang || 0;
+        acc[supirId].total_penumpang += passengerCount;
+        isLate =
           curr.status_waktu === "TERLAMBAT" ||
           curr.status_kedisiplinan === "TERLAMBAT" ||
           curr.status?.toUpperCase() === "TERLAMBAT" ||
@@ -97,6 +106,20 @@ const RekapAdmin = () => {
           acc[supirId].total_tepat += 1;
         }
       }
+
+      const totalSesi = curr.sesi_terlaksana ?? curr.trip_sessions?.length ?? 0;
+      const statusKedisiplinan = curr.status_waktu || (isLate ? "TERLAMBAT" : "TEPAT WAKTU");
+      const normalizedReport = {
+        ...curr,
+        tanggal: curr.tanggal || (curr.created_at ? curr.created_at.split("T")[0] : "-"),
+        bus: curr.bus || curr.users?.bus || "-",
+        sesi_terlaksana: totalSesi,
+        siswa_diangkut: passengerCount,
+        status_waktu: statusKedisiplinan,
+      };
+
+      acc[supirId].list_laporan.push(normalizedReport);
+      acc[supirId].riwayat.push(normalizedReport);
 
       return acc;
     }, {});
@@ -117,13 +140,27 @@ const RekapAdmin = () => {
     return result;
   }, [rawData, filterPeriode, searchQuery]);
 
-  const handleExportExcel = async () => {
-    try {
-      await apiService.exportExcelAdmin();
-    } catch (err) {
-      console.error("Gagal ekspor excel:", err);
-      alert("Gagal mengunduh excel. Pastikan backend aktif.");
-    }
+  const handleExportPerDriver = () => {
+    const riwayatList = selectedDriver?.riwayat || selectedDriver?.list_laporan;
+    if (!selectedDriver || !riwayatList || riwayatList.length === 0) return;
+
+    // Susun data baris per baris untuk Excel
+    const excelData = riwayatList.map((laporan) => ({
+      "Tanggal": laporan.tanggal,
+      "Armada / Bus": laporan.bus || "-",
+      "Total Sesi": laporan.sesi_terlaksana || 0,
+      "Siswa Diangkut": laporan.siswa_diangkut || 0,
+      "Status Kedisiplinan": laporan.status_waktu || "TEPAT WAKTU",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap_Mingguan");
+
+    // Nama file dinamis menggunakan nama supir
+    const namaSupir = selectedDriver.nama_lengkap || selectedDriver.nama_supir || "Driver";
+    const namaFile = `Rekap_${namaSupir.replace(/\s+/g, "_")}.xlsx`;
+    XLSX.writeFile(workbook, namaFile);
   };
 
   const formatTime = (timeString) => {
@@ -146,7 +183,7 @@ const RekapAdmin = () => {
             Rekapitulasi Kinerja
           </h2>
           <p className="text-sm text-slate-400 font-semibold mt-0.5">
-            Pantau akumulasi performa pengemudi per rentang waktu
+            Pantau akumulasi performa driver per rentang waktu
           </p>
         </div>
 
@@ -181,17 +218,6 @@ const RekapAdmin = () => {
             <option value={30}>1 Bulan Terakhir</option>
             <option value="all">Semua Waktu</option>
           </select>
-
-          {/* Tombol Unduh Excel */}
-          <button
-            onClick={handleExportExcel}
-            className="bg-[#137333] hover:bg-[#0d5023] text-white font-extrabold py-3 px-5 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            EXCEL
-          </button>
         </div>
       </div>
 
@@ -213,7 +239,7 @@ const RekapAdmin = () => {
               <thead>
                 <tr className="border-b-2 border-slate-200 bg-slate-50">
                   <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase rounded-tl-xl tracking-wider">
-                    Nama Pengemudi
+                    Nama Driver
                   </th>
                   <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase tracking-wider">Trayek</th>
                   <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase text-center tracking-wider">
@@ -316,7 +342,7 @@ const RekapAdmin = () => {
                 </div>
                 <div>
                   <span className="text-[10px] font-black uppercase text-[#00206B] tracking-wider block">
-                    AKUMULASI LOGBOOK PENGEMUDI
+                    AKUMULASI LOGBOOK DRIVER
                   </span>
                   <h3 className="text-xl font-black text-[#00206B] m-0">{selectedDriver.nama_supir}</h3>
                   <p className="text-xs text-slate-500 font-semibold mt-0.5">
@@ -329,6 +355,16 @@ const RekapAdmin = () => {
                 className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
               >
                 ✕
+              </button>
+            </div>
+
+            {/* DI DALAM MODAL DETAIL DRIVER (Dekat Header/Nama) */}
+            <div className="mt-4 flex justify-center w-full">
+              <button
+                onClick={handleExportPerDriver}
+                className="flex items-center gap-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 text-xs font-black px-4 py-2 rounded-xl transition-colors border border-emerald-200 w-full justify-center shadow-sm cursor-pointer"
+              >
+                <span>📊 DOWNLOAD EXCEL ({selectedDriver?.nama_lengkap || selectedDriver?.nama_supir})</span>
               </button>
             </div>
 

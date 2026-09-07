@@ -76,27 +76,65 @@ const LiveCamera = ({ onCapture, onCancel }) => {
 };
 
 const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
-  const [activeCP, setActiveCP] = useState(1);
+  // --- PERSISTENT DRAFT INITIALIZATION ---
+  const getDraft = () => {
+    const saved = localStorage.getItem("siclus_draft_form");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const localNow = new Date();
+        const today = `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, "0")}-${String(localNow.getDate()).padStart(2, "0")}`;
+        // Jika draft berasal dari tanggal yang berbeda, bersihkan agar tidak memakai draft kemarin
+        if (parsed.draftDate && parsed.draftDate !== today) {
+          localStorage.removeItem("siclus_draft_step");
+          localStorage.removeItem("siclus_draft_form");
+          localStorage.removeItem("siclus_active_laporan_id");
+          return null;
+        }
+        return parsed;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  };
+  const initialDraft = getDraft();
+
+  // 1. STATE UNTUK STEP AKTIF (CP1, CP2, dll)
+  const [activeCP, setActiveCP] = useState(() => {
+    const savedStep = localStorage.getItem("siclus_draft_step");
+    return savedStep ? parseInt(savedStep, 10) : 1;
+  });
   const [isProcessing, setIsProcessing] = useState(false);
   const [cpToConfirm, setCpToConfirm] = useState(null); // Fitur Safety Lock
 
-  const [laporanId, setLaporanId] = useState(null);
-  const [sesiId, setSesiId] = useState(null);
+  // 2. STATE UNTUK DATA FORM / SESI / INSPEKSI
+  const [laporanId, setLaporanId] = useState(() => {
+    return localStorage.getItem("siclus_active_laporan_id") || initialDraft?.laporanId || null;
+  });
+  const [sesiId, setSesiId] = useState(() => initialDraft?.sesiId || null);
 
-  const [merkKendaraan, setMerkKendaraan] = useState("");
-  const [nopol, setNopol] = useState("");
-  const [odoAwal, setOdoAwal] = useState("");
-  const [odo2, setOdo2] = useState("");
-  const [odo3, setOdo3] = useState("");
-  const [odo4, setOdo4] = useState("");
-  const [penumpang, setPenumpang] = useState("");
-  const [catatan, setCatatan] = useState("");
+  // SINKRONISASI: Simpan laporanId ke localStorage
+  useEffect(() => {
+    if (laporanId) {
+      localStorage.setItem("siclus_active_laporan_id", String(laporanId));
+    }
+  }, [laporanId]);
 
-  const [isPhotoSaved, setIsPhotoSaved] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState(null);
+  const [merkKendaraan, setMerkKendaraan] = useState(() => initialDraft?.merkKendaraan || "");
+  const [nopol, setNopol] = useState(() => initialDraft?.nopol || "");
+  const [odoAwal, setOdoAwal] = useState(() => initialDraft?.odoAwal || initialDraft?.odometer_awal || "");
+  const [odo2, setOdo2] = useState(() => initialDraft?.odo2 || "");
+  const [odo3, setOdo3] = useState(() => initialDraft?.odo3 || "");
+  const [odo4, setOdo4] = useState(() => initialDraft?.odo4 || "");
+  const [penumpang, setPenumpang] = useState(() => initialDraft?.penumpang || "");
+  const [catatan, setCatatan] = useState(() => initialDraft?.catatan || "");
+
+  const [isPhotoSaved, setIsPhotoSaved] = useState(() => initialDraft?.isPhotoSaved || false);
+  const [photoPreview, setPhotoPreview] = useState(() => initialDraft?.photoPreview || null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
 
-  const [inspeksi, setInspeksi] = useState({
+  const [inspeksi, setInspeksi] = useState(() => initialDraft?.inspeksi || {
     rem: null,
     ac: null,
     lampu: null,
@@ -108,22 +146,93 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
     kebersihan: null,
   });
 
+  // AUTO-SAVE: Sinkronisasi step ke localStorage
+  useEffect(() => {
+    localStorage.setItem("siclus_draft_step", activeCP.toString());
+  }, [activeCP]);
+
+  // AUTO-SAVE: Sinkronisasi seluruh field form ke localStorage
+  useEffect(() => {
+    const localNow = new Date();
+    const today = `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, "0")}-${String(localNow.getDate()).padStart(2, "0")}`;
+    const draftPayload = {
+      draftDate: today,
+      laporanId,
+      sesiId,
+      merkKendaraan,
+      nopol,
+      odoAwal,
+      odometer_awal: odoAwal,
+      odo2,
+      odo3,
+      odo4,
+      penumpang,
+      catatan,
+      inspeksi,
+      isPhotoSaved,
+      photoPreview,
+    };
+    try {
+      localStorage.setItem("siclus_draft_form", JSON.stringify(draftPayload));
+    } catch (e) {
+      console.warn("Gagal menyimpan snapshot foto ke localStorage, menyimpan draft teks saja:", e);
+      try {
+        localStorage.setItem("siclus_draft_form", JSON.stringify({ ...draftPayload, photoPreview: null }));
+      } catch (err) {
+        console.error("Gagal auto-save form:", err);
+      }
+    }
+  }, [
+    laporanId,
+    sesiId,
+    merkKendaraan,
+    nopol,
+    odoAwal,
+    odo2,
+    odo3,
+    odo4,
+    penumpang,
+    catatan,
+    inspeksi,
+    isPhotoSaved,
+    photoPreview,
+  ]);
+
   useEffect(() => {
     const initLaporan = async () => {
+      // 1. Cek dari localStorage dulu
+      const savedLaporanId = localStorage.getItem("siclus_active_laporan_id");
+      if (savedLaporanId) {
+        if (!laporanId) setLaporanId(savedLaporanId);
+        return;
+      }
+      if (laporanId) {
+        localStorage.setItem("siclus_active_laporan_id", String(laporanId));
+        return;
+      }
+
       try {
-        const today = new Date().toISOString().split("T")[0];
-        const res = await apiService.mulaiLaporan({
+        const localNow = new Date();
+        const year = localNow.getFullYear();
+        const month = String(localNow.getMonth() + 1).padStart(2, "0");
+        const day = String(localNow.getDate()).padStart(2, "0");
+        const today = `${year}-${month}-${day}`;
+
+        const res = await (apiService.mulaiLaporanHarian || apiService.mulaiLaporan)({
           tanggal: today,
-          trayek: user?.trayek || "T06",
-          bus: user?.bus || "ARMADA",
+          trayek: user?.trayek || "-",
+          bus: user?.bus || "-",
         });
-        setLaporanId(res.id);
+        if (res && res.id) {
+          localStorage.setItem("siclus_active_laporan_id", String(res.id));
+          setLaporanId(res.id);
+        }
       } catch (err) {
         console.error("Gagal init laporan:", err);
       }
     };
     initLaporan();
-  }, [user]);
+  }, [user, laporanId]);
 
   const handleCeklis = (item, status) => setInspeksi((prev) => ({ ...prev, [item]: status }));
   const totalCeklis = Object.values(inspeksi).filter((val) => val !== null).length;
@@ -139,7 +248,8 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
   };
 
   const submitCP1 = async () => {
-    if (!laporanId) return alert("Sistem memuat ID Laporan. Tunggu sebentar.");
+    const activeLaporanId = laporanId || localStorage.getItem("siclus_active_laporan_id");
+    if (!activeLaporanId) return alert("Sistem memuat ID Laporan. Tunggu sebentar.");
     setIsProcessing(true);
     try {
       const fileFoto = dataURLtoFile(photoPreview, `selfie_awal.jpg`);
@@ -151,21 +261,22 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
       // Kirim file yang sudah dikompres
       const uploadRes = await apiService.uploadSelfie(compressedFile);
 
-      await apiService.submitInspeksi(laporanId, { 
+      await apiService.submitInspeksi(activeLaporanId, { 
         ...inspeksi, 
         tipe_sesi: currentShift.toUpperCase(), // <-- WAJIB KIRIM INI
         catatan: adaKurang ? catatan : "" 
       });
 
       const platNomorFinal = `${merkKendaraan.trim()} - ${nopol.trim()}`;
-      const cp1Res = await apiService.submitCP1(laporanId, {
+      const cp1Res = await apiService.submitCP1(activeLaporanId, {
         tipe_sesi: currentShift,
         nopol_kendaraan: platNomorFinal,
         km_berangkat_kantor: parseInt(odoAwal),
         foto_awal: uploadRes.url_foto,
       });
 
-      setSesiId(cp1Res.data.id);
+      const newSesiId = cp1Res?.data?.id || cp1Res?.id;
+      if (newSesiId) setSesiId(newSesiId);
       setCpToConfirm(null);
       setActiveCP(2);
     } catch (err) {
@@ -226,6 +337,11 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
         foto_akhir: uploadRes.url_foto,
       });
 
+      // BERSIHKAN DRAFT LOKAL SETELAH TUGAS SELESAI
+      localStorage.removeItem("siclus_draft_step");
+      localStorage.removeItem("siclus_draft_form");
+      localStorage.removeItem("siclus_active_laporan_id");
+
       alert("Shift Berhasil Ditutup!");
       if (onFinishShift) onFinishShift();
     } catch (err) {
@@ -273,7 +389,7 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
               <div className="space-y-4">
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">TRAYEK PENUGASAN</p>
-                  <h4 className="text-xl font-black text-[#00206B]">{user?.trayek || "T06"}</h4>
+                  <h4 className="text-xl font-black text-[#00206B]">{user?.trayek || "-"}</h4>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
