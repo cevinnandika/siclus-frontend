@@ -29,7 +29,7 @@ Total file: 21
 
 ### src/App.jsx
 
-`jsx
+jsx
 import React, { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { apiService } from "./services/api";
@@ -42,9 +42,10 @@ import BottomNav from "./components/layout/BottomNav";
 import Login from "./pages/auth/Login";
 
 // Pages - Admin
+import BerandaAdmin from "./pages/admin/BerandaAdmin";
 import RiwayatAdmin from "./pages/admin/RiwayatAdmin";
-import ManageUser from "./pages/admin/ManageDriver";
-import RekapPage from "./pages/admin/RekapDriver";
+import ManageDriver from "./pages/admin/ManageDriver";
+import RekapAdmin from "./pages/admin/RekapDriver";
 import ProfilAdmin from "./pages/admin/ProfilAdmin";
 
 // Pages - Driver
@@ -55,12 +56,21 @@ import DetailLaporan from "./pages/driver/DetailLaporan";
 import ProfilDriver from "./pages/driver/ProfilDriver";
 
 // (PROTECTED ROUTE)
+const isRoleMatch = (userRole, allowedRole) => {
+  if (!userRole) return false;
+  const u = userRole.toLowerCase();
+  const a = allowedRole.toLowerCase();
+  if (a === "driver") return u === "driver" || u === "pengemudi";
+  return u === a;
+};
+
 const ProtectedRoute = ({ user, allowedRole, children }) => {
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  if (user.role.toLowerCase() !== allowedRole.toLowerCase()) {
-    return <Navigate to={user.role.toLowerCase() === "admin" ? "/admin/riwayat" : "/driver/beranda"} replace />;
+  if (!isRoleMatch(user.role, allowedRole)) {
+    const isAdmin = (user.role || "").toLowerCase() === "admin";
+    return <Navigate to={isAdmin ? "/admin/dashboard" : "/driver/beranda"} replace />;
   }
   return children;
 };
@@ -89,7 +99,24 @@ function App() {
     const savedUser = localStorage.getItem("siclus_user");
 
     if (token && savedUser) {
-      setUser(JSON.parse(savedUser));
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+
+      if (parsedUser?.role?.toLowerCase() !== "admin") {
+        apiService
+          .getJadwalDriver()
+          .then((resJadwal) => {
+            if (resJadwal && resJadwal.data) {
+              const jadwalPagi = resJadwal.data.find((j) => j.tipe_sesi === "PAGI");
+              const jadwalSiang = resJadwal.data.find((j) => j.tipe_sesi === "SIANG");
+              setShiftRules({
+                pagi: jadwalPagi ? parseInt(jadwalPagi.batas_keluar_dishub.split(":")[0]) : 5,
+                siang: jadwalSiang ? parseInt(jadwalSiang.batas_keluar_dishub.split(":")[0]) : 12,
+              });
+            }
+          })
+          .catch((err) => console.error("Gagal refresh jadwal:", err));
+      }
     }
     setIsInitializing(false);
   }, []);
@@ -115,7 +142,7 @@ function App() {
       }
       navigate("/driver/beranda");
     } else {
-      navigate("/admin/riwayat");
+      navigate("/admin/dashboard");
     }
   };
 
@@ -124,6 +151,9 @@ function App() {
     localStorage.removeItem("siclus_user");
     localStorage.removeItem("siclus_shift");
     localStorage.removeItem("siclus_locked");
+    localStorage.removeItem("siclus_draft_step");
+    localStorage.removeItem("siclus_draft_form");
+    localStorage.removeItem("siclus_active_laporan_id");
     setUser(null);
     setTripStatus("belum_mulai");
     navigate("/login");
@@ -132,8 +162,8 @@ function App() {
   const handleMenuClick = (menuId) => {
     const baseRoute = user?.role?.toLowerCase() === "admin" ? "/admin" : "/driver";
     let targetRoute = menuId;
-    if (menuId === "riwayatdriver") targetRoute = "riwayat";
-    if (menuId === "kelolauser") targetRoute = "kelola-user";
+    if (menuId === "riwayatdriver") targetRoute = "dashboard";
+    if (menuId === "kelolauser") targetRoute = "kelola";
     navigate(`${baseRoute}/${targetRoute}`);
   };
 
@@ -190,7 +220,7 @@ function App() {
         <AppLayout user={user} title={"SICLUS"} onBack={location.pathname.includes("detail") ? () => navigate(-1) : null} activeMenu={location.pathname.split("/").pop()} onMenuClick={handleMenuClick}>
           <Routes>
             {/* ZONA KHUSUS DRIVER */}
-            <Route path="/" element={<Navigate to={user?.role?.toLowerCase() === "admin" ? "/admin/riwayat" : "/driver/beranda"} replace />} />
+            <Route path="/" element={<Navigate to={user?.role?.toLowerCase() === "admin" ? "/admin/dashboard" : "/driver/beranda"} replace />} />
             <Route
               path="/driver/*"
               element={
@@ -254,7 +284,7 @@ function App() {
                     />
                     <Route path="detail-laporan" element={<DetailLaporan report={selectedReport} onBack={() => navigate("/driver/riwayat")} />} />
                     <Route path="akun" element={<ProfilDriver user={user} onLogout={handleLogout} onUpdateUser={setUser} />} /> {/* ✅ FIX: Pake ProfilDriver */}
-                    <Route path="*" element={<Navigate to="beranda" replace />} />
+                    <Route path="*" element={<Navigate to="/driver/beranda" replace />} />
                   </Routes>
                 </ProtectedRoute>
               }
@@ -266,11 +296,14 @@ function App() {
               element={
                 <ProtectedRoute user={user} allowedRole="admin">
                   <Routes>
-                    <Route path="riwayat" element={<RiwayatAdmin user={user} />} />
-                    <Route path="kelola-user" element={<ManageUser onBack={() => navigate("/admin/riwayat")} />} />
-                    <Route path="rekap" element={<RekapPage />} />
-                    <Route path="akun" element={<ProfilAdmin user={user} onLogout={handleLogout} />} /> {/* ✅ FIX: Pake ProfilAdmin */}
-                    <Route path="*" element={<Navigate to="riwayat" replace />} />
+                    <Route path="dashboard" element={<BerandaAdmin user={user} />} />
+                    <Route path="riwayat" element={<RiwayatAdmin />} />
+                    <Route path="rekap" element={<RekapAdmin user={user} />} />
+                    <Route path="kelola" element={<ManageDriver onBack={() => navigate("/admin/dashboard")} />} />
+                    <Route path="akun" element={<ProfilAdmin user={user} onLogout={handleLogout} />} />
+                    
+                    {/* FIX KRUSIAL: Gunakan Absolute Path "/admin/dashboard" BUKAN "dashboard" */}
+                    <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
                   </Routes>
                 </ProtectedRoute>
               }
@@ -285,30 +318,29 @@ function App() {
 
 export default App;
 
-`
 
 ---
 
 ### src/components/icons/Icon.jsx
 
-`jsx
+jsx
 
-`
 
 ---
 
 ### src/components/layout/AppLayout.jsx
 
-`jsx
+jsx
 import React, { useState } from 'react';
 
 const AppLayout = ({ children, title = 'SICLUS', onBack = null, activeMenu = 'beranda', onMenuClick = () => {}, user = null }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const adminMenuItems = [
-    { id: 'riwayatdriver', label: 'Riwayat Driver', icon: <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /> },
-    { id: 'rekap', label: 'Rekap', icon: <path strokeLinecap="round" strokeLinejoin="round" d="M8 13v-1m4 1v-3m4 3V8M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /> },
-    { id: 'kelolauser', label: 'Kelola User', icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /> },
+    { id: 'dashboard', label: 'Beranda', icon: <path strokeLinecap="round" strokeLinejoin="round" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" /> },
+    { id: 'riwayat', label: 'Riwayat Harian', icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /> },
+    { id: 'rekap', label: 'Rekap Data', icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /> },
+    { id: 'kelola', label: 'Kelola', icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /> },
     { id: 'akun', label: 'Akun', icon: <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /> }
   ];
 
@@ -352,22 +384,31 @@ const AppLayout = ({ children, title = 'SICLUS', onBack = null, activeMenu = 'be
             );
           })}
         </nav>
-        <div className="p-3 mb-2 border-t border-white/5 mt-auto">
+        {/* BLOK PROFIL SIDEBAR POJOK KIRI BAWAH */}
+        <div className="p-3 mb-2 border-t border-slate-800 mt-auto">
           <div onClick={() => onMenuClick('akun')} className="flex items-center p-2 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 cursor-pointer transition-colors group" title={!isSidebarOpen ? 'Buka Akun' : ''}>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-md overflow-hidden bg-slate-100 border border-white/10">
-              {user?.foto_profil ? (
-                <img src={user.foto_profil} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-              )}
-            </div>
+            {/* RENDER AVATAR AMAN */}
+            {user?.foto_profil ? (
+              <img 
+                src={user.foto_profil} 
+                alt="Avatar" 
+                className="w-10 h-10 rounded-full object-cover border border-slate-600 bg-white flex-shrink-0" 
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#00206B] to-blue-500 text-white flex items-center justify-center font-black text-sm shadow-sm border border-slate-600 flex-shrink-0">
+                {/* Pengecekan multi-key untuk nama dari database */}
+                {(user?.nama_lengkap || user?.nama || user?.name || "A").charAt(0).toUpperCase()}
+              </div>
+            )}
+
+            {/* RENDER NAMA AMAN */}
             <div className={`overflow-hidden transition-all duration-300 flex flex-col justify-center ${isSidebarOpen ? 'ml-3 w-full opacity-100' : 'w-0 opacity-0'}`}>
-              <span className="text-sm font-bold text-white truncate group-hover:text-cyan-200 transition-colors">{user?.name || 'Profil Saya'}</span>
-              <span className="text-[10px] text-slate-400 truncate uppercase tracking-widest mt-0.5">{user?.role || 'Pengemudi'}</span>
+              <p className="text-sm font-bold text-white truncate w-full group-hover:text-cyan-200 transition-colors m-0">
+                {user?.nama_lengkap || user?.nama || user?.name || "Pengguna"}
+              </p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest truncate w-full mt-0.5 m-0">
+                {user?.role || "USER"}
+              </p>
             </div>
           </div>
         </div>
@@ -397,13 +438,13 @@ const AppLayout = ({ children, title = 'SICLUS', onBack = null, activeMenu = 'be
 };
 
 export default AppLayout;
-`
+
 
 ---
 
 ### src/components/layout/BottomNav.jsx
 
-`jsx
+jsx
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -413,9 +454,10 @@ const BottomNav = ({ user = null }) => {
   const currentPath = location.pathname.split("/").pop(); // Ambil path terakhir
 
   const adminNavItems = [
-    { id: 'riwayat', label: 'Riwayat', icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg> },
-    { id: 'rekap', label: 'Rekap', icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 13v-1m4 1v-3m4 3V8M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg> },
-    { id: 'kelola-user', label: 'Kelola', icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg> },
+    { id: 'dashboard', label: 'Beranda', icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" /></svg> },
+    { id: 'riwayat', label: 'Riwayat', icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
+    { id: 'rekap', label: 'Rekap', icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> },
+    { id: 'kelola', label: 'Kelola', icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg> },
     { id: 'akun', label: 'Akun', icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> }
   ];
 
@@ -461,13 +503,13 @@ const BottomNav = ({ user = null }) => {
 };
 
 export default BottomNav;
-`
+
 
 ---
 
 ### src/components/ui/InspectionToggle.jsx
 
-`jsx
+jsx
 import React from 'react';
 
 const InspectionToggle = ({ label, isChecked, onChange }) => {
@@ -494,13 +536,12 @@ const InspectionToggle = ({ label, isChecked, onChange }) => {
 
 export default InspectionToggle;
 
-`
 
 ---
 
 ### src/index.css
 
-`css
+css
 @import "tailwindcss";
 
 :root {
@@ -521,13 +562,13 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
-`
+
 
 ---
 
 ### src/main.jsx
 
-`jsx
+jsx
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom' 
@@ -547,250 +588,1247 @@ createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </StrictMode>,
 )
-`
+
 
 ---
 
 ### src/pages/admin/BerandaAdmin.jsx
 
-`jsx
+jsx
+import React, { useState, useEffect } from "react";
+import { apiService } from "../../services/api";
 
-`
+const BerandaAdmin = ({ user }) => {
+  const [dashboardData, setDashboardData] = useState({
+    total_supir_terdaftar: 0,
+    total_supir_jalan: 0,
+    total_supir_telat: 0,
+  });
+  const [riwayatHarian, setRiwayatHarian] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const currentDate = new Date().toLocaleDateString("id-ID", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const fetchData = async (showRefreshPulse = false) => {
+    if (showRefreshPulse) setIsRefreshing(true);
+    else setIsLoading(true);
+
+    try {
+      // 1. Fetch Dashboard Stats
+      const resDashboard = await apiService.getDashboardAdmin();
+      if (resDashboard) {
+        // Support response structure either { data: {...} } or direct {...}
+        const data = resDashboard.data || resDashboard;
+        setDashboardData({
+          total_supir_terdaftar: data.total_supir_terdaftar ?? data.total_driver ?? data.total_supir ?? data.total_pengemudi ?? 0,
+          total_supir_jalan: data.total_supir_jalan ?? data.jalan_hari_ini ?? data.supir_aktif ?? 0,
+          total_supir_telat: data.total_supir_telat ?? data.telat_hari_ini ?? data.supir_telat ?? 0,
+        });
+      }
+
+      // 2. Fetch Daily Sessions for Discipline Alerts
+      const resHarian = await apiService.getRiwayatHarianAdmin();
+      if (resHarian) {
+        const rawList = resHarian.data || (Array.isArray(resHarian) ? resHarian : []);
+        const flattened = [];
+        rawList.forEach((group) => {
+          (group.laporan || []).forEach((lap) => {
+            const sessions = lap.trip_sessions || [];
+            if (sessions.length > 0) {
+              sessions.forEach((sesi) => {
+                flattened.push({
+                  id: sesi.id || lap.id,
+                  tanggal: group.tanggal || lap.tanggal,
+                  id_supir: lap.id_supir,
+                  nama_supir: lap.users?.nama || lap.nama_supir || lap.id_supir,
+                  trayek: lap.trayek || "-",
+                  bus: lap.bus || "-",
+                  tipe_sesi: sesi.tipe_sesi || "PAGI",
+                  status_kedisiplinan: sesi.status_waktu || "TEPAT WAKTU",
+                  status: sesi.status_waktu,
+                  jam_berangkat_kantor: sesi.jam_berangkat_kantor,
+                  jam_berangkat_start: sesi.jam_berangkat_start,
+                  jam_tiba_finish: sesi.jam_tiba_finish,
+                  jam_tiba_kantor: sesi.jam_tiba_kantor,
+                });
+              });
+            } else {
+              flattened.push({
+                id: lap.id,
+                tanggal: group.tanggal || lap.tanggal,
+                id_supir: lap.id_supir,
+                nama_supir: lap.users?.nama || lap.nama_supir || lap.id_supir,
+                trayek: lap.trayek || "-",
+                bus: lap.bus || "-",
+                tipe_sesi: "PAGI",
+                status_operasional: "BELUM_JALAN",
+                status: "belum_mulai",
+              });
+            }
+          });
+        });
+        setRiwayatHarian(flattened);
+      }
+    } catch (error) {
+      console.error("Gagal mengambil data dashboard admin:", error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Filter driver yang terdeteksi TERLAMBAT atau BELUM MEMULAI SESI
+  const lateOrNotStartedList = riwayatHarian.filter((item) => {
+    const isLate =
+      item.status_kedisiplinan === "TERLAMBAT" ||
+      item.is_late === true ||
+      item.terlambat === true ||
+      item.status?.toUpperCase() === "TERLAMBAT" ||
+      item.cp1_late === true ||
+      item.cp2_late === true;
+
+    const notStarted =
+      item.status === "belum_mulai" ||
+      item.status === "BELUM_MULAI" ||
+      item.status_operasional === "BELUM_JALAN" ||
+      (!item.jam_berangkat_kantor && !item.cp1_time);
+
+    return isLate || notStarted;
+  });
+
+  // Jika daftar dari API memiliki field kedisiplinan umum, pisahkan list peringatan
+  const displayAlerts = lateOrNotStartedList.length > 0 ? lateOrNotStartedList : riwayatHarian;
+
+  return (
+    <div className="space-y-6 text-left max-w-5xl mx-auto pb-6 animate-[fadeIn_0.3s]">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="space-y-1">
+          <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">
+            Selamat Datang, Administrator ({user?.nama_lengkap || user?.nama || user?.name || "Admin"})
+          </h2>
+          <p className="text-sm text-slate-500 font-semibold">{currentDate} • Pusat Kontrol Operasional SICLUS</p>
+        </div>
+        <button
+          onClick={() => fetchData(true)}
+          disabled={isLoading || isRefreshing}
+          className="self-start sm:self-auto flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-[#00206B] px-4 py-2.5 rounded-xl font-extrabold text-xs shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+        >
+          <svg className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {isRefreshing ? "Memperbarui..." : "Segarkan Data"}
+        </button>
+      </div>
+
+      {/* 3 Metric Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Card 1: Total Supir */}
+        <div className="bg-white border-2 border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-black text-slate-400 uppercase tracking-wider block">TOTAL SUPIR</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-black text-[#00206B]">
+                {isLoading ? "..." : dashboardData.total_supir_terdaftar}
+              </span>
+              <span className="text-xs font-bold text-slate-400">Driver</span>
+            </div>
+            <p className="text-[11px] font-semibold text-slate-500">Terdaftar di sistem master data</p>
+          </div>
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#00206B] flex-shrink-0 text-2xl shadow-inner">
+            🚌
+          </div>
+        </div>
+
+        {/* Card 2: Jalan Hari Ini */}
+        <div className="bg-white border-2 border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-black text-emerald-600 uppercase tracking-wider block">JALAN HARI INI</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-black text-emerald-700">
+                {isLoading ? "..." : dashboardData.total_supir_jalan}
+              </span>
+              <span className="text-xs font-bold text-emerald-600">Armada Aktif</span>
+            </div>
+            <p className="text-[11px] font-semibold text-emerald-600/80">Driver sedang bertugas</p>
+          </div>
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 flex-shrink-0 text-2xl shadow-inner">
+            🟢
+          </div>
+        </div>
+
+        {/* Card 3: Telat Hari Ini */}
+        <div className="bg-white border-2 border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-black text-rose-600 uppercase tracking-wider block">TELAT HARI INI</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-black text-rose-700">
+                {isLoading ? "..." : dashboardData.total_supir_telat}
+              </span>
+              <span className="text-xs font-bold text-rose-600">Insiden Telat</span>
+            </div>
+            <p className="text-[11px] font-semibold text-rose-600/80">Melewati toleransi jam cut-off</p>
+          </div>
+          <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 flex-shrink-0 text-2xl shadow-inner">
+            🔴
+          </div>
+        </div>
+      </div>
+
+      {/* Peringatan Kedisiplinan Terkini */}
+      <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-black text-base">
+              ⚠️
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-[#00206B] m-0 tracking-wide uppercase">
+                Peringatan Kedisiplinan Terkini
+              </h3>
+              <p className="text-xs text-slate-400 font-semibold mt-0.5">
+                Pemantauan toleransi waktu CP1 & CP2 driver hari ini
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-bold px-3 py-1 bg-slate-100 text-slate-600 rounded-full border border-slate-200">
+            {displayAlerts.length} Data Terpantau
+          </span>
+        </div>
+
+        {isLoading ? (
+          <div className="py-12 text-center text-[#00206B] font-bold animate-pulse">
+            Memuat Data Kedisiplinan Terkini... ⏳
+          </div>
+        ) : displayAlerts.length === 0 ? (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center space-y-2">
+            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto text-xl font-black">
+              ✓
+            </div>
+            <h4 className="text-base font-extrabold text-emerald-800 m-0">Semua Driver Disiplin & Tepat Waktu</h4>
+            <p className="text-xs text-emerald-600 font-semibold max-w-md mx-auto">
+              Tidak ada driver yang terdeteksi terlambat pada CP1/CP2 untuk jadwal hari ini.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {displayAlerts.map((item, index) => {
+              const driverName = item.nama_supir || item.nama || item.driver_name || item.id_supir || `Driver #${index + 1}`;
+              const trayek = item.trayek || item.nama_trayek || "-";
+              const bus = item.bus || item.armada || item.nopol || "-";
+              const sesi = item.tipe_sesi || item.sesi || "PAGI";
+              
+              const isLate =
+                item.status_kedisiplinan === "TERLAMBAT" ||
+                item.is_late === true ||
+                item.terlambat === true ||
+                item.status?.toUpperCase() === "TERLAMBAT" ||
+                item.cp1_late ||
+                item.cp2_late;
+
+              const notStarted =
+                item.status === "belum_mulai" ||
+                item.status === "BELUM_MULAI" ||
+                item.status_operasional === "BELUM_JALAN" ||
+                (!item.jam_berangkat_kantor && !item.cp1_time);
+
+              return (
+                <div
+                  key={item.id || index}
+                  className={`border rounded-2xl p-4 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                    isLate
+                      ? "bg-rose-50/50 border-rose-200 hover:border-rose-300"
+                      : notStarted
+                      ? "bg-amber-50/40 border-amber-200 hover:border-amber-300"
+                      : "bg-slate-50/70 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div
+                      className={`w-11 h-11 rounded-2xl flex items-center justify-center text-white font-black text-sm flex-shrink-0 shadow-sm ${
+                        isLate
+                          ? "bg-gradient-to-br from-rose-600 to-red-700"
+                          : notStarted
+                          ? "bg-gradient-to-br from-amber-500 to-orange-600"
+                          : "bg-gradient-to-br from-slate-700 to-[#00206B]"
+                      }`}
+                    >
+                      {driverName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-sm font-extrabold text-[#00206B] m-0">{driverName}</h4>
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700">
+                          Sesi {sesi}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                        Trayek {trayek} • {bus}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 self-start sm:self-auto">
+                    {isLate ? (
+                      <div className="text-left sm:text-right">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-rose-100 text-rose-700 border border-rose-200 uppercase tracking-wider">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-ping"></span>
+                          TERLAMBAT
+                        </span>
+                        <p className="text-[11px] font-bold text-rose-600 mt-1">
+                          {item.keterangan || item.alasan_telat || "Melewati toleransi batas waktu CP"}
+                        </p>
+                      </div>
+                    ) : notStarted ? (
+                      <div className="text-left sm:text-right">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">
+                          ⏳ BELUM JALAN
+                        </span>
+                        <p className="text-[11px] font-bold text-amber-700 mt-1">
+                          Belum memulai checklist inspeksi
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="text-left sm:text-right">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                          ✓ TEPAT WAKTU
+                        </span>
+                        <p className="text-[11px] font-bold text-emerald-700 mt-1">
+                          Sesuai toleransi jadwal
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default BerandaAdmin;
+
 
 ---
 
 ### src/pages/admin/ManageDriver.jsx
 
-`jsx
-import React, { useState } from 'react';
+jsx
+import React, { useState, useEffect } from "react";
+import { apiService } from "../../services/api";
 
-const ManageUsers = ({ onBack }) => {
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: 'pengemudi',
-    phone: '',
-    trayek: '',
-    bus: ''
-  });
-  const [users, setUsers] = useState([]);
-  const [successMsg, setSuccessMsg] = useState('');
+const ManageDriver = ({ onBack }) => {
+  // PENTING: Jika sebelumnya menggunakan nama state selain 'activeTab' (misal: 'tab'),  
+  // sesuaikan nama variabel di bawah ini dengan UI Tab yang sudah ada. 
+  const [activeTab, setActiveTab] = useState('supir');  
+  const [drivers, setDrivers] = useState([]); 
+  const [isLoading, setIsLoading] = useState(true); 
+  const [isLoadingJadwals, setIsLoadingJadwals] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  // --- STATE JADWAL CUT-OFF (SESUAI INSTRUKSI) ---
+  const [showJadwalModal, setShowJadwalModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editJadwalId, setEditJadwalId] = useState(null);
+  const [jadwalList, setJadwalList] = useState([]);
+  const jadwals = jadwalList;
+  const setJadwals = setJadwalList;
+
+  // Alerts / Notifications
+  const [toast, setToast] = useState({ show: false, message: "", type: "success" });
+
+  const showToast = (message, type = "success") => {
+    const msgStr = typeof message === "string" ? message : JSON.stringify(message);
+    setToast({ show: true, message: msgStr, type });
+    setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3500);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  // --- MODAL STATES: SUPIR ---
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userToDelete, setUserToDelete] = useState(null);
 
-    const newUser = {
-      id: `SUP${String(users.length + 1).padStart(3, '0')}`,
-      ...formData
-    };
+  const initialUserForm = {
+    id: "",
+    nama: "",
+    name: "",
+    email: "",
+    password: "",
+    role: "driver",
+    trayek: "",
+    bus: "",
+  };
+  const [userForm, setUserForm] = useState(initialUserForm);
 
-    setUsers((prev) => [...prev, newUser]);
-    setSuccessMsg(`User ${formData.name} berhasil ditambahkan!`);
-    setShowForm(false);
-    setFormData({
-      name: '',
-      email: '',
-      password: '',
-      role: 'pengemudi',
-      phone: '',
-      trayek: '',
-      bus: ''
+  // --- FORM STATE: JADWAL ---
+  const initialJadwalForm = {
+    trayek: "",
+    tipe_sesi: "PAGI",
+    batas_keluar_dishub: "",
+    batas_tiba_start: "",
+  };
+  const [formJadwal, setFormJadwal] = useState({
+    trayek: "",
+    tipe_sesi: "PAGI",
+    batas_keluar_dishub: "",
+    batas_tiba_start: "",
+  });
+
+  const fetchDrivers = async () => {
+    setIsLoading(true);
+    try {
+      const res = await apiService.getUsersAdmin();
+      console.log("CEK DATA MENTAH DARI SERVER:", res); // Alat interogasi
+
+      let dataSupir = [];
+
+      // Ekstraksi data super agresif (menangani berbagai bentuk JSON dari Backend)
+      if (Array.isArray(res)) {
+        dataSupir = res;
+      } else if (res && Array.isArray(res.data)) {
+        dataSupir = res.data;
+      } else if (res && res.users && Array.isArray(res.users)) {
+        dataSupir = res.users;
+      }
+
+      console.log("DATA YANG BERHASIL DIEKSTRAK:", dataSupir);
+      setDrivers(dataSupir);
+
+      if (dataSupir.length === 0) {
+        console.warn("Server merespons sukses, tapi data supir kosong dari database.");
+      }
+    } catch (error) {
+      console.error("Gagal menarik data driver:", error);
+      setDrivers([]);
+      const errMsg = error.response?.data?.detail || error.message || "Gagal menarik data driver";
+      showToast(typeof errMsg === "string" ? errMsg : "Gagal menarik data driver", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDrivers();
+  }, []); 
+
+  const fetchJadwals = async () => {
+    setIsLoadingJadwals(true);
+    try {
+      const res = await apiService.getJadwalAdmin();
+      let data = [];
+      if (Array.isArray(res)) {
+        data = res;
+      } else if (res && Array.isArray(res.data)) {
+        data = res.data;
+      } else if (res && Array.isArray(res.jadwal)) {
+        data = res.jadwal;
+      } else if (res && Array.isArray(res.items)) {
+        data = res.items;
+      }
+      setJadwalList(data);
+    } catch (err) {
+      console.error("Gagal mengambil data jadwal:", err);
+      setJadwalList([]);
+      showToast("Gagal memuat data jadwal cut-off", "error");
+    } finally {
+      setIsLoadingJadwals(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchJadwals();
+  }, []);
+
+  // --- HANDLER USER (TAB 1) ---
+  const handleOpenAddUser = () => {
+    const randomId = `DRV-${Math.floor(1000 + Math.random() * 9000)}`;
+    setUserForm({
+      ...initialUserForm,
+      id: randomId,
     });
+    setShowAddUserModal(true);
+  };
 
-    setTimeout(() => setSuccessMsg(''), 3000);
+  const handleOpenEditUser = (u) => {
+    setSelectedUser(u);
+    const namaSupir = u.nama_lengkap || u.nama || u.name || "";
+    setUserForm({
+      id: u.id || u.id_supir || "",
+      nama: namaSupir,
+      name: namaSupir,
+      email: u.email || "",
+      password: "", // kosongkan jika tidak ingin ganti password
+      role: "driver",
+      trayek: u.trayek || "",
+      bus: u.bus || u.armada || "",
+    });
+    setShowEditUserModal(true);
+  };
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const generatedId = userForm.id?.trim() || `DRV-${Math.floor(1000 + Math.random() * 9000)}`;
+      const namaDriver = userForm.nama || userForm.name || userForm.nama_lengkap || "";
+
+      // Payload MATCH 100% dengan skema Pydantic backend
+      const payload = {
+        id: generatedId, // WAJIB ADA
+        nama_lengkap: namaDriver, // PERHATIKAN: Backend meminta 'nama_lengkap', bukan 'nama'
+        email: userForm.email, // WAJIB format email
+        password: userForm.password, // WAJIB ADA
+        role: "driver",
+        trayek: userForm.trayek || null,
+        bus: null,
+      };
+
+      await apiService.createUserAdmin(payload);
+      showToast(`Driver ${payload.nama_lengkap} berhasil ditambahkan!`);
+      setShowAddUserModal(false);
+      fetchDrivers();
+    } catch (err) {
+      console.error("Gagal menambahkan user:", err);
+      let errorMsg = "Gagal menambahkan driver. Periksa koneksi/data.";
+      if (err.response?.data?.detail) {
+        if (Array.isArray(err.response.data.detail)) {
+          errorMsg = err.response.data.detail.map((d) => `${d.loc?.slice(-1)[0]}: ${d.msg}`).join(", ");
+        } else if (typeof err.response.data.detail === "string") {
+          errorMsg = err.response.data.detail;
+        }
+      }
+      showToast(errorMsg, "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateUser = async (e) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    setIsSubmitting(true);
+    try {
+      const namaDriver = userForm.nama || userForm.name || userForm.nama_lengkap || "";
+      const payload = {
+        id: userForm.id || selectedUser.id || selectedUser.id_supir,
+        nama_lengkap: namaDriver,
+        email: userForm.email,
+        role: "driver",
+        trayek: userForm.trayek || null,
+        bus: null,
+      };
+      if (userForm.password && userForm.password.trim() !== "") {
+        payload.password = userForm.password;
+      }
+
+      const targetId = selectedUser.id || selectedUser._id || selectedUser.id_supir;
+      await apiService.updateUserAdmin(targetId, payload);
+      showToast(`Data driver ${payload.nama_lengkap} berhasil diperbarui!`);
+      setShowEditUserModal(false);
+      fetchDrivers();
+    } catch (err) {
+      console.error("Gagal update user:", err);
+      let errorMsg = "Gagal memperbarui driver";
+      if (err.response?.data?.detail) {
+        if (Array.isArray(err.response.data.detail)) {
+          errorMsg = err.response.data.detail.map((d) => `${d.loc?.slice(-1)[0]}: ${d.msg}`).join(", ");
+        } else if (typeof err.response.data.detail === "string") {
+          errorMsg = err.response.data.detail;
+        }
+      }
+      showToast(errorMsg, "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    setIsSubmitting(true);
+    try {
+      const targetId = userToDelete.id || userToDelete._id || userToDelete.id_supir;
+      await apiService.deleteUserAdmin(targetId);
+      showToast(`Akun driver ${userToDelete.nama_lengkap || userToDelete.nama || userToDelete.name} berhasil dihapus!`);
+      setUserToDelete(null);
+      fetchDrivers();
+    } catch (err) {
+      console.error("Gagal hapus user:", err);
+      showToast("Gagal menghapus driver", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // --- HANDLER JADWAL (TAB 2) ---
+  const handleOpenAddJadwal = () => {
+    setIsEditMode(false);
+    setEditJadwalId(null);
+    setFormJadwal({
+      trayek: "",
+      tipe_sesi: "PAGI",
+      batas_keluar_dishub: "",
+      batas_tiba_start: "",
+    });
+    setShowJadwalModal(true);
+  };
+  const handleEditClick = (jadwal) => {
+    setFormJadwal({
+      trayek: jadwal?.trayek || "",
+      tipe_sesi: (jadwal?.tipe_sesi || jadwal?.sesi || "PAGI").toUpperCase(),
+      batas_keluar_dishub: jadwal?.batas_keluar_dishub || "",
+      batas_tiba_start: jadwal?.batas_tiba_start || "",
+    });
+    setIsEditMode(true);
+    setEditJadwalId(jadwal?.id || jadwal?._id);
+    setShowJadwalModal(true);
+  };
+  const handleOpenEditJadwal = handleEditClick;
+
+  const handleSubmitJadwal = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        trayek: (formJadwal?.trayek || "").trim(),
+        tipe_sesi: (formJadwal?.tipe_sesi || "PAGI").toUpperCase(),
+        batas_keluar_dishub: formJadwal?.batas_keluar_dishub || "",
+        batas_tiba_start: formJadwal?.batas_tiba_start || "",
+      };
+
+      if (isEditMode) {
+        await apiService.updateJadwalAdmin(editJadwalId, payload);
+        showToast(`Jadwal cut-off Trayek ${payload.trayek} berhasil diperbarui!`);
+      } else {
+        await apiService.createJadwalAdmin(payload);
+        showToast(`Jadwal cut-off Trayek ${payload.trayek} (${payload.tipe_sesi}) berhasil ditambahkan!`);
+      }
+
+      setShowJadwalModal(false);
+      setIsEditMode(false);
+      setEditJadwalId(null);
+      setFormJadwal(initialJadwalForm);
+      fetchJadwals();
+    } catch (err) {
+      console.error("Gagal menyimpan jadwal:", err);
+      let errorMsg = isEditMode ? "Gagal memperbarui jadwal cut-off" : "Gagal menambahkan jadwal cut-off";
+      if (err.response?.data?.detail) {
+        if (Array.isArray(err.response.data.detail)) {
+          errorMsg = err.response.data.detail.map((d) => `${d.loc?.slice(-1)[0]}: ${d.msg}`).join(", ");
+        } else if (typeof err.response.data.detail === "string") {
+          errorMsg = err.response.data.detail;
+        }
+      }
+      showToast(errorMsg, "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="space-y-6 text-left max-w-5xl mx-auto pb-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">
-            Kelola Pengguna
-          </h2>
-          <p className="text-sm text-slate-400 font-semibold mt-0.5">
-            Tambah, edit, atau hapus akun pengemudi
-          </p>
-        </div>
-        <button
-          onClick={onBack}
-          className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+    <div className="space-y-6 text-left max-w-5xl mx-auto pb-8 animate-[fadeIn_0.3s]">
+      {/* Toast Alert */}
+      {toast.show && (
+        <div
+          className={`fixed top-5 right-5 z-50 px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-3 font-bold text-sm border animate-[slideDown_0.2s] ${
+            toast.type === "success"
+              ? "bg-[#E6F7ED] border-[#BCECD2] text-[#137333]"
+              : "bg-[#FCE8E6] border-[#FAD2CF] text-[#C5221F]"
+          }`}
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Success Message */}
-      {successMsg && (
-        <div className="bg-[#E6F7ED] border border-[#BCECD2] text-[#137333] font-bold py-3 px-4 rounded-xl flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-          </svg>
-          {successMsg}
+          <span>{toast.type === "success" ? "✓" : "⚠️"}</span>
+          <span>{toast.message}</span>
         </div>
       )}
 
-      {/* Add User Button */}
-      <button
-        onClick={() => setShowForm(true)}
-        className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-extrabold py-4 px-4 rounded-xl shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
-      >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-        </svg>
-        TAMBAH PENGGUNA BARU
-      </button>
-
-      {/* User List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {users.filter(u => u.role !== 'admin').map((user) => (
-          <div key={user.id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-white font-black text-lg">
-                {user.name.charAt(0)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base font-extrabold text-[#00206B] truncate">{user.name}</h3>
-                <p className="text-xs text-slate-400 font-semibold">{user.id}</p>
-                <p className="text-xs text-slate-500 mt-1 truncate">{user.email}</p>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-400 font-semibold">Trayek</span>
-                <span className="font-bold text-[#00206B]">{user.trayek || '-'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400 font-semibold">Bus</span>
-                <span className="font-bold text-[#00206B]">{user.bus || '-'}</span>
-              </div>
-            </div>
-          </div>
-        ))}
+      {/* Header (Tanpa Tombol Back) */}
+      <div className="space-y-1 mb-6">
+        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">
+          Kelola Pengguna & Jadwal
+        </h2>
+        <p className="text-sm text-slate-400 font-semibold mt-0.5">
+          Manajemen master akun driver dan konfigurasi toleransi waktu cut-off operasional
+        </p>
       </div>
 
-      {/* Add User Modal/Form */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-black text-[#00206B]">Tambah Pengguna Baru</h3>
+      {/* Navigation Tabs (Tab 1: DAFTAR DRIVER | Tab 2: JADWAL CUT-OFF) */}
+      <div className="flex items-center gap-2 bg-slate-200/70 p-1.5 rounded-2xl max-w-md">
+        <button
+          onClick={() => setActiveTab("supir")}
+          className={`flex-1 py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            activeTab === "supir"
+              ? "bg-[#00206B] text-white shadow-md scale-[1.02]"
+              : "text-slate-600 hover:text-[#00206B] hover:bg-white/50"
+          }`}
+        >
+          <span>🚌</span>
+          <span>Daftar Driver</span>
+          <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-white/20 font-extrabold">
+            {(drivers || []).length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("jadwal")}
+          className={`flex-1 py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            activeTab === "jadwal"
+              ? "bg-[#00206B] text-white shadow-md scale-[1.02]"
+              : "text-slate-600 hover:text-[#00206B] hover:bg-white/50"
+          }`}
+        >
+          <span>⏱️</span>
+          <span>Jadwal Cut-Off</span>
+          <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-white/20 font-extrabold">
+            {(jadwalList || []).length}
+          </span>
+        </button>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* TAB 1: DAFTAR DRIVER                                                     */}
+      {/* ========================================================================= */}
+      {activeTab === "supir" && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border-2 border-slate-200 rounded-2xl p-5 shadow-sm">
+            <div>
+              <h3 className="text-base font-black text-[#00206B] m-0 uppercase tracking-wide">
+                Master Data Driver
+              </h3>
+              <p className="text-xs text-slate-400 font-semibold mt-0.5">
+                Kelola kredensial login, penugasan trayek, dan armada bus
+              </p>
+            </div>
+            <button
+              onClick={handleOpenAddUser}
+              className="bg-[#00206B] hover:bg-[#00174E] text-white font-black py-3.5 px-5 rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              + TAMBAH DRIVER BARU
+            </button>
+          </div>
+
+          {/* TAB 1 CONTENT: DAFTAR DRIVER TABLE */}
+          <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 shadow-sm">
+            {isLoading ? (
+              <div className="text-center py-10 font-bold text-[#00206B] animate-pulse">Memuat data driver...</div>
+            ) : (drivers || []).length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b-2 border-slate-200 bg-slate-50">
+                      <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase rounded-tl-xl">Nama Driver</th>
+                      <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase">Email Terdaftar</th>
+                      <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase text-center">Trayek</th>
+                      <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase text-center">Armada</th>
+                      <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase text-center rounded-tr-xl">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(drivers || []).map((driver, index) => (
+                      <tr key={driver?.id || driver?._id || driver?.id_supir || index} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                        <td className="py-4 px-5 font-black text-[#00206B] uppercase">{driver?.nama_lengkap || driver?.nama || driver?.name || "-"}</td>
+                        <td className="py-4 px-5 text-sm font-bold text-slate-500">{driver?.email || "-"}</td>
+                        <td className="py-4 px-5 text-center text-sm font-black text-[#00206B] uppercase">{driver?.trayek || "-"}</td>
+                        <td className="py-4 px-5 text-center text-sm font-bold text-slate-600 uppercase">{driver?.bus || driver?.armada || "-"}</td>
+                        <td className="py-4 px-5 text-center space-x-2">
+                          <button
+                            onClick={() => handleOpenEditUser(driver)}
+                            className="bg-amber-100 hover:bg-amber-200 text-amber-700 px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-colors cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setUserToDelete(driver)}
+                            className="bg-rose-100 hover:bg-rose-200 text-rose-700 px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-colors cursor-pointer"
+                          >
+                            Hapus
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-12 flex flex-col items-center justify-center">
+                 <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-2xl">🚌</div>
+                 <h3 className="text-lg font-black text-[#00206B]">Belum Ada Data Driver</h3>
+                 <p className="text-sm text-slate-400 font-medium mt-1">Klik tombol "+ TAMBAH DRIVER BARU" untuk mendaftarkan akun driver pertama.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 2: JADWAL CUT-OFF                                                    */}
+      {/* ========================================================================= */}
+      {activeTab === "jadwal" && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border-2 border-slate-200 rounded-2xl p-5 shadow-sm">
+            <div>
+              <h3 className="text-base font-black text-[#00206B] m-0 uppercase tracking-wide">
+                Konfigurasi Batas Waktu Cut-Off Per Trayek
+              </h3>
+              <p className="text-xs text-slate-400 font-semibold mt-0.5">
+                Tentukan batas toleransi waktu keberangkatan dari Dishub dan tiba di titik start untuk deteksi keterlambatan otomatis
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setIsEditMode(false); // Pastikan bukan dalam mode edit
+                setEditJadwalId(null);
+                setFormJadwal({ trayek: "", tipe_sesi: "PAGI", batas_keluar_dishub: "", batas_tiba_start: "" }); // Kosongkan form
+                setShowJadwalModal(true); // Tampilkan modal
+              }}
+              className="bg-[#00206B] hover:bg-[#00174E] text-white font-black py-3.5 px-5 rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              + TAMBAH JADWAL BARU
+            </button>
+          </div>
+
+          {/* Tabel Jadwal */}
+          <div className="bg-white border-2 border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+            {isLoadingJadwals ? (
+              <div className="p-16 text-center text-[#00206B] font-bold animate-pulse">
+                Memuat Konfigurasi Jadwal... ⏳
+              </div>
+            ) : (jadwalList || []).length === 0 ? (
+              <div className="p-16 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mx-auto text-2xl">
+                  ⏱️
+                </div>
+                <h4 className="text-base font-extrabold text-slate-700 m-0">Belum Ada Jadwal Dikonfigurasi</h4>
+                <p className="text-xs text-slate-400 font-semibold max-w-sm mx-auto">
+                  Belum ada data cut-off jadwal operasional di server. Silakan gunakan tombol di atas untuk menambahkan jadwal pertama.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b-2 border-slate-200">
+                      <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase tracking-wider">TRAYEK</th>
+                      <th className="py-4 px-4 text-xs font-black text-[#00206B] uppercase tracking-wider text-center">SESI</th>
+                      <th className="py-4 px-4 text-xs font-black text-[#00206B] uppercase tracking-wider text-center">BATAS KELUAR</th>
+                      <th className="py-4 px-4 text-xs font-black text-[#00206B] uppercase tracking-wider text-center">BATAS TIBA START</th>
+                      <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase tracking-wider text-center">AKSI</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(jadwalList || []).map((jadwal, index) => (
+                      <tr key={jadwal?.id || jadwal?._id || index} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-4 px-5 font-black text-sm text-[#00206B] uppercase">
+                          {jadwal?.trayek || jadwal?.nama_trayek || `Trayek ${jadwal?.id || index + 1}`}
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span className={`inline-block px-3 py-1 rounded-xl text-xs font-black uppercase ${
+                            (jadwal?.tipe_sesi || jadwal?.sesi || "").toUpperCase() === "PAGI"
+                              ? "bg-amber-50 text-amber-700 border border-amber-200"
+                              : "bg-blue-50 text-blue-700 border border-blue-200"
+                          }`}>
+                            {jadwal?.tipe_sesi || jadwal?.sesi || "PAGI"}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span className="inline-block text-xs font-black text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg">
+                            🕒 {jadwal?.batas_keluar_dishub || "-"} WIB
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span className="inline-block text-xs font-black text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                            📍 {jadwal?.batas_tiba_start || "-"} WIB
+                          </span>
+                        </td>
+                        <td className="py-4 px-5 text-center">
+                          <button
+                            onClick={() => handleEditClick(jadwal)}
+                            className="inline-flex items-center gap-1.5 bg-[#00206B] hover:bg-[#00174E] text-white text-xs font-extrabold px-3.5 py-2 rounded-xl shadow-sm active:scale-95 transition-all cursor-pointer"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                            <span>Edit</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: TAMBAH SUPIR BARU                                                 */}
+      {/* ========================================================================= */}
+      {showAddUserModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-[fadeIn_0.2s]">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-100 space-y-5 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <span className="text-[10px] font-black uppercase text-[#00206B] tracking-wider block">
+                  REGISTRASI DRIVER
+                </span>
+                <h3 className="text-xl font-black text-[#00206B] m-0">Tambah Driver Baru</h3>
+              </div>
               <button
-                onClick={() => setShowForm(false)}
-                className="p-2 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                onClick={() => setShowAddUserModal(false)}
+                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                ✕
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                  Nama Lengkap
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-[#00206B] focus:bg-white rounded-xl px-4 py-3 text-sm font-bold focus:outline-none transition-all"
-                  placeholder="Nama pengemudi"
-                />
+            <form onSubmit={handleCreateUser} className="space-y-3.5">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                    ID Driver
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={userForm.id}
+                    onChange={(e) => setUserForm({ ...userForm, id: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
+                    placeholder="SUP001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                    Nama Lengkap
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={userForm.nama || userForm.name || ""}
+                    onChange={(e) => setUserForm({ ...userForm, nama: e.target.value, name: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
+                    placeholder="Budi Santoso"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                  Email
+                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                  Email Akun
                 </label>
                 <input
                   type="email"
-                  name="email"
                   required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-[#00206B] focus:bg-white rounded-xl px-4 py-3 text-sm font-bold focus:outline-none transition-all"
-                  placeholder="pengemudi@siclus.id"
+                  value={userForm.email}
+                  onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
+                  placeholder="budi@siclus.id"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                  Password
+                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                  Password Login
                 </label>
                 <input
                   type="password"
-                  name="password"
                   required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-[#00206B] focus:bg-white rounded-xl px-4 py-3 text-sm font-bold focus:outline-none transition-all"
+                  value={userForm.password}
+                  onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
                   placeholder="Minimal 6 karakter"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                  No. Telepon
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  required
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-[#00206B] focus:bg-white rounded-xl px-4 py-3 text-sm font-bold focus:outline-none transition-all"
-                  placeholder="081234567890"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                  Trayek
+                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                  Trayek Tugas
                 </label>
                 <input
                   type="text"
-                  name="trayek"
-                  value={formData.trayek}
-                  onChange={handleChange}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-[#00206B] focus:bg-white rounded-xl px-4 py-3 text-sm font-bold focus:outline-none transition-all"
+                  required
+                  value={userForm.trayek}
+                  onChange={(e) => setUserForm({ ...userForm, trayek: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
                   placeholder="Trayek A"
                 />
               </div>
 
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddUserModal(false)}
+                  className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-3 rounded-xl bg-[#00206B] hover:bg-[#00174E] text-white font-black text-xs uppercase tracking-wider shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmitting ? "Menyimpan..." : "Simpan Driver"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: EDIT DRIVER                                                       */}
+      {/* ========================================================================= */}
+      {showEditUserModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-[fadeIn_0.2s]">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-100 space-y-5 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                  Bus
+                <span className="text-[10px] font-black uppercase text-amber-700 tracking-wider block">
+                  PERBARUI DRIVER
+                </span>
+                <h3 className="text-xl font-black text-[#00206B] m-0">Edit Data Driver</h3>
+              </div>
+              <button
+                onClick={() => setShowEditUserModal(false)}
+                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateUser} className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                  Nama Lengkap
                 </label>
                 <input
                   type="text"
-                  name="bus"
-                  value={formData.bus}
-                  onChange={handleChange}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-[#00206B] focus:bg-white rounded-xl px-4 py-3 text-sm font-bold focus:outline-none transition-all"
-                  placeholder="Bus 07 (S 1772 SP)"
+                  required
+                  value={userForm.nama || userForm.name || ""}
+                  onChange={(e) => setUserForm({ ...userForm, nama: e.target.value, name: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
                 />
               </div>
 
+              <div>
+                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                  Email Akun
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={userForm.email}
+                  onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                  Password Baru (Kosongkan jika tidak ingin mengubah)
+                </label>
+                <input
+                  type="password"
+                  value={userForm.password}
+                  onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
+                  placeholder="Opsional - ganti password"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                  Trayek
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={userForm.trayek}
+                  onChange={(e) => setUserForm({ ...userForm, trayek: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditUserModal(false)}
+                  className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-3 rounded-xl bg-[#00206B] hover:bg-[#00174E] text-white font-black text-xs uppercase tracking-wider shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: KONFIRMASI HAPUS SUPIR                                             */}
+      {/* ========================================================================= */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-[fadeIn_0.15s]">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-slate-100 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto text-2xl">
+              🗑️
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-[#00206B] m-0">Hapus Akun Driver?</h3>
+              <p className="text-xs text-slate-500 font-semibold mt-1">
+                Apakah Anda yakin ingin menghapus akun driver{" "}
+                <span className="font-black text-rose-600">{userToDelete.nama_lengkap || userToDelete.nama || userToDelete.name}</span>? Tindakan ini tidak dapat dibatalkan.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 pt-2">
               <button
-                type="submit"
-                className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm cursor-pointer mt-2"
+                onClick={() => setUserToDelete(null)}
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs uppercase cursor-pointer"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                </svg>
-                TAMBAH PENGGUNA
+                Batal
               </button>
+              <button
+                onClick={handleDeleteUser}
+                disabled={isSubmitting}
+                className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl text-xs uppercase shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {isSubmitting ? "Menghapus..." : "Ya, Hapus"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: FORM JADWAL CUT-OFF (TAMBAH & EDIT GOD MODE)                      */}
+      {/* ========================================================================= */}
+      {showJadwalModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-[fadeIn_0.2s]">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl border border-slate-100 space-y-5 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <span className={`text-[10px] font-black uppercase tracking-wider block ${isEditMode ? "text-amber-700" : "text-[#00206B]"}`}>
+                  {isEditMode ? "EDIT CUT-OFF (GOD MODE)" : "KONFIGURASI CUT-OFF"}
+                </span>
+                <h3 className="text-xl font-black text-[#00206B] m-0">
+                  {isEditMode ? "Edit Toleransi Jadwal" : "Tambah Jadwal Baru"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowJadwalModal(false);
+                  setIsEditMode(false);
+                  setEditJadwalId(null);
+                }}
+                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitJadwal} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                  Trayek
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formJadwal?.trayek || ""}
+                  onChange={(e) => setFormJadwal({ ...(formJadwal || {}), trayek: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
+                  placeholder="cth: AEROX, Trayek A"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                  Tipe Sesi
+                </label>
+                <select
+                  value={formJadwal?.tipe_sesi || "PAGI"}
+                  onChange={(e) => setFormJadwal({ ...(formJadwal || {}), tipe_sesi: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
+                >
+                  <option value="PAGI">PAGI</option>
+                  <option value="SIANG">SIANG</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                    Batas Keluar Dishub
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={formJadwal?.batas_keluar_dishub || ""}
+                    onChange={(e) => setFormJadwal({ ...(formJadwal || {}), batas_keluar_dishub: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-black text-rose-700 focus:bg-white focus:outline-none focus:border-[#00206B]"
+                  />
+                  <span className="text-[10px] text-slate-400 font-semibold mt-0.5 block">Format: JJ:MM (cth: 06:00)</span>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
+                    Batas Tiba di Titik Start
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={formJadwal?.batas_tiba_start || ""}
+                    onChange={(e) => setFormJadwal({ ...(formJadwal || {}), batas_tiba_start: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-black text-amber-800 focus:bg-white focus:outline-none focus:border-[#00206B]"
+                  />
+                  <span className="text-[10px] text-slate-400 font-semibold mt-0.5 block">Format: JJ:MM (cth: 06:30)</span>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowJadwalModal(false);
+                    setIsEditMode(false);
+                    setEditJadwalId(null);
+                  }}
+                  className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-3 rounded-xl bg-[#00206B] hover:bg-[#00174E] text-white font-black text-xs uppercase tracking-wider shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmitting ? "Menyimpan..." : isEditMode ? "Simpan Perubahan" : "Simpan Jadwal"}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -799,46 +1837,124 @@ const ManageUsers = ({ onBack }) => {
   );
 };
 
-export default ManageUsers;
+export default ManageDriver;
 
-`
 
 ---
 
 ### src/pages/admin/ProfilAdmin.jsx
 
-`jsx
-import React from "react";
+jsx
+import React, { useState, useRef } from "react";
+import { apiService } from "../../services/api";
+import imageCompression from "browser-image-compression";
 
 const ProfilAdmin = ({ user, onLogout }) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const [fotoPreview, setFotoPreview] = useState(user?.foto_profil || null);
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      // Kompresi Gambar (Max 200KB)
+      const options = { maxSizeMB: 0.2, maxWidthOrHeight: 800, useWebWorker: true };
+      const compressedFile = await imageCompression(file, options);
+
+      // Kirim ke Backend Admin
+      const res = await apiService.updateFotoProfilAdmin(compressedFile);
+      
+      // Update UI dengan URL baru
+      if (res && res.foto_profil) {
+        setFotoPreview(res.foto_profil);
+        const savedUser = JSON.parse(localStorage.getItem("siclus_user"));
+        if (savedUser) {
+          savedUser.foto_profil = res.foto_profil;
+          localStorage.setItem("siclus_user", JSON.stringify(savedUser));
+          
+          // BARIS TAMBAHAN: Paksa sinkronisasi global state aplikasi
+          window.location.reload();
+        }
+      }
+    } catch (error) {
+      alert("Gagal upload foto profil admin: " + (error.response?.data?.detail || error.message));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-6 text-left max-w-3xl mx-auto pb-6 relative">
       <div className="space-y-1">
-        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">Profil Administrator</h2>
-        <p className="text-sm text-slate-400 font-semibold mt-0.5">Kelola informasi akses dasbor instansi</p>
+        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">Profil Akun Admin</h2>
+        <p className="text-sm text-slate-400 font-semibold mt-0.5">Informasi kredensial dan hak akses administrator operasional SICLUS</p>
       </div>
+
       <div className="bg-white border border-slate-100 rounded-3xl shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-r from-slate-800 to-[#00206B]"></div>
+        <div className="absolute top-0 left-0 right-0 h-32 bg-[#00206B]"></div>
         <div className="relative z-10 flex flex-col items-center mt-12 px-6 pb-8">
-          <div className="w-28 h-28 rounded-full bg-white p-1.5 shadow-lg">
-            <div className="w-full h-full rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
-              <svg className="w-14 h-14 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                />
+          
+          {/* INPUT FILE HIDDEN */}
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+            accept="image/*" 
+            className="hidden" 
+          />
+
+          {/* WADAH AVATAR BISA DIKLIK */}
+          <div 
+            onClick={() => !isUploading && fileInputRef.current.click()}
+            className="w-28 h-28 rounded-full bg-white p-1.5 shadow-lg cursor-pointer group relative"
+            title="Klik untuk ubah foto profil"
+          >
+            <div className="w-full h-full rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200 relative">
+              {fotoPreview ? (
+                <img src={fotoPreview} alt="Profil" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-3xl font-black text-[#00206B]">{(user?.nama_lengkap || user?.nama || user?.name || "A").charAt(0).toUpperCase()}</span>
+              )}
+              
+              {/* OVERLAY LOADING ATAU HOVER */}
+              <div className={`absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white transition-opacity duration-200 ${isUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                {isUploading ? (
+                  <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Uploading...</span>
+                ) : (
+                  <>
+                    <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="text-[8px] font-black uppercase tracking-widest">Ubah Foto</span>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="absolute bottom-0 right-0 w-8 h-8 bg-amber-400 border-4 border-white rounded-full flex items-center justify-center" title="Akun Terverifikasi">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
           </div>
-          <h3 className="mt-4 text-2xl font-black text-[#00206B]">{user?.name || "Admin Dishub"}</h3>
-          <span className="bg-slate-100 text-slate-600 font-bold px-4 py-1.5 rounded-full text-xs mt-2 uppercase tracking-wide border border-slate-200">{user?.role || "Administrator"}</span>
-          <div className="mt-8 grid grid-cols-1 gap-3 w-full max-w-md">
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Email Terdaftar</span>
+
+          <h3 className="mt-4 text-2xl font-black text-[#00206B]">{user?.nama_lengkap || user?.nama || user?.name || "Administrator"}</h3>
+          <span className="bg-[#00206B] text-white font-black px-4 py-1.5 rounded-full text-[10px] mt-2 uppercase tracking-widest shadow-md">🛡️ ADMINISTRATOR UTAMA</span>
+
+          <div className="mt-8 space-y-3 w-full">
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">Email Terdaftar</span>
               <span className="font-extrabold text-[#00206B] text-sm">{user?.email || "admin@siclus.id"}</span>
             </div>
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">Hak Akses & Otoritas</span>
+              <span className="font-extrabold text-[#00206B] text-sm text-center">Full Akses Monitoring, Rekap, & Manajemen Data</span>
+            </div>
           </div>
+
           <div className="w-full mt-8 pt-6 border-t border-slate-100">
             <button onClick={onLogout} className="w-full bg-[#FCE8E6] hover:bg-[#FAD2CF] transition-colors text-[#C5221F] font-extrabold py-4 px-4 rounded-2xl cursor-pointer">
               🚪 KELUAR APLIKASI (LOGOUT)
@@ -852,13 +1968,12 @@ const ProfilAdmin = ({ user, onLogout }) => {
 
 export default ProfilAdmin;
 
-`
 
 ---
 
 ### src/pages/admin/RegisterDriver.jsx
 
-`jsx
+jsx
 import React, { useState } from "react";
 
 const Register = ({ onRegisterSuccess, onBackToLogin }) => {
@@ -1021,71 +2136,336 @@ const Register = ({ onRegisterSuccess, onBackToLogin }) => {
 
 export default Register;
 
-`
 
 ---
 
 ### src/pages/admin/RekapDriver.jsx
 
-`jsx
-import React, { useState, useEffect } from "react";
+jsx
+import React, { useState, useEffect, useMemo } from "react";
+import * as XLSX from "xlsx";
 import { apiService } from "../../services/api";
 
-const Rekap = ({ trips = [], inspections = [] }) => {
-  // inistate
-  const [isLoading, setIsLoading] = useState(false);
-  const [dataLaporan, setDataLaporan] = useState([]);
+const RekapAdmin = () => {
+  const [rawData, setRawData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [filterPeriode, setFilterPeriode] = useState(7); // Default: 7 Hari (1 Minggu)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDriver, setSelectedDriver] = useState(null);
+  const [selectedReportDetail, setSelectedReportDetail] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
 
-  // inifetch
   useEffect(() => {
-    const fetchRekapBackend = async () => {
+    const fetchRekap = async () => {
       setIsLoading(true);
       try {
-        // Hapus komentar ini jika endpoint getRekapLaporan sudah tersedia di api.js lu
-        // const response = await apiService.getRekapLaporan();
-        // setDataLaporan(response.data);
+        const response = await apiService.getRekapAdmin();
+        if (response) {
+          const list = response.data || (Array.isArray(response) ? response : []);
+          setRawData(list);
+        }
       } catch (error) {
-        console.error("Gagal mengambil data rekap dari server:", error);
+        console.error("Gagal menarik data rekap:", error);
       } finally {
         setIsLoading(false);
       }
     };
-
-    fetchRekapBackend();
+    fetchRekap();
   }, []);
 
+  // FUNGSI SAKTI: Filter waktu & Grouping by Driver
+  const groupedData = useMemo(() => {
+    const now = new Date();
+
+    // 1. Filter berdasarkan rentang hari (1 Minggu / 1 Bulan / Semua Waktu)
+    const filtered = rawData.filter((item) => {
+      if (filterPeriode === "all") return true;
+      if (!item.tanggal && !item.created_at) return true;
+      const itemDate = new Date(item.tanggal || item.created_at);
+      const diffTime = Math.abs(now - itemDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays <= filterPeriode;
+    });
+
+    // 2. Grouping per Supir
+    const groups = filtered.reduce((acc, curr) => {
+      const supirId = curr.id_supir || curr.user_id || "ANONIM";
+      const driverName = curr.users?.nama || curr.users?.name || curr.nama_supir || curr.nama || supirId;
+      if (!acc[supirId]) {
+        acc[supirId] = {
+          id_supir: supirId,
+          nama_supir: driverName,
+          nama_lengkap: driverName,
+          trayek_utama: curr.trayek || curr.users?.trayek || "-",
+          bus_utama: curr.bus || curr.users?.bus || "-",
+          total_hari_jalan: 0,
+          total_penumpang: 0,
+          total_telat: 0,
+          total_tepat: 0,
+          list_laporan: [],
+          riwayat: [],
+        };
+      }
+
+      acc[supirId].total_hari_jalan += 1;
+
+      // Hitung Metrik dari Sesi
+      let passengerCount = 0;
+      let isLate = false;
+
+      if (curr.trip_sessions && curr.trip_sessions.length > 0) {
+        curr.trip_sessions.forEach((sesi) => {
+          passengerCount += sesi.jumlah_penumpang || 0;
+          const late =
+            sesi.status_waktu === "TERLAMBAT" ||
+            sesi.status_kedisiplinan === "TERLAMBAT" ||
+            sesi.status?.toUpperCase() === "TERLAMBAT" ||
+            sesi.is_late === true ||
+            sesi.terlambat === true ||
+            sesi.cp1_late ||
+            sesi.cp2_late;
+
+          if (late) {
+            acc[supirId].total_telat += 1;
+            isLate = true;
+          } else {
+            acc[supirId].total_tepat += 1;
+          }
+        });
+        acc[supirId].total_penumpang += passengerCount;
+      } else {
+        // Fallback jika tidak ada trip_sessions terpisah
+        passengerCount = curr.jumlah_penumpang || 0;
+        acc[supirId].total_penumpang += passengerCount;
+        isLate =
+          curr.status_waktu === "TERLAMBAT" ||
+          curr.status_kedisiplinan === "TERLAMBAT" ||
+          curr.status?.toUpperCase() === "TERLAMBAT" ||
+          curr.is_late === true ||
+          curr.terlambat === true;
+
+        if (isLate) {
+          acc[supirId].total_telat += 1;
+        } else {
+          acc[supirId].total_tepat += 1;
+        }
+      }
+
+      const totalSesi = curr.sesi_terlaksana ?? curr.trip_sessions?.length ?? 0;
+      const statusKedisiplinan = curr.status_waktu || (isLate ? "TERLAMBAT" : "TEPAT WAKTU");
+      const normalizedReport = {
+        ...curr,
+        tanggal: curr.tanggal || (curr.created_at ? curr.created_at.split("T")[0] : "-"),
+        bus: curr.bus || curr.users?.bus || "-",
+        sesi_terlaksana: totalSesi,
+        siswa_diangkut: passengerCount,
+        status_waktu: statusKedisiplinan,
+      };
+
+      acc[supirId].list_laporan.push(normalizedReport);
+      acc[supirId].riwayat.push(normalizedReport);
+
+      return acc;
+    }, {});
+
+    let result = Object.values(groups).sort((a, b) => b.total_hari_jalan - a.total_hari_jalan);
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.nama_supir.toLowerCase().includes(q) ||
+          s.id_supir.toLowerCase().includes(q) ||
+          s.trayek_utama.toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [rawData, filterPeriode, searchQuery]);
+
+  const handleExportPerDriver = () => {
+    const riwayatList = selectedDriver?.riwayat || selectedDriver?.list_laporan;
+    if (!selectedDriver || !riwayatList || riwayatList.length === 0) return;
+
+    // Susun data baris per baris untuk Excel
+    const excelData = riwayatList.map((laporan) => ({
+      "Tanggal": laporan.tanggal,
+      "Armada / Bus": laporan.bus || "-",
+      "Total Sesi": laporan.sesi_terlaksana || 0,
+      "Siswa Diangkut": laporan.siswa_diangkut || 0,
+      "Status Kedisiplinan": laporan.status_waktu || "TEPAT WAKTU",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap_Mingguan");
+
+    // Nama file dinamis menggunakan nama supir
+    const namaSupir = selectedDriver.nama_lengkap || selectedDriver.nama_supir || "Driver";
+    const namaFile = `Rekap_${namaSupir.replace(/\s+/g, "_")}.xlsx`;
+    XLSX.writeFile(workbook, namaFile);
+  };
+
+  const formatTime = (timeString) => {
+    if (!timeString) return "-";
+    try {
+      const d = new Date(timeString);
+      if (!isNaN(d.getTime())) return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      return timeString;
+    } catch {
+      return timeString;
+    }
+  };
+
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-6">
-      <div className="space-y-1">
-        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">Data Rekapitulasi</h2>
-        <p className="text-sm text-slate-400 font-semibold mt-0.5">Pantau dan unduh semua laporan pengemudi</p>
+    <div className="space-y-6 max-w-6xl mx-auto pb-8 animate-[fadeIn_0.3s] text-left">
+      {/* Header & Filter Controls */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">
+            Rekapitulasi Kinerja
+          </h2>
+          <p className="text-sm text-slate-400 font-semibold mt-0.5">
+            Pantau akumulasi performa driver per rentang waktu
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search Supir */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Cari supir / trayek..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-white border border-slate-200 text-xs font-bold text-[#00206B] rounded-xl px-3.5 py-3 pl-9 outline-none focus:border-[#00206B] shadow-sm placeholder:text-slate-400"
+            />
+            <svg
+              className="w-4 h-4 text-slate-400 absolute left-3 top-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+
+          {/* Filter Periode */}
+          <select
+            value={filterPeriode}
+            onChange={(e) => setFilterPeriode(e.target.value === "all" ? "all" : Number(e.target.value))}
+            className="bg-white border border-slate-200 text-xs font-bold text-[#00206B] rounded-xl px-4 py-3 outline-none focus:border-[#00206B] shadow-sm cursor-pointer"
+          >
+            <option value={7}>1 Minggu Terakhir</option>
+            <option value={30}>1 Bulan Terakhir</option>
+            <option value="all">Semua Waktu</option>
+          </select>
+        </div>
       </div>
 
-      <div className="bg-white border-2 border-slate-200 rounded-2xl p-8 shadow-sm">
+      {/* Tabel Akumulasi per Supir */}
+      <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="text-center text-[#00206B] font-bold py-10 animate-pulse">Mengambil data dari server...</div>
-        ) : dataLaporan.length === 0 && trips.length === 0 ? (
-          <div className="text-center text-slate-400 font-medium py-10">Belum ada data rekapitulasi perjalanan untuk saat ini.</div>
+          <div className="text-center text-[#00206B] font-bold py-14 animate-pulse">
+            Menghitung akumulasi data server... ⏳
+          </div>
+        ) : groupedData.length === 0 ? (
+          <div className="text-center text-slate-400 font-medium py-14 space-y-2">
+            <div className="text-3xl">📂</div>
+            <p className="font-bold text-slate-600 m-0">Belum ada data di periode ini.</p>
+            <p className="text-xs text-slate-400">Silakan pilih rentang waktu lainnya pada filter di atas.</p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
-                <tr className="border-b-2 border-slate-200">
-                  <th className="py-3 px-4 text-xs font-extrabold text-slate-500 uppercase">Tanggal</th>
-                  <th className="py-3 px-4 text-xs font-extrabold text-slate-500 uppercase">Shift</th>
-                  <th className="py-3 px-4 text-xs font-extrabold text-slate-500 uppercase">Total Siswa</th>
-                  <th className="py-3 px-4 text-xs font-extrabold text-slate-500 uppercase">Status</th>
+                <tr className="border-b-2 border-slate-200 bg-slate-50">
+                  <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase rounded-tl-xl tracking-wider">
+                    Nama Driver
+                  </th>
+                  <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase tracking-wider">Trayek</th>
+                  <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase text-center tracking-wider">
+                    Hari Jalan
+                  </th>
+                  <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase text-center tracking-wider">
+                    Total Siswa
+                  </th>
+                  <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase text-center tracking-wider">
+                    Disiplin Waktu
+                  </th>
+                  <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase text-center rounded-tr-xl tracking-wider">
+                    Aksi
+                  </th>
                 </tr>
               </thead>
-              <tbody>
-                {/* inirender dari props jika API belum dicolok sepenuhnya */}
-                {trips.map((trip, index) => (
-                  <tr key={index} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="py-3 px-4 text-sm font-bold text-[#00206B]">Hari ini</td>
-                    <td className="py-3 px-4 text-sm font-bold text-slate-600 uppercase">{trip.tipe_sesi || "-"}</td>
-                    <td className="py-3 px-4 text-sm font-bold text-slate-600">{trip.jumlah_penumpang || 0} Orang</td>
-                    <td className="py-3 px-4">
-                      <span className="bg-[#E6F7ED] text-[#137333] font-bold text-xs px-2 py-1 rounded">Selesai</span>
+              <tbody className="divide-y divide-slate-100">
+                {groupedData.map((supir, index) => (
+                  <tr
+                    key={supir.id_supir || index}
+                    onClick={() => setSelectedDriver(supir)}
+                    className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                  >
+                    <td className="py-4 px-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#00206B] to-blue-500 text-white flex items-center justify-center font-black text-sm shadow-sm flex-shrink-0">
+                          {supir.nama_supir.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <span className="text-sm font-black text-[#00206B] block uppercase tracking-wide group-hover:text-blue-700 transition-colors">
+                            {supir.nama_supir}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase">{supir.id_supir}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-5">
+                      <span className="text-xs font-extrabold text-slate-700 uppercase bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg inline-block">
+                        {supir.trayek_utama}
+                      </span>
+                    </td>
+                    <td className="py-4 px-5 text-center">
+                      <span className="text-base font-black text-[#00206B]">{supir.total_hari_jalan}</span>{" "}
+                      <span className="text-xs text-slate-400 font-semibold">Hari</span>
+                    </td>
+                    <td className="py-4 px-5 text-center">
+                      <span className="text-base font-black text-[#00206B]">{supir.total_penumpang}</span>{" "}
+                      <span className="text-xs text-slate-400 font-semibold">Siswa</span>
+                    </td>
+                    <td className="py-4 px-5 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <span
+                          className="bg-[#E6F7ED] text-[#137333] border border-[#BCECD2] font-black text-[10px] px-2.5 py-1 rounded-lg shadow-sm"
+                          title="Total Sesi Tepat Waktu"
+                        >
+                          🟢 {supir.total_tepat} Tepat
+                        </span>
+                        {supir.total_telat > 0 ? (
+                          <span
+                            className="bg-[#FCE8E6] text-[#C5221F] border border-[#FAD2CF] font-black text-[10px] px-2.5 py-1 rounded-lg shadow-sm"
+                            title="Total Sesi Terlambat"
+                          >
+                            🔴 {supir.total_telat} Telat
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-400">0 Telat</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-4 px-5 text-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDriver(supir);
+                        }}
+                        className="inline-flex items-center gap-1.5 bg-[#00206B] hover:bg-[#00174E] text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition-all active:scale-95 cursor-pointer"
+                      >
+                        <span>Lihat Log</span>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -1094,102 +2474,404 @@ const Rekap = ({ trips = [], inspections = [] }) => {
           </div>
         )}
       </div>
+
+      {/* MODAL 1: RINCIAN LOG HARIAN SUPIR */}
+      {selectedDriver && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-[fadeIn_0.2s]">
+          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 space-y-6 shadow-2xl border border-slate-100 my-8">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#00206B] to-blue-600 text-white flex items-center justify-center font-black text-lg shadow-md">
+                  {selectedDriver.nama_supir.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase text-[#00206B] tracking-wider block">
+                    AKUMULASI LOGBOOK DRIVER
+                  </span>
+                  <h3 className="text-xl font-black text-[#00206B] m-0">{selectedDriver.nama_supir}</h3>
+                  <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                    ID: {selectedDriver.id_supir} • Trayek: {selectedDriver.trayek_utama} • Total {selectedDriver.total_hari_jalan} Laporan
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedDriver(null)}
+                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* DI DALAM MODAL DETAIL DRIVER (Dekat Header/Nama) */}
+            <div className="mt-4 flex justify-center w-full">
+              <button
+                onClick={handleExportPerDriver}
+                className="flex items-center gap-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 text-xs font-black px-4 py-2 rounded-xl transition-colors border border-emerald-200 w-full justify-center shadow-sm cursor-pointer"
+              >
+                <span>📊 DOWNLOAD EXCEL ({selectedDriver?.nama_lengkap || selectedDriver?.nama_supir})</span>
+              </button>
+            </div>
+
+            {/* Metric Summary Cards for this driver */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center">
+                <span className="text-[10px] font-black uppercase text-slate-400 block mb-1">Total Hari Tugas</span>
+                {/* Total Hari Tugas */}
+                <span className="text-xl font-black">{selectedDriver?.total_hari_jalan || 0} Hari</span>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center">
+                <span className="text-[10px] font-black uppercase text-slate-400 block mb-1">Total Siswa Diangkut</span>
+                {/* Total Siswa Diangkut */}
+                <span className="text-xl font-black">{selectedDriver?.total_penumpang || 0} Orang</span>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center">
+                <span className="text-[10px] font-black uppercase text-slate-400 block mb-1">Disiplin Waktu</span>
+                {/* Disiplin Waktu */}
+                <div className="flex flex-col items-center justify-center">
+                  <span className="text-sm font-bold text-emerald-600">✓ {selectedDriver?.total_tepat || 0} Tepat</span>
+                  <span className="text-sm font-bold text-rose-600">⚠️ {selectedDriver?.total_telat || 0} Telat</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bagian RIWAYAT TANGGAL LAPORAN OPERASIONAL */}
+            <div className="space-y-3 mt-4 max-h-60 overflow-y-auto custom-scrollbar pr-2">
+              <h4 className="text-xs font-black text-[#00206B] uppercase tracking-wider border-b border-slate-100 pb-2 mb-3">
+                📅 Riwayat Tanggal Laporan Operasional
+              </h4>
+              {selectedDriver?.list_laporan && selectedDriver.list_laporan.length > 0 ? (
+                selectedDriver.list_laporan.map((lap, idx) => (
+                  <div key={idx} className="border border-slate-200 rounded-xl p-4 bg-white flex items-center justify-between shadow-sm">
+                    <div>
+                      <h4 className="text-sm font-black text-[#00206B]">Tanggal: {lap.tanggal || (lap.created_at ? lap.created_at.split("T")[0] : "-")}</h4>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Armada: {lap.bus || "-"}</p>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                        {lap.trip_sessions?.length || 0} Sesi Terlaksana
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => setSelectedReportDetail(lap)}
+                      className="text-[10px] font-black uppercase tracking-widest text-[#00206B] border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer"
+                    >
+                      Detail Checkpoint 🔍
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6 text-slate-400 font-bold text-xs">Belum ada riwayat operasional.</div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setSelectedDriver(null)}
+                className="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: DETAIL CHECKPOINT LAPORAN SPESIFIK */}
+      {selectedReportDetail && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-[fadeIn_0.15s]">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 space-y-5 shadow-2xl border border-slate-100 my-8">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+              <div>
+                <span className="text-[10px] font-black uppercase text-[#00206B] tracking-wider block">
+                  RINCIAN CHECKPOINT & INSPEKSI
+                </span>
+                <h3 className="text-xl font-black text-[#00206B] m-0">
+                  Laporan {selectedReportDetail.tanggal || selectedReportDetail.date || "Harian"}
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedReportDetail(null)}
+                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Sesi & CP */}
+            <div className="space-y-4">
+              {(selectedReportDetail.trip_sessions || []).map((sesi, idx) => (
+                <div key={sesi.id || idx} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                    <span className="font-black text-xs uppercase text-[#00206B]">
+                      Sesi {sesi.tipe_sesi || idx + 1}
+                    </span>
+                    <span className="text-xs font-bold text-emerald-700">
+                      👥 {sesi.jumlah_penumpang || 0} Siswa
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                      <span className="text-[9px] font-black text-slate-400 block uppercase">CP1 Keluar Dishub</span>
+                      <span className="font-bold text-slate-800">
+                        {formatTime(sesi.jam_berangkat_kantor || sesi.cp1_time)} WIB ({sesi.km_berangkat_kantor || sesi.cp1_km || 0} KM)
+                      </span>
+                    </div>
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                      <span className="text-[9px] font-black text-slate-400 block uppercase">CP2 Tiba Start</span>
+                      <span className="font-bold text-slate-800">
+                        {formatTime(sesi.jam_berangkat_start || sesi.cp2_time)} WIB ({sesi.km_berangkat_start || sesi.cp2_km || 0} KM)
+                      </span>
+                    </div>
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                      <span className="text-[9px] font-black text-slate-400 block uppercase">CP3 Tiba Sekolah</span>
+                      <span className="font-bold text-slate-800">
+                        {formatTime(sesi.jam_tiba_finish || sesi.cp3_time)} WIB ({sesi.km_tiba_finish || sesi.cp3_km || 0} KM)
+                      </span>
+                    </div>
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                      <span className="text-[9px] font-black text-slate-400 block uppercase">CP4 Kembali Dishub</span>
+                      <span className="font-bold text-slate-800">
+                        {formatTime(sesi.jam_tiba_kantor || sesi.cp4_time)} WIB ({sesi.km_tiba_kantor || sesi.cp4_km || 0} KM)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Foto Validasi Sesi */}
+                  {(sesi.foto_awal || sesi.foto_akhir) && (
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      {sesi.foto_awal && (
+                        <div
+                          onClick={() => setSelectedImage(sesi.foto_awal)}
+                          className="relative aspect-video rounded-xl overflow-hidden bg-slate-200 cursor-pointer group"
+                        >
+                          <img src={sesi.foto_awal} alt="Foto CP1" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            Foto CP1 🔍
+                          </span>
+                        </div>
+                      )}
+                      {sesi.foto_akhir && (
+                        <div
+                          onClick={() => setSelectedImage(sesi.foto_akhir)}
+                          className="relative aspect-video rounded-xl overflow-hidden bg-slate-200 cursor-pointer group"
+                        >
+                          <img src={sesi.foto_akhir} alt="Foto CP4" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            Foto CP4 🔍
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setSelectedReportDetail(null)}
+                className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase cursor-pointer"
+              >
+                Kembali ke Ringkasan Supir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Zoom Modal */}
+      {selectedImage && (
+        <div
+          onClick={() => setSelectedImage(null)}
+          className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 cursor-zoom-out animate-[fadeIn_0.15s]"
+        >
+          <div className="relative max-w-2xl max-h-[90vh]">
+            <img src={selectedImage} alt="Zoom" className="rounded-2xl max-w-full max-h-[85vh] object-contain shadow-2xl" />
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-3 right-3 bg-black/60 text-white p-2 rounded-full hover:bg-black transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default Rekap;
+export default RekapAdmin;
 
-`
+
 
 ---
 
 ### src/pages/admin/RiwayatAdmin.jsx
 
-`jsx
-import React, { useState, useEffect } from 'react';
-import { apiService } from '../../services/api';
+jsx
+import React, { useState, useEffect } from "react";
+import { apiService } from "../../services/api";
 
-const RiwayatAdmin = ({ onViewDetail, user }) => { 
-  const [reports, setReports] = useState([]);
+const RiwayatAdmin = () => {
+  const [laporanHarian, setLaporanHarian] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    const fetchPantauan = async () => {
+      try {
+        // Pastikan memanggil API yang benar dari apiService
+        const res = await (apiService.getPantauanHarian ? apiService.getPantauanHarian() : apiService.getRiwayatHarianAdmin());
+        // Amankan mapping data
+        const dataTarget = res?.data || res || [];
+        const rawList = Array.isArray(dataTarget) ? dataTarget : [];
 
-    // KHUSUS ADMIN: Narik SEMUA riwayat 25 supir buat monitoring
-    apiService.getRekapAdmin()
-      .then(res => {
-        if (res.data) {
-          const formattedData = res.data.map(item => ({
-            ...item,
-            driverName: item.id_supir || "Anonim", // Munculin nama/ID supir yang ngisi
-            date: item.tanggal,
-            trayek: item.trayek,
-            bus: item.bus,
-            submittedAt: item.trip_sessions && item.trip_sessions.length > 0 ? "Selesai Direkam" : "Menunggu Penyelesaian"
-          }));
-          
-          // Urutkan biar laporan paling baru (termasuk hari ini) ada di paling atas
-          formattedData.sort((a, b) => new Date(b.created_at || b.tanggal) - new Date(a.created_at || a.tanggal));
-          setReports(formattedData);
+        // Jika data dikelompokkan berdasarkan tanggal: [{ tanggal, laporan: [...] }], lakukan flattening secara aman
+        let flattened = [];
+        if (rawList.length > 0 && Array.isArray(rawList[0]?.laporan)) {
+          rawList.forEach((group) => {
+            (group.laporan || []).forEach((lap) => {
+              flattened.push({
+                ...lap,
+                tanggal: lap.tanggal || group.tanggal,
+              });
+            });
+          });
+        } else {
+          flattened = [...rawList];
         }
+
+        // Normalisasi data laporan agar pengemudi, status, dan catatan inspeksi selalu siap diakses
+        const normalized = flattened.map((lap) => {
+          const catatanInspeksi =
+            lap?.inspeksi?.catatan ||
+            lap?.catatan_inspeksi ||
+            (Array.isArray(lap?.inspections) ? lap.inspections.find((i) => i?.catatan)?.catatan : null) ||
+            (Array.isArray(lap?.trip_sessions) ? lap.trip_sessions.find((s) => s?.catatan)?.catatan : null) ||
+            lap?.catatan ||
+            "";
+
+          const namaSupir =
+            lap?.pengemudi?.nama_lengkap ||
+            lap?.pengemudi?.nama ||
+            lap?.users?.nama ||
+            lap?.nama_supir ||
+            lap?.id_supir ||
+            "Supir";
+
+          const sesiAkhir = lap.trip_sessions?.[lap.trip_sessions.length - 1];
+          const isSelesai = sesiAkhir?.jam_tiba_kantor !== null && sesiAkhir?.jam_tiba_kantor !== undefined;
+          const status = lap.status || (isSelesai ? "SELESAI DIREKAM" : "SEDANG BERJALAN");
+          const statusWaktu = sesiAkhir?.status_waktu || lap.status_waktu || "BELUM ADA";
+
+          return {
+            ...lap,
+            pengemudi: {
+              nama_lengkap: namaSupir,
+              ...(lap.pengemudi || {}),
+            },
+            inspeksi: catatanInspeksi ? { ...(lap.inspeksi || {}), catatan: catatanInspeksi } : lap.inspeksi,
+            status,
+            status_waktu: statusWaktu,
+          };
+        });
+
+        setLaporanHarian(normalized);
+      } catch (error) {
+        console.error("Gagal menarik data pantauan:", error);
+        setLaporanHarian([]);
+      } finally {
         setIsLoading(false);
-      })
-      .catch((err) => {
-        console.error("Gagal narik data rekap admin:", err);
-        setIsLoading(false);
-      });
-  }, [user]);
+      }
+    };
+    fetchPantauan();
+  }, []);
 
   if (isLoading) {
-    return <div className="text-center p-10 font-bold text-[#00206B] animate-pulse">Memuat Monitoring Seluruh Armada... ⏳</div>;
+    return <div className="text-center p-10 font-bold text-[#00206B] animate-pulse">Menghubungkan ke Live Feed Server... ⏳</div>;
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto pb-8">
       <div className="space-y-1">
-        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">
-          Monitoring Laporan Armada
-        </h2>
-        <p className="text-sm text-slate-400 font-semibold mt-0.5">
-          Pantau aktivitas harian dan pengisian logbook dari seluruh pengemudi.
-        </p>
+        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">Pantauan Harian</h2>
+        <p className="text-sm text-slate-400 font-semibold mt-0.5">Live feed status laporan operasional driver per hari.</p>
       </div>
 
-      {reports.length > 0 ? (
-        <div className="space-y-3">
-          {reports.map((report, index) => (
-            <div key={index} onClick={() => onViewDetail && onViewDetail(report)} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-slate-700 to-[#00206B] flex items-center justify-center text-white font-black text-lg flex-shrink-0 shadow-inner">
-                  {report.driverName?.charAt(0).toUpperCase() || '?'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-extrabold text-[#00206B] truncate">{report.driverName}</h3>
-                  <p className="text-xs text-slate-400 font-semibold mt-0.5">{report.date} • {report.trayek} • {report.bus}</p>
-                  
-                  {/* Indikator visual jelas buat admin */}
-                  {report.submittedAt === "Selesai Direkam" ? (
-                     <p className="text-[10px] text-emerald-600 font-bold mt-1 bg-emerald-50 w-max px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">✅ {report.submittedAt}</p>
-                  ) : (
-                     <p className="text-[10px] text-amber-600 font-bold mt-1 bg-amber-50 w-max px-2 py-0.5 rounded border border-amber-100 uppercase tracking-wider">⏳ {report.submittedAt}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-slate-400">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </div>
-              </div>
-            </div>
-          ))}
+      {laporanHarian.length === 0 ? (
+        /* EMPTY STATE YANG SEKARANG ADA DI LAYAR */
+        <div className="text-center py-16 bg-white border-2 border-slate-200 rounded-2xl">
+          <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <span className="text-sm font-black text-slate-400 uppercase tracking-widest">BELUM ADA PANTAUAN HARIAN</span>
         </div>
       ) : (
-        <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-12 text-center">
-          <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-          </div>
-          <h3 className="text-lg font-extrabold text-slate-600 m-0">Belum Ada Riwayat Laporan</h3>
-          <p className="text-sm text-slate-500 font-medium mt-1">Belum ada pengemudi yang mengirimkan data ke server.</p>
+        /* RENDER LIST CARD LAPORAN DI SINI */
+        <div className="space-y-4">
+          {laporanHarian.map((laporan, index) => {
+            const namaSupir = laporan?.pengemudi?.nama_lengkap || "Supir";
+            const statusText = laporan?.status || "PROSES";
+            const isSelesai = statusText === "SELESAI DIREKAM" || statusText === "SELESAI";
+            const isLate = laporan?.status_waktu === "TERLAMBAT";
+
+            return (
+              <div key={laporan.id || index} className="p-5 bg-white border-2 border-slate-100 hover:border-blue-200 rounded-2xl shadow-sm transition-all">
+                {/* Header Card: Nama Supir, Trayek, dan Status */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3 mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00206B] to-blue-500 text-white flex items-center justify-center font-black text-sm shadow-sm flex-shrink-0">
+                      {(namaSupir || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-[#00206B] text-sm md:text-base uppercase m-0 leading-tight">
+                        {namaSupir}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                          TRAYEK {laporan?.trayek || "-"} • {laporan?.bus || "-"}
+                        </span>
+                        {laporan?.tanggal && (
+                          <>
+                            <span className="text-slate-300 text-[10px]">•</span>
+                            <span className="text-[10px] font-bold text-slate-400">
+                              {laporan.tanggal}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
+                    {isSelesai ? (
+                      <span className="bg-[#E6F7ED] text-[#137333] border border-[#BCECD2] text-[10px] font-black px-2.5 py-1 rounded shadow-sm uppercase tracking-wider">
+                        {statusText}
+                      </span>
+                    ) : (
+                      <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-black px-2.5 py-1 rounded shadow-sm uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        {statusText}
+                      </span>
+                    )}
+                    {isLate && (
+                      <span className="bg-rose-50 text-rose-600 border border-rose-200 text-[10px] font-black px-2.5 py-1 rounded shadow-sm uppercase tracking-wider flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-rose-500"></span> TERLAMBAT
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tampilkan Catatan Krusial (Inspeksi) Jika Ada */}
+                {laporan?.inspeksi?.catatan && (
+                  <div className="bg-rose-50 border border-rose-200 p-2 rounded-lg mt-2">
+                    <p className="text-[10px] text-rose-600 font-bold uppercase">⚠️ Catatan Inspeksi:</p>
+                    <p className="text-xs text-rose-800 font-semibold">{laporan.inspeksi.catatan}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -1197,13 +2879,13 @@ const RiwayatAdmin = ({ onViewDetail, user }) => {
 };
 
 export default RiwayatAdmin;
-`
+
 
 ---
 
 ### src/pages/auth/Login.jsx
 
-`jsx
+jsx
 import React, { useState, useEffect } from "react";
 import { apiService } from "../../services/api";
 
@@ -1240,6 +2922,7 @@ const Login = ({ onLoginSuccess }) => {
         role: response.user.role,
         trayek: response.user.trayek,
         bus: response.user.bus,
+        foto_profil: response.user.foto_profil,
       };
 
       setTimeout(() => {
@@ -1247,9 +2930,15 @@ const Login = ({ onLoginSuccess }) => {
       }, 500);
     } catch (err) {
       if (err.response && err.response.data && err.response.data.detail) {
-        setError(err.response.data.detail);
+        if (Array.isArray(err.response.data.detail)) {
+          setError(err.response.data.detail.map((d) => `${d.loc?.slice(-1)[0]}: ${d.msg}`).join(", "));
+        } else if (typeof err.response.data.detail === "string") {
+          setError(err.response.data.detail);
+        } else {
+          setError("Format data login tidak valid.");
+        }
       } else {
-        setError("Terjadi kesalahan!");
+        setError(err.message || "Terjadi kesalahan!");
       }
     } finally {
       setIsLoading(false);
@@ -1293,7 +2982,7 @@ const Login = ({ onLoginSuccess }) => {
             </div>
           </div>
           <div className="space-y-1 group">
-            <label className="text-[11px] sm:text-sm font-bold text-[#00206B] ml-1 uppercase tracking-wide">ID Pengemudi / Email</label>
+            <label className="text-[11px] sm:text-sm font-bold text-[#00206B] ml-1 uppercase tracking-wide">ID Driver / Email</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 sm:pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#00206B] transition-colors">
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
@@ -1390,13 +3079,12 @@ const Login = ({ onLoginSuccess }) => {
 
 export default Login;
 
-`
 
 ---
 
 ### src/pages/beranda/RingkasanHarian.jsx
 
-`jsx
+jsx
 import React from "react";
 
 const RingkasanHarian = ({ inspections = [], trips = [], currentShift, onResetAllLogs }) => {
@@ -1543,16 +3231,30 @@ const RingkasanHarian = ({ inspections = [], trips = [], currentShift, onResetAl
 
 export default RingkasanHarian;
 
-`
 
 ---
 
 ### src/pages/driver/BerandaDriver.jsx
 
-`jsx
-import React from "react";
+jsx
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { apiService } from "../../services/api";
 
-const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mulai", onStartInspection, currentShift, isLaporanLocked, shiftRules, onStartSiang }) => {
+const Beranda = ({
+  activeUser,
+  onQuickAction,
+  onLogout,
+  tripStatus = "belum_mulai",
+  onStartInspection,
+  currentShift,
+  isLaporanLocked,
+  shiftRules,
+  onStartSiang,
+  laporanHariIni,
+  laporan,
+}) => {
+  const navigate = useNavigate();
   const currentDate = new Date().toLocaleDateString("id-ID", {
     weekday: "long",
     year: "numeric",
@@ -1560,13 +3262,178 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
     day: "numeric",
   });
 
-  const currentHour = new Date().getHours();
-  const siangHour = shiftRules?.siang || 12;
+  const [jamSekarang, setJamSekarang] = useState(new Date());
+  const [jadwalSesi, setJadwalSesi] = useState({ pagi: null, siang: null });
+  const [isStartingReport, setIsStartingReport] = useState(false);
+
+  // Ticking Clock & Fetch Data
+  useEffect(() => {
+    const timer = setInterval(() => setJamSekarang(new Date()), 1000);
+
+    const fetchJadwal = async () => {
+      try {
+        const res = await apiService.getJadwalDriver();
+        const rawList = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+        if (rawList.length > 0) {
+          const pagi = rawList.find((j) => (j?.tipe_sesi || "").toUpperCase() === "PAGI") || null;
+          const siang = rawList.find((j) => (j?.tipe_sesi || "").toUpperCase() === "SIANG") || null;
+          setJadwalSesi({ pagi, siang });
+        }
+      } catch (error) {
+        console.error("Gagal menarik jadwal:", error);
+      }
+    };
+    fetchJadwal();
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Format jam ke "HH:MM" (contoh: "05:15") secara aman
+  const jamTeks =
+    jamSekarang instanceof Date && !isNaN(jamSekarang.getTime())
+      ? jamSekarang
+          .toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false })
+          .replace(".", ":")
+      : "00:00";
+
+  // Cek Status Keterlambatan dengan proteksi null/undefined
+  const batasPagi = String(jadwalSesi?.pagi?.batas_keluar_dishub || "06:00").slice(0, 5);
+  const batasSiang = String(jadwalSesi?.siang?.batas_keluar_dishub || "12:30").slice(0, 5);
+
+  const isPagiTelat = jamTeks > batasPagi;
+  const isSiangTelat = jamTeks > batasSiang;
+
+  const currentHour =
+    jamSekarang instanceof Date && !isNaN(jamSekarang.getTime())
+      ? jamSekarang.getHours()
+      : new Date().getHours();
+
+  const parsedSiangHour = jadwalSesi?.siang?.batas_keluar_dishub
+    ? parseInt(String(jadwalSesi.siang.batas_keluar_dishub).split(":")[0], 10)
+    : 12;
+
+  const siangHour = shiftRules?.siang ?? (!isNaN(parsedSiangHour) ? parsedSiangHour : 12);
   const isSiangTime = currentHour >= siangHour;
+
+  // Proteksi data Driver/User
+  const driverName = activeUser?.nama_lengkap || activeUser?.nama || activeUser?.name || "Driver";
+  const driverInitial = (driverName || "D").charAt(0).toUpperCase();
+  const userTrayek = activeUser?.trayek || "Belum ada trayek";
+  const userBus = activeUser?.bus || "Belum ada armada";
+
+  // Proteksi data Laporan & Trip Sessions
+  const safeReport = laporanHariIni ?? laporan ?? null;
+  const reportStatus = safeReport?.status || "Belum Ada Data";
+  const tripSessions = Array.isArray(safeReport?.trip_sessions)
+    ? safeReport.trip_sessions
+    : Array.isArray(laporanHariIni?.trip_sessions)
+    ? laporanHariIni.trip_sessions
+    : Array.isArray(laporan?.trip_sessions)
+    ? laporan.trip_sessions
+    : [];
+
+  // Handler Inisiasi Laporan Harian (Simpan ke localStorage)
+  const handleMulaiLaporan = async () => {
+    if (isStartingReport) return;
+    setIsStartingReport(true);
+    try {
+      const localNow = new Date();
+      const year = localNow.getFullYear();
+      const month = String(localNow.getMonth() + 1).padStart(2, "0");
+      const day = String(localNow.getDate()).padStart(2, "0");
+      const today = `${year}-${month}-${day}`;
+
+      const payload = {
+        tanggal: today,
+        trayek: activeUser?.trayek || "-",
+        bus: activeUser?.bus || "-",
+      };
+
+      const res = await apiService.mulaiLaporanHarian(payload);
+
+      // BARIS WAJIB: Simpan ID laporan master ke memori lokal
+      if (res && res.id) {
+        localStorage.setItem("siclus_active_laporan_id", String(res.id));
+      }
+
+      if (typeof onStartInspection === "function") {
+        onStartInspection();
+      } else {
+        navigate("/driver/laporan");
+      }
+    } catch (error) {
+      console.error("Gagal memulai laporan harian:", error);
+      alert("Gagal memulai laporan: " + (error.response?.data?.detail || error.message));
+    } finally {
+      setIsStartingReport(false);
+    }
+  };
+
+  const handleStartSiang = async () => {
+    if (isStartingReport) return;
+    setIsStartingReport(true);
+    try {
+      const savedLaporanId = localStorage.getItem("siclus_active_laporan_id");
+      if (!savedLaporanId) {
+        const localNow = new Date();
+        const year = localNow.getFullYear();
+        const month = String(localNow.getMonth() + 1).padStart(2, "0");
+        const day = String(localNow.getDate()).padStart(2, "0");
+        const today = `${year}-${month}-${day}`;
+
+        const payload = {
+          tanggal: today,
+          trayek: activeUser?.trayek || "-",
+          bus: activeUser?.bus || "-",
+        };
+
+        const res = await apiService.mulaiLaporanHarian(payload);
+        if (res && res.id) {
+          localStorage.setItem("siclus_active_laporan_id", String(res.id));
+        }
+      }
+
+      if (typeof onStartSiang === "function") {
+        onStartSiang();
+      } else {
+        navigate("/driver/laporan");
+      }
+    } catch (error) {
+      console.error("Gagal memulai laporan siang:", error);
+      if (typeof onStartSiang === "function") {
+        onStartSiang();
+      } else {
+        navigate("/driver/laporan");
+      }
+    } finally {
+      setIsStartingReport(false);
+    }
+  };
+
+  // Loading skeleton jika activeUser masih undefined/null
+  if (!activeUser) {
+    return (
+      <div className="space-y-6 text-left max-w-5xl mx-auto pb-6 animate-pulse">
+        <div className="h-8 bg-slate-200 rounded-xl w-1/3"></div>
+        <div className="h-4 bg-slate-100 rounded-lg w-1/4"></div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+          <div className="lg:col-span-2 h-64 bg-white border border-slate-100 rounded-2xl p-6"></div>
+          <div className="h-64 bg-white border border-slate-100 rounded-2xl p-6"></div>
+        </div>
+      </div>
+    );
+  }
+
   const renderKotakSiang = () => {
-    // Tambahkan kondisi currentShift === "selesai"
     const isDisabled = currentShift === "pagi" || !isSiangTime || currentShift === "selesai";
-    const btnText = currentShift === "selesai" ? "TUGAS SELESAI" : currentShift === "pagi" ? "SELESAIKAN PAGI DULU" : isSiangTime ? "MULAI LAPORAN SIANG" : `TUNGGU JAM ${siangHour}:00 WIB`;
+    const btnText =
+      currentShift === "selesai"
+        ? "TUGAS SELESAI"
+        : currentShift === "pagi"
+        ? "SELESAIKAN PAGI DULU"
+        : isSiangTime
+        ? "MULAI LAPORAN SIANG"
+        : `TUNGGU JAM ${siangHour}:00 WIB`;
 
     return (
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4 transition-all hover:shadow-md">
@@ -1581,10 +3448,12 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
         </div>
 
         <button
-          onClick={onStartSiang}
-          disabled={isDisabled}
+          onClick={handleStartSiang}
+          disabled={isDisabled || isStartingReport}
           className={`w-full font-extrabold py-3.5 px-3 rounded-xl transition-all flex items-center justify-center gap-2 text-xs ${
-            !isDisabled ? "bg-[#00206B] hover:bg-[#00174E] text-white shadow-md active:scale-[0.98]" : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+            !isDisabled && !isStartingReport
+              ? "bg-[#00206B] hover:bg-[#00174E] text-white shadow-md active:scale-[0.98] cursor-pointer"
+              : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
           }`}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -1594,11 +3463,64 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
             )}
           </svg>
-          {btnText}
+          {isStartingReport ? "MEMPROSES..." : btnText}
         </button>
       </div>
     );
   };
+
+  const renderCardJadwal = () => (
+    <div className="bg-white border-2 border-slate-100 rounded-2xl p-5 shadow-sm space-y-4 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-1 h-full bg-[#00206B]"></div>
+
+      <div className="flex justify-between items-center border-b-2 border-slate-50 pb-3">
+        <h3 className="text-[11px] font-black text-slate-400 tracking-widest uppercase">Batas Operasional</h3>
+        {/* JAM REALTIME BERGERAK */}
+        <div className="bg-slate-800 text-emerald-400 font-mono text-sm font-black px-3 py-1 rounded-lg flex items-center gap-2 shadow-inner">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          {jamTeks} WIB
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {/* SESI PAGI */}
+        <div className={`flex justify-between items-center p-3 rounded-xl border ${isPagiTelat ? "bg-rose-50 border-rose-100" : "bg-slate-50 border-slate-100"}`}>
+          <div>
+            <p className="text-xs font-black text-slate-700 uppercase">Sesi Pagi</p>
+            {isPagiTelat ? (
+              <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider">⚠️ Terlambat</span>
+            ) : (
+              <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Aman</span>
+            )}
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Maksimal Keluar</p>
+            <p className={`text-sm font-black ${isPagiTelat ? "text-rose-600" : "text-[#00206B]"}`}>{batasPagi} WIB</p>
+          </div>
+        </div>
+
+        {/* SESI SIANG */}
+        <div className={`flex justify-between items-center p-3 rounded-xl border ${isSiangTelat ? "bg-rose-50 border-rose-100" : "bg-slate-50 border-slate-100"}`}>
+          <div>
+            <p className="text-xs font-black text-slate-700 uppercase">Sesi Siang</p>
+            {isSiangTelat ? (
+              <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider">⚠️ Terlambat</span>
+            ) : (
+              <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Aman</span>
+            )}
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Maksimal Keluar</p>
+            <p className={`text-sm font-black ${isSiangTelat ? "text-rose-600" : "text-[#00206B]"}`}>{batasSiang} WIB</p>
+          </div>
+        </div>
+      </div>
+
+      <p className="text-[9px] font-bold text-slate-400 text-center uppercase tracking-widest pt-2">
+        Lewat batas waktu otomatis tercatat "Terlambat"
+      </p>
+    </div>
+  );
 
   // State: Shift Sedang Berlangsung
   if (tripStatus === "sedang_berlangsung") {
@@ -1606,7 +3528,7 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
       <div className="space-y-6 text-left max-w-5xl mx-auto pb-6">
         <header className="space-y-1">
           <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0">
-            Selamat bertugas, <span className="block text-3xl md:text-4xl font-black">{activeUser?.name || "Pengemudi"}</span>
+            Selamat bertugas, <span className="block text-3xl md:text-4xl font-black">{driverName}</span>
           </h2>
           <p className="text-sm text-slate-400 font-semibold">{currentDate}</p>
         </header>
@@ -1622,16 +3544,26 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
             </div>
 
             <div className="flex items-center gap-4 bg-slate-50 rounded-xl p-4 border border-slate-100">
-              <div className="w-12 h-12 rounded-lg bg-[#00206B] text-white flex items-center justify-center font-black text-xl shadow-sm">A</div>
+              <div className="w-12 h-12 rounded-lg bg-[#00206B] text-white flex items-center justify-center font-black text-xl shadow-sm">
+                {driverInitial}
+              </div>
               <div>
-                <h4 className="text-base font-extrabold text-[#00206B] m-0">{activeUser?.trayek || "Trayek A"}</h4>
-                <p className="text-sm text-slate-500 font-medium mt-0.5">{activeUser?.bus || "Bus 07"}</p>
+                <h4 className="text-base font-extrabold text-[#00206B] m-0">{userTrayek}</h4>
+                <p className="text-sm text-slate-500 font-medium mt-0.5">{userBus}</p>
               </div>
             </div>
 
             <button
-              onClick={() => onQuickAction("laporan")}
-              className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-extrabold py-4 px-4 rounded-xl shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-base"
+              onClick={() => {
+                if (typeof onQuickAction === "function") {
+                  onQuickAction("laporan");
+                } else if (typeof onStartInspection === "function") {
+                  onStartInspection();
+                } else {
+                  navigate("/driver/laporan");
+                }
+              }}
+              className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-extrabold py-4 px-4 rounded-xl shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-base cursor-pointer"
             >
               LANJUTKAN LAPORAN
             </button>
@@ -1639,6 +3571,7 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
 
           <aside className="space-y-4">
             {renderKotakSiang()}
+            {renderCardJadwal()}
             <div className="bg-white border border-slate-100 rounded-2xl p-5 flex items-center gap-4 shadow-sm">
               <div className="text-[#00206B]">
                 <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
@@ -1656,12 +3589,14 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
     );
   }
 
-  // State: Belum Mulai (Initial)
+  // State: Belum Mulai (Initial / Post-Finish)
   return (
     <div className="space-y-6 text-left max-w-5xl mx-auto pb-6">
       <header className="space-y-1">
-        <h2 className="text-3xl md:text-4xl font-black text-[#00206B] m-0">{activeUser?.name || "Pengemudi"}</h2>
-        <p className="text-sm text-slate-500 font-bold">Pengemudi Angkutan Sekolah</p>
+        <h2 className="text-3xl md:text-4xl font-black text-[#00206B] m-0">
+          {driverName}
+        </h2>
+        <p className="text-sm text-slate-500 font-bold">Driver Angkutan Sekolah</p>
         <p className="text-xs text-slate-400 font-semibold mt-1">{currentDate}</p>
       </header>
 
@@ -1683,7 +3618,30 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
                     ? "Terima kasih! Anda telah menyelesaikan seluruh tugas operasional hari ini. Laporan akan dibuka kembali besok." 
                     : "Anda telah menyelesaikan tugas pagi. Silakan istirahat, dan mulai laporan siang pada menu di samping ketika waktunya tiba."}
                 </p>
+                <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg text-xs font-bold text-slate-600">
+                  <span>Status:</span>
+                  <span className="text-[#00206B] font-extrabold uppercase">
+                    {laporanHariIni?.status || (currentShift === "selesai" ? "Selesai" : "Shift Pagi Selesai")}
+                  </span>
+                </div>
               </div>
+
+              {/* RENDER AMAN TRIP SESSIONS JIKA TERSEDIA */}
+              {tripSessions.length > 0 && (
+                <div className="w-full max-w-md mt-4 border-t border-slate-100 pt-4 text-left">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Riwayat Sesi Hari Ini</p>
+                  <div className="space-y-2">
+                    {tripSessions.map((sesi, idx) => (
+                      <div key={idx} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
+                        <span className="font-bold text-[#00206B] uppercase">Sesi {sesi?.tipe_sesi || idx + 1}</span>
+                        <span className="text-[10px] font-extrabold text-emerald-600 uppercase bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          {sesi?.status || "Terkirim"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -1696,19 +3654,37 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <h3 className="text-lg font-extrabold text-[#00206B] m-0">Perjalanan Hari Ini</h3>
-                    <span className="inline-block bg-slate-100 text-slate-500 font-extrabold text-xs px-3 py-1.5 rounded mt-1.5">BELUM DIMULAI</span>
+                    <span className="inline-block bg-slate-100 text-slate-500 font-extrabold text-xs px-3 py-1.5 rounded mt-1.5">
+                      {laporanHariIni?.status || "BELUM DIMULAI"}
+                    </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-base font-extrabold text-[#00206B] block">{activeUser?.trayek || "TRAYEK A"}</span>
-                    <span className="text-xs text-slate-400 font-semibold block mt-0.5">{activeUser?.bus || "S 1772 SP"}</span>
+                    <span className="text-base font-extrabold text-[#00206B] block">{userTrayek}</span>
+                    <span className="text-xs text-slate-400 font-semibold block mt-0.5">{userBus}</span>
                   </div>
                 </div>
 
+                {/* Sesi / Trip Sessions jika ada */}
+                {tripSessions.length > 0 && (
+                  <div className="border-t border-slate-100 pt-3 space-y-2">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Sesi Terdaftar</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {tripSessions.map((sesi, idx) => (
+                        <div key={idx} className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-xs">
+                          <span className="font-bold text-[#00206B] uppercase block">Sesi {sesi?.tipe_sesi || idx + 1}</span>
+                          <span className="text-[10px] text-slate-500">{sesi?.status || "Terekam"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <button
-                  onClick={onStartInspection}
-                  className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-black text-sm py-4 px-4 rounded-xl shadow-[0_4px_14px_0_rgba(0,32,107,0.39)] hover:shadow-[0_6px_20px_rgba(0,32,107,0.23)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={handleMulaiLaporan}
+                  disabled={isStartingReport}
+                  className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-black text-sm py-4 px-4 rounded-xl shadow-[0_4px_14px_0_rgba(0,32,107,0.39)] hover:shadow-[0_6px_20px_rgba(0,32,107,0.23)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  MULAI LAPORAN PERJALANAN
+                  {isStartingReport ? "MEMULAI LAPORAN..." : "MULAI LAPORAN PERJALANAN"}
                 </button>
               </div>
             </>
@@ -1717,20 +3693,7 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
 
         <aside className="space-y-4">
           {renderKotakSiang()}
-          <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-            <h4 className="text-sm font-extrabold text-[#00206B] mb-3">BATAS PENGISIAN LAPORAN</h4>
-            <div className="space-y-2 text-xs text-slate-600">
-              <div className="flex justify-between">
-                <span className="font-semibold">Batas Buka Pagi</span>
-                <span className="text-slate-400">{shiftRules?.pagi || 5}:00 WIB</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-semibold">Batas Buka Siang</span>
-                <span className="text-slate-400">{shiftRules?.siang || 12}:00 WIB</span>
-              </div>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-4 border-t border-slate-100 pt-2 text-center">Patuhi batas jadwal yang ditentukan.</p>
-          </div>
+          {renderCardJadwal()}
         </aside>
       </div>
     </div>
@@ -1739,21 +3702,27 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
 
 export default Beranda;
 
-`
 
 ---
 
 ### src/pages/driver/DetailLaporan.jsx
 
-`jsx
-import React from 'react';
+jsx
+import React from "react";
 
 const DetailLaporan = ({ report }) => {
   if (!report) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4">
         <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center">
-          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
         </div>
         <div>
           <h3 className="text-xl font-black text-[#00206B]">Data Tidak Ditemukan</h3>
@@ -1763,38 +3732,56 @@ const DetailLaporan = ({ report }) => {
     );
   }
 
-  const sesiPagi = report.trip_sessions?.find(s => s.tipe_sesi === "PAGI");
-  const sesiSiang = report.trip_sessions?.find(s => s.tipe_sesi === "SIANG");
-  const inspeksiPagi = report.inspections?.find(s => s.tipe_sesi === "PAGI");
-  const inspeksiSiang = report.inspections?.find(s => s.tipe_sesi === "SIANG");
+  const sesiPagi = report.trip_sessions?.find((s) => s.tipe_sesi?.toUpperCase() === "PAGI");
+  const sesiSiang = report.trip_sessions?.find((s) => s.tipe_sesi?.toUpperCase() === "SIANG");
+  const inspeksiPagi = report.inspections?.find((s) => s.tipe_sesi?.toUpperCase() === "PAGI");
+  const inspeksiSiang = report.inspections?.find((s) => s.tipe_sesi?.toUpperCase() === "SIANG");
 
   const calculateCompleteness = () => {
     let totalPercentage = 0;
-    const checkFields = ['jam_berangkat_kantor', 'km_berangkat_kantor', 'jam_berangkat_start', 'km_berangkat_start', 'jam_tiba_finish', 'km_tiba_finish', 'jumlah_penumpang', 'jam_tiba_kantor', 'km_tiba_kantor'];
-    const inspFields = ['rem', 'ac', 'lampu', 'klakson', 'wiper', 'lampu_rem', 'bell', 'pintu', 'kebersihan'];
+    const checkFields = [
+      "jam_berangkat_kantor",
+      "km_berangkat_kantor",
+      "jam_berangkat_start",
+      "km_berangkat_start",
+      "jam_tiba_finish",
+      "km_tiba_finish",
+      "jumlah_penumpang",
+      "jam_tiba_kantor",
+      "km_tiba_kantor",
+    ];
+    const inspFields = ["rem", "ac", "lampu", "klakson", "wiper", "lampu_rem", "bell", "pintu", "kebersihan"];
 
     // 1. Sesi Pagi (Maks 25%)
     if (sesiPagi) {
       let filled = 0;
-      checkFields.forEach(f => { if (sesiPagi[f] !== null && sesiPagi[f] !== undefined) filled++; });
+      checkFields.forEach((f) => {
+        if (sesiPagi[f] !== null && sesiPagi[f] !== undefined) filled++;
+      });
       totalPercentage += (filled / checkFields.length) * 25;
     }
     // 2. Inspeksi Pagi (Maks 25%)
     if (inspeksiPagi) {
       let filled = 0;
-      inspFields.forEach(f => { if (inspeksiPagi[f]) filled++; });
+      inspFields.forEach((f) => {
+        if (inspeksiPagi[f]) filled++;
+      });
       totalPercentage += (filled / inspFields.length) * 25;
     }
     // 3. Sesi Siang (Maks 25%)
     if (sesiSiang) {
       let filled = 0;
-      checkFields.forEach(f => { if (sesiSiang[f] !== null && sesiSiang[f] !== undefined) filled++; });
+      checkFields.forEach((f) => {
+        if (sesiSiang[f] !== null && sesiSiang[f] !== undefined) filled++;
+      });
       totalPercentage += (filled / checkFields.length) * 25;
     }
     // 4. Inspeksi Siang (Maks 25%)
     if (inspeksiSiang) {
       let filled = 0;
-      inspFields.forEach(f => { if (inspeksiSiang[f]) filled++; });
+      inspFields.forEach((f) => {
+        if (inspeksiSiang[f]) filled++;
+      });
       totalPercentage += (filled / inspFields.length) * 25;
     }
 
@@ -1807,7 +3794,7 @@ const DetailLaporan = ({ report }) => {
     if (!timeString) return "-";
     try {
       const d = new Date(timeString);
-      if (!isNaN(d.getTime())) return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      if (!isNaN(d.getTime())) return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
       return timeString;
     } catch {
       return timeString;
@@ -1815,14 +3802,13 @@ const DetailLaporan = ({ report }) => {
   };
 
   const TimelineItem = ({ title, time, odometer, passengers, isLast, foto, nopol }) => (
-    <div className={`relative pl-7 ${isLast ? '' : 'pb-8'}`}>
+    <div className={`relative pl-7 ${isLast ? "" : "pb-8"}`}>
       <div className="absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full bg-[#00206B] ring-4 ring-slate-50"></div>
       {!isLast && <div className="absolute left-[6px] top-5 bottom-0 w-0.5 bg-slate-100"></div>}
-      
+
       <div>
         <h4 className="text-xs font-black text-[#00206B] uppercase tracking-wider">{title}</h4>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:max-w-sm">
-          
           {/* Render Nopol & Merk Kendaraan HANYA jika datanya dikirim (Biasanya di CP1) */}
           {nopol && (
             <div className="col-span-2 bg-amber-50 border border-amber-200 p-4 rounded-2xl flex justify-between items-center shadow-sm">
@@ -1837,9 +3823,9 @@ const DetailLaporan = ({ report }) => {
           </div>
           <div className="bg-slate-50 p-4 rounded-2xl">
             <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest">ODOMETER</span>
-            <span className="block text-sm font-black text-slate-800 mt-1">{odometer ? `${odometer} KM` : '-'}</span>
+            <span className="block text-sm font-black text-slate-800 mt-1">{odometer ? `${odometer} KM` : "-"}</span>
           </div>
-          
+
           {passengers !== undefined && passengers !== null && (
             <div className="col-span-2 bg-[#00206B] p-4 rounded-2xl flex justify-between items-center shadow-sm">
               <span className="text-[10px] font-black text-white uppercase tracking-widest">SISWA DIANGKUT</span>
@@ -1850,9 +3836,7 @@ const DetailLaporan = ({ report }) => {
           {/* Render Bukti Foto Selfie */}
           {foto && (
             <div className="col-span-2 mt-1 relative rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm aspect-[4/3]">
-              <div className="absolute top-2 left-2 bg-emerald-500 text-white text-[9px] font-black px-2 py-1 rounded shadow-sm z-10 uppercase tracking-widest">
-                ✓ FOTO VALIDASI
-              </div>
+              <div className="absolute top-2 left-2 bg-emerald-500 text-white text-[9px] font-black px-2 py-1 rounded shadow-sm z-10 uppercase tracking-widest">✓ FOTO VALIDASI</div>
               <img src={foto} alt="Bukti Operasional" className="w-full h-full object-cover" />
             </div>
           )}
@@ -1862,11 +3846,18 @@ const DetailLaporan = ({ report }) => {
   );
 
   const inspKeys = [
-    { id: 'rem', label: 'REM' }, { id: 'ac', label: 'AC' }, { id: 'lampu', label: 'LAMPU' },
-    { id: 'klakson', label: 'KLAKSON' }, { id: 'wiper', label: 'WIPER' }, { id: 'lampu_rem', label: 'LAMPU REM' },
-    { id: 'bell', label: 'BELL' }, { id: 'pintu', label: 'PINTU' }, { id: 'kebersihan', label: 'KEBERSIHAN' }
+    { id: "rem", label: "REM" },
+    { id: "ac", label: "AC" },
+    { id: "lampu", label: "LAMPU" },
+    { id: "klakson", label: "KLAKSON" },
+    { id: "wiper", label: "WIPER" },
+    { id: "lampu_rem", label: "LAMPU REM" },
+    { id: "bell", label: "BELL" },
+    { id: "pintu", label: "PINTU" },
+    { id: "kebersihan", label: "KEBERSIHAN" },
   ];
 
+  // warna box kodisi kendaraan
   const RenderInspeksiBox = ({ dataInspeksi, title }) => (
     <div className="mb-8 last:mb-0">
       <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">{title}</h4>
@@ -1875,28 +3866,27 @@ const DetailLaporan = ({ report }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {inspKeys.map((item, idx) => {
               const statusValue = dataInspeksi[item.id];
-              const isOk = statusValue === 'OK';
+              const isOk = statusValue === "OK";
               return (
-                <div key={idx} className={`flex items-center justify-between px-5 py-4 rounded-2xl ${isOk ? 'bg-slate-50' : 'bg-[#C5221F]'}`}>
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${isOk ? 'text-slate-600' : 'text-white'}`}>{item.label}</span>
-                  <span className={`text-[9px] font-black px-2 py-1 rounded-md uppercase ${isOk ? 'bg-white text-[#00206B] shadow-sm' : 'bg-white text-[#C5221F]'}`}>
-                    {statusValue || '-'}
+                <div key={idx} className={`flex items-center justify-between px-5 py-4 rounded-2xl ${isOk ? "bg-slate-50" : "bg-amber-500"}`}>
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${isOk ? "text-slate-600" : "text-white"}`}>{item.label}</span>
+
+                  <span className={`text-[9px] font-black px-2 py-1 rounded-md uppercase ${isOk ? "bg-emerald-500 text-white shadow-sm" : "bg-white text-amber-600 shadow-sm"}`}>
+                    {statusValue || "-"}
                   </span>
                 </div>
               );
             })}
           </div>
           {dataInspeksi.catatan && (
-            <div className="mt-5 bg-slate-50 p-5 rounded-2xl border-l-4 border-[#C5221F]">
-              <span className="text-[10px] font-black text-[#C5221F] uppercase tracking-widest block mb-2">CATATAN KERUSAKAN</span>
-              <p className="text-sm font-bold text-slate-700 leading-relaxed">{dataInspeksi.catatan}</p>
+            <div className="mt-5 bg-amber-50 p-5 rounded-2xl border-l-4 border-amber-400">
+              <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest block mb-2">CATATAN KERUSAKAN</span>
+              <p className="text-sm font-bold text-amber-900 leading-relaxed">{dataInspeksi.catatan}</p>
             </div>
           )}
         </>
       ) : (
-        <div className="text-center py-8 text-slate-400 font-black text-[10px] uppercase tracking-widest bg-slate-50 rounded-2xl">
-          DATA INSPEKSI {title} BELUM TERSEDIA
-        </div>
+        <div className="text-center py-8 text-slate-400 font-black text-[10px] uppercase tracking-widest bg-slate-50 rounded-2xl">DATA INSPEKSI {title} BELUM TERSEDIA</div>
       )}
     </div>
   );
@@ -1908,29 +3898,39 @@ const DetailLaporan = ({ report }) => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div>
             <span className="inline-block px-4 py-1.5 bg-[#00206B] text-white text-[10px] font-black rounded-lg uppercase tracking-widest mb-4">LAPORAN OPERASIONAL</span>
-            <h2 className="text-3xl font-black text-[#00206B] uppercase tracking-tighter">{report.tanggal || report.date || 'TANGGAL KOSONG'}</h2>
+            <h2 className="text-3xl font-black text-[#00206B] uppercase tracking-tighter">{report.tanggal || report.date || "TANGGAL KOSONG"}</h2>
             <div className="flex items-center gap-4 mt-3">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-[#00206B] flex items-center justify-center text-white font-black text-xs">A</div>
-                <span className="text-sm font-black text-slate-700 uppercase">{report.driverName || 'ANDA'}</span>
+                <div className="w-7 h-7 rounded-full bg-[#00206B] flex items-center justify-center text-white font-black text-xs">
+                  {(report.driverName || "D").charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm font-black text-slate-700 uppercase">{report.driverName || "DRIVER"}</span>
               </div>
               <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
-              <span className="text-sm font-black text-slate-500 uppercase">{report.trayek || '-'} ({report.bus || '-'})</span>
+              <span className="text-sm font-black text-slate-500 uppercase">
+                {report.trayek || "-"} ({report.bus || "-"})
+              </span>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-5 bg-slate-50 p-5 rounded-2xl">
             <div className="relative w-16 h-16 flex items-center justify-center">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                 <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#E2E8F0" strokeWidth="4" />
-                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke={completeness >= 80 ? '#00206B' : completeness >= 50 ? '#F59E0B' : '#EF4444'} strokeWidth="4" strokeDasharray={`${completeness}, 100`} />
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke={completeness >= 80 ? "#00206B" : completeness >= 50 ? "#F59E0B" : "#EF4444"}
+                  strokeWidth="4"
+                  strokeDasharray={`${completeness}, 100`}
+                />
               </svg>
               <span className="absolute text-sm font-black text-[#00206B]">{completeness}%</span>
             </div>
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">KELENGKAPAN</p>
-              <p className={`text-sm font-black mt-1 uppercase ${completeness >= 80 ? 'text-[#00206B]' : completeness >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>
-                {completeness >= 80 ? 'DATA AMAN' : completeness >= 50 ? 'BELUM LENGKAP' : 'DATA KURANG'}
+              <p className={`text-sm font-black mt-1 uppercase ${completeness >= 80 ? "text-[#00206B]" : completeness >= 50 ? "text-amber-500" : "text-rose-500"}`}>
+                {completeness >= 80 ? "DATA AMAN" : completeness >= 50 ? "BELUM LENGKAP" : "DATA KURANG"}
               </p>
             </div>
           </div>
@@ -1939,7 +3939,19 @@ const DetailLaporan = ({ report }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-3xl p-6 shadow-sm">
-          <h3 className="text-sm font-black text-[#00206B] uppercase tracking-widest mb-6">SESI BERANGKAT (PAGI)</h3>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-sm font-black text-[#00206B] uppercase tracking-widest">SESI BERANGKAT (PAGI)</h3>
+            {/* RENDER BADGE STATUS KEDISIPLINAN DI SINI */}
+            {String(sesiPagi?.status_waktu || "").toUpperCase() === "TERLAMBAT" ? (
+              <span className="bg-rose-100 text-rose-600 border border-rose-200 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                ⚠️ Terlambat
+              </span>
+            ) : String(sesiPagi?.status_waktu || "").toUpperCase() === "TEPAT WAKTU" ? (
+              <span className="bg-emerald-100 text-emerald-600 border border-emerald-200 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                ✅ Tepat Waktu
+              </span>
+            ) : null}
+          </div>
           {sesiPagi ? (
             <div>
               {/* CP1: Inject nopol_kendaraan dan foto_awal */}
@@ -1950,12 +3962,24 @@ const DetailLaporan = ({ report }) => {
               <TimelineItem title="KEMBALI KE DISHUB" time={sesiPagi.jam_tiba_kantor} odometer={sesiPagi.km_tiba_kantor} foto={sesiPagi.foto_akhir} isLast={true} />
             </div>
           ) : (
-             <div className="text-center py-12 text-slate-400 font-black text-xs uppercase tracking-widest bg-slate-50 rounded-2xl">DATA SESI PAGI KOSONG</div>
+            <div className="text-center py-12 text-slate-400 font-black text-xs uppercase tracking-widest bg-slate-50 rounded-2xl">DATA SESI PAGI KOSONG</div>
           )}
         </div>
 
         <div className="bg-white rounded-3xl p-6 shadow-sm">
-          <h3 className="text-sm font-black text-[#00206B] uppercase tracking-widest mb-6">SESI PULANG (SIANG)</h3>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-sm font-black text-[#00206B] uppercase tracking-widest">SESI PULANG (SIANG)</h3>
+            {/* RENDER BADGE STATUS KEDISIPLINAN DI SINI */}
+            {String(sesiSiang?.status_waktu || "").toUpperCase() === "TERLAMBAT" ? (
+              <span className="bg-rose-100 text-rose-600 border border-rose-200 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                ⚠️ Terlambat
+              </span>
+            ) : String(sesiSiang?.status_waktu || "").toUpperCase() === "TEPAT WAKTU" ? (
+              <span className="bg-emerald-100 text-emerald-600 border border-emerald-200 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                ✅ Tepat Waktu
+              </span>
+            ) : null}
+          </div>
           {sesiSiang ? (
             <div>
               {/* CP1: Inject nopol_kendaraan dan foto_awal */}
@@ -1966,7 +3990,7 @@ const DetailLaporan = ({ report }) => {
               <TimelineItem title="KEMBALI KE DISHUB" time={sesiSiang.jam_tiba_kantor} odometer={sesiSiang.km_tiba_kantor} foto={sesiSiang.foto_akhir} isLast={true} />
             </div>
           ) : (
-             <div className="text-center py-12 text-slate-400 font-black text-xs uppercase tracking-widest bg-slate-50 rounded-2xl">DATA SESI SIANG KOSONG</div>
+            <div className="text-center py-12 text-slate-400 font-black text-xs uppercase tracking-widest bg-slate-50 rounded-2xl">DATA SESI SIANG KOSONG</div>
           )}
         </div>
       </div>
@@ -1981,13 +4005,13 @@ const DetailLaporan = ({ report }) => {
 };
 
 export default DetailLaporan;
-`
+
 
 ---
 
 ### src/pages/driver/LaporanDriver.jsx
 
-`jsx
+jsx
 import React, { useState, useRef, useEffect } from "react";
 import { apiService } from "../../services/api";
 import imageCompression from "browser-image-compression";
@@ -2066,27 +4090,65 @@ const LiveCamera = ({ onCapture, onCancel }) => {
 };
 
 const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
-  const [activeCP, setActiveCP] = useState(1);
+  // --- PERSISTENT DRAFT INITIALIZATION ---
+  const getDraft = () => {
+    const saved = localStorage.getItem("siclus_draft_form");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const localNow = new Date();
+        const today = `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, "0")}-${String(localNow.getDate()).padStart(2, "0")}`;
+        // Jika draft berasal dari tanggal yang berbeda, bersihkan agar tidak memakai draft kemarin
+        if (parsed.draftDate && parsed.draftDate !== today) {
+          localStorage.removeItem("siclus_draft_step");
+          localStorage.removeItem("siclus_draft_form");
+          localStorage.removeItem("siclus_active_laporan_id");
+          return null;
+        }
+        return parsed;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  };
+  const initialDraft = getDraft();
+
+  // 1. STATE UNTUK STEP AKTIF (CP1, CP2, dll)
+  const [activeCP, setActiveCP] = useState(() => {
+    const savedStep = localStorage.getItem("siclus_draft_step");
+    return savedStep ? parseInt(savedStep, 10) : 1;
+  });
   const [isProcessing, setIsProcessing] = useState(false);
   const [cpToConfirm, setCpToConfirm] = useState(null); // Fitur Safety Lock
 
-  const [laporanId, setLaporanId] = useState(null);
-  const [sesiId, setSesiId] = useState(null);
+  // 2. STATE UNTUK DATA FORM / SESI / INSPEKSI
+  const [laporanId, setLaporanId] = useState(() => {
+    return localStorage.getItem("siclus_active_laporan_id") || initialDraft?.laporanId || null;
+  });
+  const [sesiId, setSesiId] = useState(() => initialDraft?.sesiId || null);
 
-  const [merkKendaraan, setMerkKendaraan] = useState("");
-  const [nopol, setNopol] = useState("");
-  const [odoAwal, setOdoAwal] = useState("");
-  const [odo2, setOdo2] = useState("");
-  const [odo3, setOdo3] = useState("");
-  const [odo4, setOdo4] = useState("");
-  const [penumpang, setPenumpang] = useState("");
-  const [catatan, setCatatan] = useState("");
+  // SINKRONISASI: Simpan laporanId ke localStorage
+  useEffect(() => {
+    if (laporanId) {
+      localStorage.setItem("siclus_active_laporan_id", String(laporanId));
+    }
+  }, [laporanId]);
 
-  const [isPhotoSaved, setIsPhotoSaved] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState(null);
+  const [merkKendaraan, setMerkKendaraan] = useState(() => initialDraft?.merkKendaraan || "");
+  const [nopol, setNopol] = useState(() => initialDraft?.nopol || "");
+  const [odoAwal, setOdoAwal] = useState(() => initialDraft?.odoAwal || initialDraft?.odometer_awal || "");
+  const [odo2, setOdo2] = useState(() => initialDraft?.odo2 || "");
+  const [odo3, setOdo3] = useState(() => initialDraft?.odo3 || "");
+  const [odo4, setOdo4] = useState(() => initialDraft?.odo4 || "");
+  const [penumpang, setPenumpang] = useState(() => initialDraft?.penumpang || "");
+  const [catatan, setCatatan] = useState(() => initialDraft?.catatan || "");
+
+  const [isPhotoSaved, setIsPhotoSaved] = useState(() => initialDraft?.isPhotoSaved || false);
+  const [photoPreview, setPhotoPreview] = useState(() => initialDraft?.photoPreview || null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
 
-  const [inspeksi, setInspeksi] = useState({
+  const [inspeksi, setInspeksi] = useState(() => initialDraft?.inspeksi || {
     rem: null,
     ac: null,
     lampu: null,
@@ -2098,22 +4160,93 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
     kebersihan: null,
   });
 
+  // AUTO-SAVE: Sinkronisasi step ke localStorage
+  useEffect(() => {
+    localStorage.setItem("siclus_draft_step", activeCP.toString());
+  }, [activeCP]);
+
+  // AUTO-SAVE: Sinkronisasi seluruh field form ke localStorage
+  useEffect(() => {
+    const localNow = new Date();
+    const today = `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, "0")}-${String(localNow.getDate()).padStart(2, "0")}`;
+    const draftPayload = {
+      draftDate: today,
+      laporanId,
+      sesiId,
+      merkKendaraan,
+      nopol,
+      odoAwal,
+      odometer_awal: odoAwal,
+      odo2,
+      odo3,
+      odo4,
+      penumpang,
+      catatan,
+      inspeksi,
+      isPhotoSaved,
+      photoPreview,
+    };
+    try {
+      localStorage.setItem("siclus_draft_form", JSON.stringify(draftPayload));
+    } catch (e) {
+      console.warn("Gagal menyimpan snapshot foto ke localStorage, menyimpan draft teks saja:", e);
+      try {
+        localStorage.setItem("siclus_draft_form", JSON.stringify({ ...draftPayload, photoPreview: null }));
+      } catch (err) {
+        console.error("Gagal auto-save form:", err);
+      }
+    }
+  }, [
+    laporanId,
+    sesiId,
+    merkKendaraan,
+    nopol,
+    odoAwal,
+    odo2,
+    odo3,
+    odo4,
+    penumpang,
+    catatan,
+    inspeksi,
+    isPhotoSaved,
+    photoPreview,
+  ]);
+
   useEffect(() => {
     const initLaporan = async () => {
+      // 1. Cek dari localStorage dulu
+      const savedLaporanId = localStorage.getItem("siclus_active_laporan_id");
+      if (savedLaporanId) {
+        if (!laporanId) setLaporanId(savedLaporanId);
+        return;
+      }
+      if (laporanId) {
+        localStorage.setItem("siclus_active_laporan_id", String(laporanId));
+        return;
+      }
+
       try {
-        const today = new Date().toISOString().split("T")[0];
-        const res = await apiService.mulaiLaporan({
+        const localNow = new Date();
+        const year = localNow.getFullYear();
+        const month = String(localNow.getMonth() + 1).padStart(2, "0");
+        const day = String(localNow.getDate()).padStart(2, "0");
+        const today = `${year}-${month}-${day}`;
+
+        const res = await (apiService.mulaiLaporanHarian || apiService.mulaiLaporan)({
           tanggal: today,
-          trayek: user?.trayek || "T06",
-          bus: user?.bus || "ARMADA",
+          trayek: user?.trayek || "-",
+          bus: user?.bus || "-",
         });
-        setLaporanId(res.id);
+        if (res && res.id) {
+          localStorage.setItem("siclus_active_laporan_id", String(res.id));
+          setLaporanId(res.id);
+        }
       } catch (err) {
         console.error("Gagal init laporan:", err);
       }
     };
     initLaporan();
-  }, [user]);
+  }, [user, laporanId]);
 
   const handleCeklis = (item, status) => setInspeksi((prev) => ({ ...prev, [item]: status }));
   const totalCeklis = Object.values(inspeksi).filter((val) => val !== null).length;
@@ -2129,7 +4262,8 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
   };
 
   const submitCP1 = async () => {
-    if (!laporanId) return alert("Sistem memuat ID Laporan. Tunggu sebentar.");
+    const activeLaporanId = laporanId || localStorage.getItem("siclus_active_laporan_id");
+    if (!activeLaporanId) return alert("Sistem memuat ID Laporan. Tunggu sebentar.");
     setIsProcessing(true);
     try {
       const fileFoto = dataURLtoFile(photoPreview, `selfie_awal.jpg`);
@@ -2141,21 +4275,22 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
       // Kirim file yang sudah dikompres
       const uploadRes = await apiService.uploadSelfie(compressedFile);
 
-      await apiService.submitInspeksi(laporanId, { 
+      await apiService.submitInspeksi(activeLaporanId, { 
         ...inspeksi, 
         tipe_sesi: currentShift.toUpperCase(), // <-- WAJIB KIRIM INI
         catatan: adaKurang ? catatan : "" 
       });
 
       const platNomorFinal = `${merkKendaraan.trim()} - ${nopol.trim()}`;
-      const cp1Res = await apiService.submitCP1(laporanId, {
+      const cp1Res = await apiService.submitCP1(activeLaporanId, {
         tipe_sesi: currentShift,
         nopol_kendaraan: platNomorFinal,
         km_berangkat_kantor: parseInt(odoAwal),
         foto_awal: uploadRes.url_foto,
       });
 
-      setSesiId(cp1Res.data.id);
+      const newSesiId = cp1Res?.data?.id || cp1Res?.id;
+      if (newSesiId) setSesiId(newSesiId);
       setCpToConfirm(null);
       setActiveCP(2);
     } catch (err) {
@@ -2216,6 +4351,11 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
         foto_akhir: uploadRes.url_foto,
       });
 
+      // BERSIHKAN DRAFT LOKAL SETELAH TUGAS SELESAI
+      localStorage.removeItem("siclus_draft_step");
+      localStorage.removeItem("siclus_draft_form");
+      localStorage.removeItem("siclus_active_laporan_id");
+
       alert("Shift Berhasil Ditutup!");
       if (onFinishShift) onFinishShift();
     } catch (err) {
@@ -2263,7 +4403,7 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
               <div className="space-y-4">
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">TRAYEK PENUGASAN</p>
-                  <h4 className="text-xl font-black text-[#00206B]">{user?.trayek || "T06"}</h4>
+                  <h4 className="text-xl font-black text-[#00206B]">{user?.trayek || "-"}</h4>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -2569,14 +4709,13 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
 
 export default LaporanDriver;
 
-`
 
 ---
 
 ### src/pages/driver/ProfilDriver.jsx
 
-`jsx
-import React, { useState, useRef } from "react";
+jsx
+import React, { useState, useRef, useEffect } from "react";
 import { apiService } from "../../services/api";
 import imageCompression from "browser-image-compression";
 
@@ -2584,6 +4723,12 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [fotoPreview, setFotoPreview] = useState(user?.foto_profil || null);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (user) {
+      setFotoPreview(user.foto_profil || null);
+    }
+  }, [user]);
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
@@ -2593,7 +4738,7 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
     try {
       // Kompresi Gambar agar sangat ringan (Max 200KB)
       const options = {
-        maxSizeMB: 0.2, 
+        maxSizeMB: 0.2,
         maxWidthOrHeight: 800,
         useWebWorker: true,
       };
@@ -2601,11 +4746,11 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
 
       // Kirim ke Backend
       const res = await apiService.updateFotoProfil(compressedFile);
-      
+
       // Update UI dengan URL baru dari server
       if (res && res.foto_profil) {
         setFotoPreview(res.foto_profil);
-        
+
         // Opsional: Update data user di localStorage agar menetap
         const savedUser = JSON.parse(localStorage.getItem("siclus_user"));
         if (savedUser) {
@@ -2625,24 +4770,17 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
   return (
     <div className="space-y-6 text-left max-w-3xl mx-auto pb-6 relative">
       <div className="space-y-1">
-        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">Profil Pengemudi</h2>
+        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">Profil Driver</h2>
         <p className="text-sm text-slate-400 font-semibold mt-0.5">Kelola informasi data diri operasional Anda</p>
       </div>
       <div className="bg-white border border-slate-100 rounded-3xl shadow-sm relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-r from-[#00206B] to-blue-500"></div>
         <div className="relative z-10 flex flex-col items-center mt-12 px-6 pb-8">
-          
           {/* INPUT FILE HIDDEN */}
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileChange} 
-            accept="image/*" 
-            className="hidden" 
-          />
+          <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
 
           {/* WADAH AVATAR BISA DIKLIK */}
-          <div 
+          <div
             onClick={() => !isUploading && fileInputRef.current.click()}
             className="w-28 h-28 rounded-full bg-white p-1.5 shadow-lg cursor-pointer group relative"
             title="Klik untuk ubah foto profil"
@@ -2655,28 +4793,40 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               )}
-              
+
               {/* OVERLAY LOADING ATAU HOVER */}
-              <div className={`absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white transition-opacity duration-200 ${isUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+              <div
+                className={`absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white transition-opacity duration-200 ${isUploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+              >
                 {isUploading ? (
-                   <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Uploading...</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Uploading...</span>
                 ) : (
-                   <>
-                     <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                     <span className="text-[8px] font-black uppercase tracking-widest">Ubah Foto</span>
-                   </>
+                  <>
+                    <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="text-[8px] font-black uppercase tracking-widest">Ubah Foto</span>
+                  </>
                 )}
               </div>
             </div>
           </div>
-          
-          <h3 className="mt-4 text-2xl font-black text-[#00206B]">{user?.name || "Nama Pengemudi"}</h3>
-          <span className="bg-blue-50 text-blue-600 font-bold px-4 py-1.5 rounded-full text-xs mt-2 uppercase tracking-wide border border-blue-100">{user?.role || "Pengemudi"}</span>
-          
-          {/* GRID INFO PENGEMUDI (Tanpa Armada Default) */}
+
+          <h3 className="mt-4 text-2xl font-black text-[#00206B]">
+            {user?.nama_lengkap || user?.nama || user?.name || "Nama Driver"}
+          </h3>
+          <span className="bg-blue-50 text-blue-600 font-bold px-4 py-1.5 rounded-full text-xs mt-2 uppercase tracking-wide border border-blue-100">{user?.role || "Driver"}</span>
+
+          {/* GRID INFO DRIVER (Tanpa Armada Default) */}
           <div className="mt-8 grid grid-cols-2 gap-3 w-full">
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">ID Pengemudi</span>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">ID Driver</span>
               <span className="font-extrabold text-[#00206B] text-sm truncate block">{user?.id || "-"}</span>
             </div>
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left">
@@ -2684,7 +4834,7 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
               <span className="font-extrabold text-[#00206B] text-sm truncate block">{user?.trayek || "-"}</span>
             </div>
           </div>
-          
+
           <div className="w-full mt-8 pt-6 border-t border-slate-100">
             <button onClick={onLogout} className="w-full bg-[#FCE8E6] hover:bg-[#FAD2CF] transition-colors text-[#C5221F] font-extrabold py-4 px-4 rounded-2xl cursor-pointer">
               🚪 KELUAR APLIKASI (LOGOUT)
@@ -2698,13 +4848,12 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
 
 export default ProfilDriver;
 
-`
 
 ---
 
 ### src/pages/driver/RiwayatDriver.jsx
 
-`jsx
+jsx
 import React, { useState, useEffect } from "react";
 import { apiService } from "../../services/api";
 
@@ -2718,31 +4867,30 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
     apiService
       .getRiwayatDriver()
       .then((res) => {
-        if (res.data) {
-          const formattedData = res.data.map((item) => {
-            const isShiftClosed = item.trip_sessions?.some(sesi => sesi.jam_tiba_kantor !== null);
-            return {
-              ...item,
-              driverName: "ANDA",
-              date: item.tanggal,
-              trayek: item.trayek,
-              bus: item.bus,
-              submittedAt: isShiftClosed ? "SELESAI DIREKAM" : (item.trip_sessions?.length > 0 ? "SEDANG BERJALAN" : "BELUM DIMULAI"),
-            };
-          });
+        const rawList = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+        const formattedData = rawList.map((item) => {
+          const isShiftClosed = item.trip_sessions?.some(sesi => sesi.jam_tiba_kantor !== null);
+          return {
+            ...item,
+            driverName: user?.nama_lengkap || user?.nama || user?.name || "Driver",
+            date: item.tanggal,
+            trayek: item.trayek,
+            bus: item.bus,
+            submittedAt: isShiftClosed ? "SELESAI DIREKAM" : (item.trip_sessions?.length > 0 ? "SEDANG BERJALAN" : "BELUM DIMULAI"),
+          };
+        });
 
-          // --- KODE FILTER BARU ---
-          // Hanya simpan laporan yang statusnya sudah Selesai Direkam
-          const filteredData = formattedData.filter(report => report.submittedAt === "SELESAI DIREKAM");
+        // --- KODE FILTER BARU ---
+        // Hanya simpan laporan yang statusnya sudah Selesai Direkam
+        const filteredData = formattedData.filter(report => report.submittedAt === "SELESAI DIREKAM");
 
-          // Urutkan dan set ke state
-          filteredData.sort((a, b) => new Date(b.created_at || b.tanggal) - new Date(a.created_at || a.tanggal));
-          setReports(filteredData);
-        }
+        // Urutkan dan set ke state
+        filteredData.sort((a, b) => new Date(b.created_at || b.tanggal) - new Date(a.created_at || a.tanggal));
+        setReports(filteredData);
         setIsLoading(false);
       })
       .catch((err) => {
-        console.error("Gagal menarik data riwayat pengemudi:", err);
+        console.error("Gagal menarik data riwayat driver:", err);
         setIsLoading(false);
       });
   }, [user]);
@@ -2754,6 +4902,8 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
       </div>
     );
   }
+
+  const driverInitial = (user?.nama_lengkap || user?.nama || user?.name || "P").charAt(0).toUpperCase();
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto mt-2">
@@ -2773,7 +4923,7 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
                 className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer border border-white flex items-center justify-between"
               >
                 <div className="flex items-center gap-5">
-                  <div className="w-12 h-12 rounded-full bg-[#00206B] flex items-center justify-center text-white font-black text-lg flex-shrink-0 shadow-sm">A</div>
+                  <div className="w-12 h-12 rounded-full bg-[#00206B] flex items-center justify-center text-white font-black text-lg flex-shrink-0 shadow-sm">{driverInitial}</div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-black text-[#00206B] uppercase tracking-wide truncate">LAPORAN OPERASIONAL</h3>
                     <div className="flex items-center gap-2 mt-1">
@@ -2812,13 +4962,12 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
 
 export default RiwayatDriver;
 
-`
 
 ---
 
 ### src/services/api.js
 
-`jsx
+jsx
 import axios from "axios";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
@@ -2846,7 +4995,8 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    // Jangan redirect jika request gagal berasal dari proses login itu sendiri
+    if (error.response && error.response.status === 401 && !error.config?.url?.includes("/auth/login")) {
       localStorage.removeItem("siclus_token");
       localStorage.removeItem("siclus_user");
       window.location.href = "/login";
@@ -2865,6 +5015,10 @@ export const apiService = {
   // ==========================================
   // ZONA DRIVER
   // ==========================================
+  getProfilDriver: async () => {
+    const response = await apiClient.get("/driver/profil");
+    return response.data;
+  },
   getJadwalDriver: async () => {
     const response = await apiClient.get("/driver/jadwal");
     return response.data;
@@ -2885,13 +5039,17 @@ export const apiService = {
     const response = await apiClient.post("/laporan/mulai", data);
     return response.data;
   },
+  mulaiLaporanHarian: async (data) => {
+    const response = await apiClient.post("/laporan/mulai", data);
+    return response.data;
+  },
   submitInspeksi: async (laporanId, data) => {
     const response = await apiClient.post(`/laporan/inspeksi?laporan_id=${laporanId}`, data);
     return response.data;
   },
   uploadSelfie: async (fileBlob) => {
     const formData = new FormData();
-    formData.append("foto", fileBlob);
+    formData.append("foto", fileBlob, "selfie.jpg");
     const response = await apiClient.post("/laporan/upload-selfie", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
@@ -2917,27 +5075,39 @@ export const apiService = {
   // ==========================================
   // ZONA ADMIN
   // ==========================================
-  getDashboardAdmin: async () => {
-    const response = await apiClient.get("/admin/dashboard");
-    return response.data;
+  getDashboardAdmin: async () => (await apiClient.get("/admin/dashboard")).data,
+  getRekapAdmin: async () => (await apiClient.get("/admin/rekap")).data,
+  getRiwayatHarianAdmin: async () => (await apiClient.get("/admin/riwayat-harian")).data,
+  getPantauanHarian: async () => (await apiClient.get("/admin/riwayat-harian")).data,
+  exportExcelAdmin: async () => {
+    const res = await apiClient.get("/admin/export-excel", { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Rekap_Operasional_${new Date().toISOString().split('T')[0]}.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   },
-  getRekapAdmin: async () => {
-    const response = await apiClient.get("/admin/rekap");
-    return response.data;
-  },
-  getRiwayatHarianAdmin: async () => {
-    const response = await apiClient.get("/admin/riwayat-harian");
-    return response.data;
-  },
-  getUsersAdmin: async () => {
-    const response = await apiClient.get("/admin/users");
+  getUsersAdmin: async () => (await apiClient.get("/admin/users")).data,
+  createUserAdmin: async (data) => (await apiClient.post("/admin/users", data)).data,
+  updateUserAdmin: async (id, data) => (await apiClient.put(`/admin/users/${id}`, data)).data,
+  deleteUserAdmin: async (id) => (await apiClient.delete(`/admin/users/${id}`)).data,
+  getJadwalAdmin: async () => (await apiClient.get("/admin/jadwal")).data,
+  createJadwalAdmin: async (data) => (await apiClient.post("/admin/jadwal", data)).data,
+  updateJadwalAdmin: async (id, data) => (await apiClient.put(`/admin/jadwal/${id}`, data)).data,
+  updateFotoProfilAdmin: async (fileBlob) => {
+    const formData = new FormData();
+    formData.append("foto", fileBlob, "profile_admin.jpg"); // Diberi nama default agar lolos validasi ekstensi backend
+    const response = await apiClient.put("/admin/profil/foto", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
     return response.data;
   },
 };
 
 export default apiClient;
 
-`
 
 ---
 
