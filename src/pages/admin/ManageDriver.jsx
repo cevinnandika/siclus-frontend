@@ -34,16 +34,33 @@ const ManageDriver = ({ onBack }) => {
   const [userToDelete, setUserToDelete] = useState(null);
 
   const initialUserForm = {
-    id: "",
-    nama: "",
-    name: "",
+    id_driver: "",
+    nama_lengkap: "",
     email: "",
     password: "",
-    role: "driver",
     trayek: "",
-    bus: "",
+    nomer_kendaraan: "",
+    jenis_kendaraan: "",
+    kapasitas: "",
   };
-  const [userForm, setUserForm] = useState(initialUserForm);
+  const [formData, setFormData] = useState({
+    id_driver: "",
+    nama_lengkap: "",
+    email: "",
+    password: "",
+    trayek: "",
+    nomer_kendaraan: "",
+    jenis_kendaraan: "",
+    kapasitas: "",
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
   // --- FORM STATE: JADWAL ---
   const initialJadwalForm = {
@@ -127,9 +144,9 @@ const ManageDriver = ({ onBack }) => {
   // --- HANDLER USER (TAB 1) ---
   const handleOpenAddUser = () => {
     const randomId = `DRV-${Math.floor(1000 + Math.random() * 9000)}`;
-    setUserForm({
+    setFormData({
       ...initialUserForm,
-      id: randomId,
+      id_driver: randomId,
     });
     setShowAddUserModal(true);
   };
@@ -137,35 +154,39 @@ const ManageDriver = ({ onBack }) => {
   const handleOpenEditUser = (u) => {
     setSelectedUser(u);
     const namaSupir = u.nama_lengkap || u.nama || u.name || "";
-    setUserForm({
-      id: u.id || u.id_supir || "",
-      nama: namaSupir,
-      name: namaSupir,
+    setFormData({
+      id_driver: u.id_driver || u.id || u.id_supir || "",
+      nama_lengkap: namaSupir,
       email: u.email || "",
       password: "", // kosongkan jika tidak ingin ganti password
-      role: "driver",
       trayek: u.trayek || "",
-      bus: u.bus || u.armada || "",
+      nomer_kendaraan: u.nomer_kendaraan || u.bus || u.armada || "",
+      jenis_kendaraan: u.jenis_kendaraan || u.tipe_kendaraan || "",
+      kapasitas: u.kapasitas ?? u.kapasitas_bus ?? u.kapasitas_penumpang ?? "",
     });
     setShowEditUserModal(true);
   };
 
   const handleCreateUser = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setIsSubmitting(true);
     try {
-      const generatedId = userForm.id?.trim() || `DRV-${Math.floor(1000 + Math.random() * 9000)}`;
-      const namaDriver = userForm.nama || userForm.name || userForm.nama_lengkap || "";
+      const generatedId = formData.id_driver?.trim() || `DRV-${Math.floor(1000 + Math.random() * 9000)}`;
+      const namaDriver = formData.nama_lengkap?.trim() || "";
 
       // Payload MATCH 100% dengan skema Pydantic backend
       const payload = {
         id: generatedId, // WAJIB ADA
-        nama_lengkap: namaDriver, // PERHATIKAN: Backend meminta 'nama_lengkap', bukan 'nama'
-        email: userForm.email, // WAJIB format email
-        password: userForm.password, // WAJIB ADA
+        id_driver: generatedId,
+        nama_lengkap: namaDriver, // PERHATIKAN: Backend meminta 'nama_lengkap'
+        email: formData.email, // WAJIB format email
+        password: formData.password, // WAJIB ADA
         role: "driver",
-        trayek: userForm.trayek || null,
-        bus: null,
+        trayek: formData.trayek || null,
+        bus: formData.nomer_kendaraan || null,
+        nomer_kendaraan: formData.nomer_kendaraan || null,
+        jenis_kendaraan: formData.jenis_kendaraan || null,
+        kapasitas: formData.kapasitas ? Number(formData.kapasitas) : null,
       };
 
       await apiService.createUserAdmin(payload);
@@ -188,25 +209,31 @@ const ManageDriver = ({ onBack }) => {
     }
   };
 
+  const handleSubmit = handleCreateUser;
+
   const handleUpdateUser = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!selectedUser) return;
     setIsSubmitting(true);
     try {
-      const namaDriver = userForm.nama || userForm.name || userForm.nama_lengkap || "";
+      const namaDriver = formData.nama_lengkap?.trim() || "";
+      const targetId = selectedUser.id || selectedUser._id || selectedUser.id_supir || formData.id_driver;
       const payload = {
-        id: userForm.id || selectedUser.id || selectedUser.id_supir,
+        id: formData.id_driver || targetId,
+        id_driver: formData.id_driver || targetId,
         nama_lengkap: namaDriver,
-        email: userForm.email,
+        email: formData.email,
         role: "driver",
-        trayek: userForm.trayek || null,
-        bus: null,
+        trayek: formData.trayek || null,
+        bus: formData.nomer_kendaraan || null,
+        nomer_kendaraan: formData.nomer_kendaraan || null,
+        jenis_kendaraan: formData.jenis_kendaraan || null,
+        kapasitas: formData.kapasitas ? Number(formData.kapasitas) : null,
       };
-      if (userForm.password && userForm.password.trim() !== "") {
-        payload.password = userForm.password;
+      if (formData.password && formData.password.trim() !== "") {
+        payload.password = formData.password;
       }
 
-      const targetId = selectedUser.id || selectedUser._id || selectedUser.id_supir;
       await apiService.updateUserAdmin(targetId, payload);
       showToast(`Data driver ${payload.nama_lengkap} berhasil diperbarui!`);
       setShowEditUserModal(false);
@@ -406,6 +433,7 @@ const ManageDriver = ({ onBack }) => {
                       <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase">Email Terdaftar</th>
                       <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase text-center">Trayek</th>
                       <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase text-center">Armada</th>
+                      <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase text-center">Kapasitas</th>
                       <th className="py-4 px-5 text-xs font-extrabold text-slate-500 uppercase text-center rounded-tr-xl">Aksi</th>
                     </tr>
                   </thead>
@@ -415,7 +443,8 @@ const ManageDriver = ({ onBack }) => {
                         <td className="py-4 px-5 font-black text-[#00206B] uppercase">{driver?.nama_lengkap || driver?.nama || driver?.name || "-"}</td>
                         <td className="py-4 px-5 text-sm font-bold text-slate-500">{driver?.email || "-"}</td>
                         <td className="py-4 px-5 text-center text-sm font-black text-[#00206B] uppercase">{driver?.trayek || "-"}</td>
-                        <td className="py-4 px-5 text-center text-sm font-bold text-slate-600 uppercase">{driver?.bus || driver?.armada || "-"}</td>
+                        <td className="py-4 px-5 text-center text-sm font-bold text-slate-600 uppercase">{driver?.nomer_kendaraan || driver?.bus || driver?.armada || "-"}</td>
+                        <td className="py-4 px-5 text-center text-sm font-bold text-slate-600">{driver?.kapasitas ? `${driver.kapasitas} Kursi` : "-"}</td>
                         <td className="py-4 px-5 text-center space-x-2">
                           <button
                             onClick={() => handleOpenEditUser(driver)}
@@ -571,76 +600,64 @@ const ManageDriver = ({ onBack }) => {
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="space-y-3.5">
-              <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={handleSubmit} className="space-y-3.5">
+              {/* --- SEKSI 1: DATA AKUN --- */}
+              <div className="mb-2">
+                <span className="text-[10px] font-bold text-[#00206B] uppercase tracking-widest">Data Akun Login</span>
+                <div className="w-full h-[1px] bg-slate-200 mt-1 mb-3"></div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                    ID Driver
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={userForm.id}
-                    onChange={(e) => setUserForm({ ...userForm, id: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
-                    placeholder="SUP001"
-                  />
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ID Driver</label>
+                  <input type="text" name="id_driver" value={formData.id_driver} onChange={handleChange} className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                    Nama Lengkap
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={userForm.nama || userForm.name || ""}
-                    onChange={(e) => setUserForm({ ...userForm, nama: e.target.value, name: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
-                    placeholder="Budi Santoso"
-                  />
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nama Lengkap</label>
+                  <input type="text" name="nama_lengkap" value={formData.nama_lengkap} onChange={handleChange} className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Email Akun</label>
+                  <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Password Login</label>
+                  <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                  Email Akun
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={userForm.email}
-                  onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
-                  placeholder="budi@siclus.id"
-                />
+              {/* --- SEKSI 2: DATA KENDARAAN & OPERASIONAL --- */}
+              <div className="mb-2 mt-2">
+                <span className="text-[10px] font-bold text-[#00206B] uppercase tracking-widest">Data Kendaraan & Operasional</span>
+                <div className="w-full h-[1px] bg-slate-200 mt-1 mb-3"></div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                  Password Login
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={userForm.password}
-                  onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
-                  placeholder="Minimal 6 karakter"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                  Trayek Tugas
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={userForm.trayek}
-                  onChange={(e) => setUserForm({ ...userForm, trayek: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
-                  placeholder="Trayek A"
-                />
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nomer Kendaraan</label>
+                  <input type="text" name="nomer_kendaraan" value={formData.nomer_kendaraan} onChange={handleChange} placeholder="Contoh: W 1234 XY" className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Jenis Kendaraan</label>
+                  <input type="text" name="jenis_kendaraan" value={formData.jenis_kendaraan} onChange={handleChange} placeholder="Contoh: Minibus" className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                    Kapasitas Kendaraan
+                  </label>
+                  <input
+                    type="number"
+                    name="kapasitas"
+                    value={formData.kapasitas}
+                    onChange={handleChange}
+                    placeholder="Contoh: 16"
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Trayek</label>
+                  <input type="text" name="trayek" value={formData.trayek} onChange={handleChange} placeholder="Contoh: Trayek A" className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                </div>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
@@ -686,56 +703,63 @@ const ManageDriver = ({ onBack }) => {
             </div>
 
             <form onSubmit={handleUpdateUser} className="space-y-3.5">
-              <div>
-                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                  Nama Lengkap
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={userForm.nama || userForm.name || ""}
-                  onChange={(e) => setUserForm({ ...userForm, nama: e.target.value, name: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
-                />
+              {/* --- SEKSI 1: DATA AKUN --- */}
+              <div className="mb-2">
+                <span className="text-[10px] font-bold text-[#00206B] uppercase tracking-widest">Data Akun Login</span>
+                <div className="w-full h-[1px] bg-slate-200 mt-1 mb-3"></div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                  Email Akun
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={userForm.email}
-                  onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
-                />
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ID Driver</label>
+                  <input type="text" name="id_driver" disabled value={formData.id_driver} className="w-full bg-slate-100 border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none opacity-70 cursor-not-allowed" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nama Lengkap</label>
+                  <input type="text" name="nama_lengkap" value={formData.nama_lengkap} onChange={handleChange} className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Email Akun</label>
+                  <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Password Baru</label>
+                  <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Opsional - ganti password" className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                  Password Baru (Kosongkan jika tidak ingin mengubah)
-                </label>
-                <input
-                  type="password"
-                  value={userForm.password}
-                  onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
-                  placeholder="Opsional - ganti password"
-                />
+              {/* --- SEKSI 2: DATA KENDARAAN & OPERASIONAL --- */}
+              <div className="mb-2 mt-2">
+                <span className="text-[10px] font-bold text-[#00206B] uppercase tracking-widest">Data Kendaraan & Operasional</span>
+                <div className="w-full h-[1px] bg-slate-200 mt-1 mb-3"></div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                  Trayek
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={userForm.trayek}
-                  onChange={(e) => setUserForm({ ...userForm, trayek: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] focus:bg-white focus:outline-none focus:border-[#00206B]"
-                />
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nomer Kendaraan</label>
+                  <input type="text" name="nomer_kendaraan" value={formData.nomer_kendaraan} onChange={handleChange} placeholder="Contoh: W 1234 XY" className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Jenis Kendaraan</label>
+                  <input type="text" name="jenis_kendaraan" value={formData.jenis_kendaraan} onChange={handleChange} placeholder="Contoh: Minibus" className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                    Kapasitas Kendaraan
+                  </label>
+                  <input
+                    type="number"
+                    name="kapasitas"
+                    value={formData.kapasitas}
+                    onChange={handleChange}
+                    placeholder="Contoh: 16"
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Trayek</label>
+                  <input type="text" name="trayek" value={formData.trayek} onChange={handleChange} placeholder="Contoh: Trayek A" className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                </div>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">

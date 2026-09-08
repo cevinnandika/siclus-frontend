@@ -28,12 +28,17 @@ const Login = ({ onLoginSuccess }) => {
 
       // 3. Rapihin data dari Backend lu biar gampang dibaca FE Cevin
       const userData = {
+        ...response.user,
         id: response.user.id,
         name: response.user.nama_lengkap,
+        nama_lengkap: response.user.nama_lengkap,
         email: response.user.email,
         role: response.user.role,
         trayek: response.user.trayek,
-        bus: response.user.bus,
+        bus: response.user.nomer_kendaraan || response.user.bus,
+        nomer_kendaraan: response.user.nomer_kendaraan || response.user.bus,
+        jenis_kendaraan: response.user.jenis_kendaraan || response.user.tipe_kendaraan,
+        kapasitas: response.user.kapasitas,
         foto_profil: response.user.foto_profil,
       };
 

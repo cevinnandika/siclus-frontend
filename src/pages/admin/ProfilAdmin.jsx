@@ -5,7 +5,42 @@ import imageCompression from "browser-image-compression";
 const ProfilAdmin = ({ user, onLogout }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [fotoPreview, setFotoPreview] = useState(user?.foto_profil || null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [adminName, setAdminName] = useState(user?.nama_lengkap || user?.nama || user?.name || "Pak Fajar");
   const fileInputRef = useRef(null);
+
+  React.useEffect(() => {
+    if (user?.nama_lengkap || user?.nama || user?.name) {
+      setAdminName(user.nama_lengkap || user.nama || user.name);
+    }
+  }, [user]);
+
+  // Fungsi untuk menyimpan ke backend (siapkan kerangkanya)
+  const handleSaveName = async () => {
+    try {
+      // Update juga data di localStorage/Context agar nama di Sidebar ikut berubah
+      const savedUser = JSON.parse(localStorage.getItem("siclus_user") || "{}");
+      savedUser.nama = adminName;
+      savedUser.name = adminName;
+      savedUser.nama_lengkap = adminName;
+      localStorage.setItem("siclus_user", JSON.stringify(savedUser));
+
+      // Kerangka API update jika backend sudah siap
+      if (user?.id) {
+        try {
+          await apiService.updateUserAdmin(user.id, { nama_lengkap: adminName });
+        } catch (apiErr) {
+          console.warn("API update profile fallback:", apiErr);
+        }
+      }
+
+      setIsEditing(false);
+      // Sinkronisasi perubahan ke seluruh komponen aplikasi
+      window.location.reload();
+    } catch (error) {
+      console.error("Gagal update nama", error);
+    }
+  };
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
@@ -69,7 +104,7 @@ const ProfilAdmin = ({ user, onLogout }) => {
               {fotoPreview ? (
                 <img src={fotoPreview} alt="Profil" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-3xl font-black text-[#00206B]">{(user?.nama_lengkap || user?.nama || user?.name || "A").charAt(0).toUpperCase()}</span>
+                <span className="text-3xl font-black text-[#00206B]">{(adminName || "A").charAt(0).toUpperCase()}</span>
               )}
               
               {/* OVERLAY LOADING ATAU HOVER */}
@@ -94,7 +129,49 @@ const ProfilAdmin = ({ user, onLogout }) => {
             </div>
           </div>
 
-          <h3 className="mt-4 text-2xl font-black text-[#00206B]">{user?.nama_lengkap || user?.nama || user?.name || "Administrator"}</h3>
+          {/* BAGIAN RENDER NAMA ADMIN */}
+          <div className="flex flex-col items-center justify-center mt-4">
+            {isEditing ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={adminName}
+                  onChange={(e) => setAdminName(e.target.value)}
+                  className="border-2 border-slate-300 rounded-lg px-3 py-1.5 text-lg font-bold text-center text-[#00206B] outline-none focus:border-[#00206B] transition-colors"
+                  autoFocus
+                />
+                <button
+                  onClick={handleSaveName}
+                  className="bg-[#00206B] hover:bg-blue-900 text-white px-4 py-2 rounded-lg text-xs font-black transition-colors cursor-pointer"
+                >
+                  SIMPAN
+                </button>
+                <button
+                  onClick={() => {
+                    setIsEditing(false);
+                    setAdminName(user?.nama_lengkap || user?.nama || user?.name || "Pak Fajar");
+                  }}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs font-black transition-colors cursor-pointer"
+                >
+                  BATAL
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 group">
+                <h2 className="text-2xl font-black text-[#00206B]">{adminName}</h2>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="text-slate-300 hover:text-[#00206B] transition-colors p-1 cursor-pointer"
+                  title="Ubah Nama Admin"
+                >
+                  {/* Icon Edit Pencils SVG */}
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
           <span className="bg-[#00206B] text-white font-black px-4 py-1.5 rounded-full text-[10px] mt-2 uppercase tracking-widest shadow-md">🛡️ ADMINISTRATOR UTAMA</span>
 
           <div className="mt-8 space-y-3 w-full">

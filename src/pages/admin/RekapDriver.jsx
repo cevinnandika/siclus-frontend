@@ -5,7 +5,8 @@ import { apiService } from "../../services/api";
 const RekapAdmin = () => {
   const [rawData, setRawData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filterPeriode, setFilterPeriode] = useState(7); // Default: 7 Hari (1 Minggu)
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [selectedReportDetail, setSelectedReportDetail] = useState(null);
@@ -29,18 +30,27 @@ const RekapAdmin = () => {
     fetchRekap();
   }, []);
 
-  // FUNGSI SAKTI: Filter waktu & Grouping by Driver
+  // FUNGSI SAKTI: Filter waktu (Date Range) & Grouping by Driver
   const groupedData = useMemo(() => {
-    const now = new Date();
-
-    // 1. Filter berdasarkan rentang hari (1 Minggu / 1 Bulan / Semua Waktu)
+    // 1. Filter berdasarkan rentang kalender (startDate & endDate)
     const filtered = rawData.filter((item) => {
-      if (filterPeriode === "all") return true;
-      if (!item.tanggal && !item.created_at) return true;
-      const itemDate = new Date(item.tanggal || item.created_at);
-      const diffTime = Math.abs(now - itemDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays <= filterPeriode;
+      const itemDateStr = item.tanggal
+        ? (item.tanggal.includes("T") ? item.tanggal.split("T")[0] : item.tanggal)
+        : (item.created_at ? item.created_at.split("T")[0] : "");
+
+      if (startDate && endDate) {
+        if (!itemDateStr) return false;
+        return itemDateStr >= startDate && itemDateStr <= endDate;
+      }
+      if (startDate) {
+        if (!itemDateStr) return false;
+        return itemDateStr >= startDate;
+      }
+      if (endDate) {
+        if (!itemDateStr) return false;
+        return itemDateStr <= endDate;
+      }
+      return true;
     });
 
     // 2. Grouping per Supir
@@ -138,7 +148,7 @@ const RekapAdmin = () => {
     }
 
     return result;
-  }, [rawData, filterPeriode, searchQuery]);
+  }, [rawData, startDate, endDate, searchQuery]);
 
   const handleExportPerDriver = () => {
     const riwayatList = selectedDriver?.riwayat || selectedDriver?.list_laporan;
@@ -187,8 +197,9 @@ const RekapAdmin = () => {
           </p>
         </div>
 
+        {/* BAGIAN FILTER KANAN ATAS */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Search Supir */}
+          {/* Search Bar yang sudah ada */}
           <div className="relative">
             <input
               type="text"
@@ -208,16 +219,34 @@ const RekapAdmin = () => {
             </svg>
           </div>
 
-          {/* Filter Periode */}
-          <select
-            value={filterPeriode}
-            onChange={(e) => setFilterPeriode(e.target.value === "all" ? "all" : Number(e.target.value))}
-            className="bg-white border border-slate-200 text-xs font-bold text-[#00206B] rounded-xl px-4 py-3 outline-none focus:border-[#00206B] shadow-sm cursor-pointer"
-          >
-            <option value={7}>1 Minggu Terakhir</option>
-            <option value={30}>1 Bulan Terakhir</option>
-            <option value="all">Semua Waktu</option>
-          </select>
+          {/* FILTER KALENDER (DATE RANGE) */}
+          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Dari:</span>
+            <input 
+              type="date" 
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="text-xs font-bold text-[#00206B] outline-none bg-transparent cursor-pointer"
+            />
+            
+            <span className="text-[10px] font-bold text-slate-400 uppercase ml-2">Sampai:</span>
+            <input 
+              type="date" 
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="text-xs font-bold text-[#00206B] outline-none bg-transparent cursor-pointer"
+            />
+          </div>
+          
+          {/* Tombol Reset Filter */}
+          {(startDate || endDate) && (
+            <button 
+              onClick={() => { setStartDate(""); setEndDate(""); }}
+              className="text-xs text-rose-500 font-bold hover:underline cursor-pointer"
+            >
+              Reset
+            </button>
+          )}
         </div>
       </div>
 

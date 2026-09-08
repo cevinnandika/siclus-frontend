@@ -75,7 +75,56 @@ const LiveCamera = ({ onCapture, onCancel }) => {
   );
 };
 
-const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
+const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift }) => {
+  // 1. DATA USER: Tarik dari prop atau fallback ke localStorage / API
+  const [profileData, setProfileData] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("siclus_user") || "{}");
+    } catch {
+      return {};
+    }
+  });
+
+  const user = React.useMemo(() => ({
+    ...profileData,
+    ...propUser,
+    trayek: propUser?.trayek || profileData?.trayek || "",
+    jenis_kendaraan: propUser?.jenis_kendaraan || profileData?.jenis_kendaraan || propUser?.tipe_kendaraan || profileData?.tipe_kendaraan || "",
+    nomer_kendaraan: propUser?.nomer_kendaraan || profileData?.nomer_kendaraan || propUser?.bus || profileData?.bus || "",
+    kapasitas: propUser?.kapasitas || profileData?.kapasitas || "",
+  }), [profileData, propUser]);
+
+  useEffect(() => {
+    const fetchLatestProfile = async () => {
+      try {
+        const res = await apiService.getProfilDriver();
+        const data = res?.data || res;
+        if (data) {
+          setProfileData((prev) => {
+            const updated = {
+              ...prev,
+              ...data,
+              trayek: data.trayek || prev.trayek,
+              jenis_kendaraan: data.jenis_kendaraan || data.tipe_kendaraan || prev.jenis_kendaraan,
+              nomer_kendaraan: data.nomer_kendaraan || data.bus || data.armada || prev.nomer_kendaraan,
+              kapasitas: data.kapasitas || prev.kapasitas,
+            };
+            try {
+              localStorage.setItem("siclus_user", JSON.stringify(updated));
+            } catch (err) {
+              console.warn(err);
+            }
+            return updated;
+          });
+        }
+      } catch (err) {
+        console.warn("Gagal sinkronisasi data profil driver:", err);
+      }
+    };
+
+    fetchLatestProfile();
+  }, []);
+
   // --- PERSISTENT DRAFT INITIALIZATION ---
   const getDraft = () => {
     const saved = localStorage.getItem("siclus_draft_form");
@@ -121,10 +170,14 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
     }
   }, [laporanId]);
 
-  const [merkKendaraan, setMerkKendaraan] = useState(() => initialDraft?.merkKendaraan || "");
-  const [nopol, setNopol] = useState(() => initialDraft?.nopol || "");
+  const [merkKendaraan, setMerkKendaraan] = useState(() => initialDraft?.merkKendaraan || user?.jenis_kendaraan || "");
+  const [nopol, setNopol] = useState(() => initialDraft?.nopol || user?.nomer_kendaraan || "");
+
+  useEffect(() => {
+    if (user?.jenis_kendaraan) setMerkKendaraan(user.jenis_kendaraan);
+    if (user?.nomer_kendaraan) setNopol(user.nomer_kendaraan);
+  }, [user?.jenis_kendaraan, user?.nomer_kendaraan]);
   const [odoAwal, setOdoAwal] = useState(() => initialDraft?.odoAwal || initialDraft?.odometer_awal || "");
-  const [odo2, setOdo2] = useState(() => initialDraft?.odo2 || "");
   const [odo3, setOdo3] = useState(() => initialDraft?.odo3 || "");
   const [odo4, setOdo4] = useState(() => initialDraft?.odo4 || "");
   const [penumpang, setPenumpang] = useState(() => initialDraft?.penumpang || "");
@@ -163,7 +216,6 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
       nopol,
       odoAwal,
       odometer_awal: odoAwal,
-      odo2,
       odo3,
       odo4,
       penumpang,
@@ -188,7 +240,6 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
     merkKendaraan,
     nopol,
     odoAwal,
-    odo2,
     odo3,
     odo4,
     penumpang,
@@ -240,7 +291,7 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
 
   // Logika Validasi (Jika ada "KURANG", wajib isi catatan)
   const isInspeksiValid = adaKurang ? totalCeklis === 9 && catatan.trim() !== "" : totalCeklis === 9;
-  const isCP1Ready = isInspeksiValid && isPhotoSaved && odoAwal !== "" && merkKendaraan !== "" && nopol !== "";
+  const isCP1Ready = isInspeksiValid && isPhotoSaved && odoAwal !== "" && Boolean(user?.nomer_kendaraan || nopol);
 
   const handlePreSubmit = (e, cpNumber) => {
     e.preventDefault();
@@ -267,7 +318,8 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
         catatan: adaKurang ? catatan : "" 
       });
 
-      const platNomorFinal = `${merkKendaraan.trim()} - ${nopol.trim()}`;
+      // Data plat nomor diambil langsung dari data user.nomer_kendaraan
+      const platNomorFinal = user?.nomer_kendaraan || user?.bus || nopol || "-";
       const cp1Res = await apiService.submitCP1(activeLaporanId, {
         tipe_sesi: currentShift,
         nopol_kendaraan: platNomorFinal,
@@ -287,20 +339,6 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
     }
   };
 
-  const submitCP2 = async () => {
-    setIsProcessing(true);
-    try {
-      await apiService.submitCP2(sesiId, { km_berangkat_start: parseInt(odo2) });
-      setCpToConfirm(null);
-      setActiveCP(3);
-    } catch (err) {
-      alert("Gagal kirim CP2: " + (err.response?.data?.detail || err.message));
-      setCpToConfirm(null);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const submitCP3 = async () => {
     setIsProcessing(true);
     try {
@@ -311,9 +349,9 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
       setIsPhotoSaved(false);
       setPhotoPreview(null);
       setCpToConfirm(null);
-      setActiveCP(4);
+      setActiveCP(3);
     } catch (err) {
-      alert("Gagal kirim CP3: " + (err.response?.data?.detail || err.message));
+      alert("Gagal kirim CP2: " + (err.response?.data?.detail || err.message));
       setCpToConfirm(null);
     } finally {
       setIsProcessing(false);
@@ -387,34 +425,58 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
           <form onSubmit={(e) => handlePreSubmit(e, 1)} className={`p-6 ${activeCP > 1 ? "opacity-60 pointer-events-none" : ""}`}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">TRAYEK PENUGASAN</p>
-                  <h4 className="text-xl font-black text-[#00206B]">{user?.trayek || "-"}</h4>
+                {/* TRAYEK PENUGASAN (TERKUNCI) */}
+                <div className="mb-4">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                    Trayek Penugasan
+                  </label>
+                  <input
+                    type="text"
+                    value={user?.trayek || "Memuat..."} 
+                    readOnly
+                    className="w-full bg-slate-100 border border-slate-200 text-lg font-bold text-[#00206B] rounded-xl px-4 py-3 cursor-not-allowed focus:outline-none"
+                  />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">MERK MOBIL</label>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  {/* MERK MOBIL / JENIS KENDARAAN (TERKUNCI) */}
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                      Merk / Jenis Mobil
+                    </label>
                     <input
                       type="text"
-                      required
-                      value={merkKendaraan}
-                      onChange={(e) => setMerkKendaraan(e.target.value.toUpperCase())}
-                      className="w-full p-3 border border-slate-200 rounded-lg font-bold text-[#00206B] outline-none focus:border-[#00206B]"
-                      placeholder="Cth: ISUZU"
+                      value={user?.jenis_kendaraan || "Memuat..."} 
+                      readOnly
+                      className="w-full bg-slate-100 border border-slate-200 text-sm font-bold text-slate-500 rounded-xl px-4 py-3 cursor-not-allowed focus:outline-none"
                     />
                   </div>
-                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">NO. POLISI</label>
+
+                  {/* NO. POLISI (TERKUNCI) */}
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                      No. Polisi
+                    </label>
                     <input
                       type="text"
-                      required
-                      value={nopol}
-                      onChange={(e) => setNopol(e.target.value.toUpperCase())}
-                      className="w-full p-3 border border-slate-200 rounded-lg font-bold text-[#00206B] outline-none focus:border-[#00206B]"
-                      placeholder="Cth: S 1234 XA"
+                      value={user?.nomer_kendaraan || "Memuat..."} 
+                      readOnly
+                      className="w-full bg-slate-100 border border-slate-200 text-sm font-bold text-slate-500 rounded-xl px-4 py-3 cursor-not-allowed focus:outline-none"
                     />
                   </div>
+                </div>
+
+                {/* KAPASITAS KENDARAAN */}
+                <div className="mb-4">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                    Kapasitas Kendaraan
+                  </label>
+                  <input
+                    type="text"
+                    value={user?.kapasitas ? `${user.kapasitas} Penumpang` : "Memuat..."}
+                    readOnly
+                    className="w-full bg-slate-100 border border-slate-200 text-sm font-bold text-slate-500 rounded-xl px-4 py-3 cursor-not-allowed focus:outline-none"
+                  />
                 </div>
 
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
@@ -528,52 +590,14 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
         )}
       </div>
 
-      {/* 🔴 CHECK POINT 2 🔴 */}
+      {/* 🔴 CHECK POINT 2: TIBA DI TITIK FINISH 🔴 */}
       <div className={`border rounded-xl bg-white transition-all ${activeCP === 2 ? "border-[#00206B] shadow-md" : "border-slate-200"}`}>
         <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
-          <h3 className={`font-black text-sm tracking-wide ${activeCP >= 2 ? "text-[#00206B]" : "text-slate-400"}`}>CHECK POINT 2: TIBA DI TITIK START</h3>
+          <h3 className={`font-black text-sm tracking-wide ${activeCP >= 2 ? "text-[#00206B]" : "text-slate-400"}`}>CHECK POINT 2: TIBA DI TITIK FINISH</h3>
+          {activeCP > 2 && <span className="text-emerald-600 font-black text-sm">✓</span>}
         </div>
         {activeCP >= 2 && (
-          <form onSubmit={(e) => handlePreSubmit(e, 2)} className={`p-6 ${activeCP > 2 ? "opacity-60 pointer-events-none" : ""}`}>
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">ODOMETER HALTE PERTAMA (KM)</label>
-            <input
-              type="number"
-              required
-              value={odo2}
-              onChange={(e) => setOdo2(e.target.value)}
-              className="w-full md:w-1/2 p-3 border border-slate-200 rounded-lg font-bold text-[#00206B] outline-none"
-              placeholder="0"
-            />
-
-            {activeCP === 2 &&
-              (cpToConfirm === 2 ? (
-                <div className="mt-4 p-4 bg-[#FCE8E6] border-2 border-[#C5221F] rounded-xl shadow-sm md:w-1/2">
-                  <p className="text-sm font-bold text-[#C5221F] mb-3">Odometer Halte = {odo2} KM. Lanjutkan?</p>
-                  <div className="flex gap-3">
-                    <button type="button" onClick={submitCP2} disabled={isProcessing} className="flex-1 bg-[#C5221F] text-white font-bold py-2 rounded-lg">
-                      Kirim
-                    </button>
-                    <button type="button" onClick={() => setCpToConfirm(null)} className="flex-1 bg-white text-[#C5221F] font-bold py-2 rounded-lg border border-[#C5221F]">
-                      Batal
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button type="submit" className="block w-full md:w-1/2 mt-4 bg-[#00206B] text-white font-bold py-3 rounded-lg shadow-md">
-                  SIMPAN & CATAT WAKTU TIBA
-                </button>
-              ))}
-          </form>
-        )}
-      </div>
-
-      {/* 🔴 CHECK POINT 3 🔴 */}
-      <div className={`border rounded-xl bg-white transition-all ${activeCP === 3 ? "border-[#00206B] shadow-md" : "border-slate-200"}`}>
-        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
-          <h3 className={`font-black text-sm tracking-wide ${activeCP >= 3 ? "text-[#00206B]" : "text-slate-400"}`}>CHECK POINT 3: TIBA DI TITIK FINISH</h3>
-        </div>
-        {activeCP >= 3 && (
-          <form onSubmit={(e) => handlePreSubmit(e, 3)} className={`p-6 grid grid-cols-1 md:grid-cols-2 gap-6 ${activeCP > 3 ? "opacity-60 pointer-events-none" : ""}`}>
+          <form onSubmit={(e) => handlePreSubmit(e, 2)} className={`p-6 grid grid-cols-1 md:grid-cols-2 gap-6 ${activeCP > 2 ? "opacity-60 pointer-events-none" : ""}`}>
             <div>
               <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">ODOMETER SEKOLAH (KM)</label>
               <input type="number" required value={odo3} onChange={(e) => setOdo3(e.target.value)} className="w-full p-3 border border-slate-200 rounded-lg font-bold text-[#00206B]" placeholder="0" />
@@ -590,24 +614,24 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
               />
             </div>
 
-            {activeCP === 3 && (
+            {activeCP === 2 && (
               <div className="col-span-1 md:col-span-2">
-                {cpToConfirm === 3 ? (
+                {cpToConfirm === 2 ? (
                   <div className="mt-2 p-4 bg-[#FCE8E6] border-2 border-[#C5221F] rounded-xl shadow-sm">
                     <p className="text-sm font-bold text-[#C5221F] mb-3">
                       Odometer Akhir {odo3} KM & Jumlah {penumpang} Siswa. Data Benar?
                     </p>
                     <div className="flex gap-3">
-                      <button type="button" onClick={submitCP3} disabled={isProcessing} className="flex-1 bg-[#C5221F] text-white font-bold py-2 rounded-lg">
+                      <button type="button" onClick={submitCP3} disabled={isProcessing} className="flex-1 bg-[#C5221F] text-white font-bold py-2 rounded-lg cursor-pointer">
                         Kirim Permanen
                       </button>
-                      <button type="button" onClick={() => setCpToConfirm(null)} className="flex-1 bg-white text-[#C5221F] font-bold py-2 rounded-lg border border-[#C5221F]">
+                      <button type="button" onClick={() => setCpToConfirm(null)} className="flex-1 bg-white text-[#C5221F] font-bold py-2 rounded-lg border border-[#C5221F] cursor-pointer">
                         Cek Lagi
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <button type="submit" className="w-full mt-2 bg-[#00206B] text-white font-bold py-3 rounded-lg shadow-md">
+                  <button type="submit" className="w-full mt-2 bg-[#00206B] text-white font-bold py-3 rounded-lg shadow-md cursor-pointer">
                     SIMPAN & CATAT WAKTU SELESAI
                   </button>
                 )}
@@ -617,13 +641,13 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
         )}
       </div>
 
-      {/* 🔴 CHECK POINT 4 🔴 */}
-      <div className={`border rounded-xl bg-white transition-all ${activeCP === 4 ? "border-[#C5221F] shadow-md" : "border-slate-200"}`}>
+      {/* 🔴 CHECK POINT 3: KEMBALI KE DISHUB 🔴 */}
+      <div className={`border rounded-xl bg-white transition-all ${activeCP === 3 ? "border-[#C5221F] shadow-md" : "border-slate-200"}`}>
         <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
-          <h3 className={`font-black text-sm tracking-wide ${activeCP >= 4 ? "text-[#00206B]" : "text-slate-400"}`}>CHECK POINT 4: KEMBALI KE DISHUB</h3>
+          <h3 className={`font-black text-sm tracking-wide ${activeCP >= 3 ? "text-[#00206B]" : "text-slate-400"}`}>CHECK POINT 3: KEMBALI KE DISHUB</h3>
         </div>
-        {activeCP === 4 && (
-          <form onSubmit={(e) => handlePreSubmit(e, 4)} className="p-6 space-y-6">
+        {activeCP === 3 && (
+          <form onSubmit={(e) => handlePreSubmit(e, 3)} className="p-6 space-y-6">
             <div>
               <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">ODOMETER AKHIR GARASI (KM)</label>
               <input
@@ -651,28 +675,28 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
                 <button
                   type="button"
                   onClick={() => setIsCameraOpen(true)}
-                  className="w-full aspect-[3/4] max-w-sm mx-auto flex flex-col items-center justify-center border-2 border-dashed border-[#00206B] text-[#00206B] bg-blue-50 font-bold hover:bg-blue-100 transition"
+                  className="w-full aspect-[3/4] max-w-sm mx-auto flex flex-col items-center justify-center border-2 border-dashed border-[#00206B] text-[#00206B] bg-blue-50 font-bold hover:bg-blue-100 transition cursor-pointer"
                 >
                   Buka Kamera Akhir
                 </button>
               ) : (
                 <div className="relative w-full aspect-[3/4] max-w-sm mx-auto rounded-lg overflow-hidden border-2 border-emerald-500">
                   <img src={photoPreview} alt="Selfie" className="w-full h-full object-cover" />
-                  <button type="button" onClick={() => setIsCameraOpen(true)} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white text-xs font-bold px-4 py-2 rounded-full shadow-lg">
+                  <button type="button" onClick={() => setIsCameraOpen(true)} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white text-xs font-bold px-4 py-2 rounded-full shadow-lg cursor-pointer">
                     Ulangi Foto
                   </button>
                 </div>
               )}
             </div>
 
-            {cpToConfirm === 4 ? (
+            {cpToConfirm === 3 ? (
               <div className="p-4 bg-[#FCE8E6] border-2 border-[#C5221F] rounded-xl shadow-sm">
                 <p className="text-sm font-bold text-[#C5221F] mb-3">Tutup Laporan Harian dengan Odometer Garasi {odo4} KM?</p>
                 <div className="flex gap-3">
-                  <button type="button" onClick={submitCP4} disabled={isProcessing} className="flex-1 bg-[#C5221F] text-white font-black py-4 rounded-xl shadow-md">
+                  <button type="button" onClick={submitCP4} disabled={isProcessing} className="flex-1 bg-[#C5221F] text-white font-black py-4 rounded-xl shadow-md cursor-pointer">
                     TUTUP SHIFT SEKARANG
                   </button>
-                  <button type="button" onClick={() => setCpToConfirm(null)} className="flex-1 bg-white text-[#C5221F] font-bold py-4 rounded-xl border-2 border-[#C5221F]">
+                  <button type="button" onClick={() => setCpToConfirm(null)} className="flex-1 bg-white text-[#C5221F] font-bold py-4 rounded-xl border-2 border-[#C5221F] cursor-pointer">
                     BATAL
                   </button>
                 </div>
@@ -681,7 +705,7 @@ const LaporanDriver = ({ user, currentShift = "pagi", onFinishShift }) => {
               <button
                 type="submit"
                 disabled={!isPhotoSaved}
-                className={`w-full py-4 rounded-xl shadow-md font-black text-white transition-all ${!isPhotoSaved ? "bg-slate-300" : "bg-[#C5221F] hover:bg-red-800"}`}
+                className={`w-full py-4 rounded-xl shadow-md font-black text-white transition-all cursor-pointer ${!isPhotoSaved ? "bg-slate-300" : "bg-[#C5221F] hover:bg-red-800"}`}
               >
                 SUBMIT FINAL & TUTUP SHIFT
               </button>
