@@ -215,26 +215,22 @@ function App() {
                     <Route
                       path="laporan"
                       element={
-                        isLaporanLocked ? (
-                          renderLockedScreen()
-                        ) : (
-                          <Laporan
-                            user={user}
-                            currentShift={currentShift}
-                            onFinishShift={() => {
-                              if (currentShift === "pagi") {
-                                setCurrentShift("siang");
-                                setIsLaporanLocked(true);
-                              } else {
-                                // Jika shift siang beres, gembok laporan sampai besok!
-                                setCurrentShift("selesai");
-                                setIsLaporanLocked(true);
-                              }
-                              setTripStatus("belum_mulai");
-                              navigate("/driver/beranda");
-                            }}
-                          />
-                        )
+                        <Laporan
+                          user={user}
+                          currentShift={currentShift}
+                          onFinishShift={() => {
+                            if (currentShift === "pagi") {
+                              setCurrentShift("siang");
+                              setIsLaporanLocked(true);
+                            } else {
+                              // Jika shift siang beres, gembok laporan sampai besok!
+                              setCurrentShift("selesai");
+                              setIsLaporanLocked(true);
+                            }
+                            setTripStatus("belum_mulai");
+                            navigate("/driver/beranda");
+                          }}
+                        />
                       }
                     />
                     <Route
@@ -250,7 +246,7 @@ function App() {
                         />
                       }
                     />
-                    <Route path="detail-laporan" element={<DetailLaporan report={selectedReport} onBack={() => navigate("/driver/riwayat")} />} />
+                    <Route path="detail-laporan" element={<DetailLaporan report={selectedReport} user={user} onBack={() => navigate("/driver/riwayat")} />} />
                     <Route path="akun" element={<ProfilDriver user={user} onLogout={handleLogout} onUpdateUser={setUser} />} /> {/* ✅ FIX: Pake ProfilDriver */}
                     <Route path="*" element={<Navigate to="/driver/beranda" replace />} />
                   </Routes>

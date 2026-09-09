@@ -9,7 +9,7 @@ const apiClient = axios.create({
   },
 });
 
-// jwt token masuk
+// Interceptor Token Masuk
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("siclus_token");
@@ -21,11 +21,10 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// jwt token keluar
+// Interceptor Token Keluar
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Jangan redirect jika request gagal berasal dari proses login itu sendiri
     if (error.response && error.response.status === 401 && !error.config?.url?.includes("/auth/login")) {
       localStorage.removeItem("siclus_token");
       localStorage.removeItem("siclus_user");
@@ -36,7 +35,9 @@ apiClient.interceptors.response.use(
 );
 
 export const apiService = {
-  // --- AUTH & USER ---
+  // ==========================================
+  // AUTHENTIKASI & USER
+  // ==========================================
   login: async (email, password) => {
     const response = await apiClient.post("/auth/login", { email, password });
     return response.data;
@@ -45,6 +46,10 @@ export const apiService = {
   // ==========================================
   // ZONA DRIVER
   // ==========================================
+  getPenugasanHariIni: async () => {
+    const response = await apiClient.get("/driver/penugasan/hari-ini");
+    return response.data;
+  },
   getProfilDriver: async () => {
     const response = await apiClient.get("/driver/profil");
     return response.data;
@@ -65,6 +70,8 @@ export const apiService = {
     });
     return response.data;
   },
+  
+  // -- Laporan Operasional --
   mulaiLaporan: async (data) => {
     const response = await apiClient.post("/laporan/mulai", data);
     return response.data;
@@ -85,19 +92,20 @@ export const apiService = {
     });
     return response.data;
   },
+
+  // -- Checkpoints --
+  // CP 1: Keluar Garasi
   submitCP1: async (laporanId, data) => {
     const response = await apiClient.post(`/laporan/sesi/cp1?laporan_id=${laporanId}`, data);
     return response.data;
   },
+  // CP 2: Tiba di Titik Finish (Di Backend Menggunakan Endpoint CP3)
   submitCP2: async (sesiId, data) => {
-    const response = await apiClient.put(`/laporan/sesi/cp2/${sesiId}`, data);
-    return response.data;
-  },
-  submitCP3: async (sesiId, data) => {
     const response = await apiClient.put(`/laporan/sesi/cp3/${sesiId}`, data);
     return response.data;
   },
-  submitCP4: async (sesiId, data) => {
+  // CP 3: Kembali ke Garasi (Di Backend Menggunakan Endpoint CP4)
+  submitCP3: async (sesiId, data) => {
     const response = await apiClient.put(`/laporan/sesi/cp4/${sesiId}`, data);
     return response.data;
   },
@@ -105,6 +113,14 @@ export const apiService = {
   // ==========================================
   // ZONA ADMIN
   // ==========================================
+  createPenugasanHarian: async (data) => {
+    const response = await apiClient.post("/admin/penugasan", data);
+    return response.data;
+  },
+  getSemuaPenugasan: async () => {
+    const response = await apiClient.get("/admin/penugasan");
+    return response.data;
+  },
   getDashboardAdmin: async () => (await apiClient.get("/admin/dashboard")).data,
   getRekapAdmin: async () => (await apiClient.get("/admin/rekap")).data,
   getRiwayatHarianAdmin: async () => (await apiClient.get("/admin/riwayat-harian")).data,
@@ -128,7 +144,7 @@ export const apiService = {
   updateJadwalAdmin: async (id, data) => (await apiClient.put(`/admin/jadwal/${id}`, data)).data,
   updateFotoProfilAdmin: async (fileBlob) => {
     const formData = new FormData();
-    formData.append("foto", fileBlob, "profile_admin.jpg"); // Diberi nama default agar lolos validasi ekstensi backend
+    formData.append("foto", fileBlob, "profile_admin.jpg");
     const response = await apiClient.put("/admin/profil/foto", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });

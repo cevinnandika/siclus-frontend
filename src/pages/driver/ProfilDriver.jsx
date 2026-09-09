@@ -19,27 +19,21 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
 
     setIsUploading(true);
     try {
-      // Kompresi Gambar agar sangat ringan (Max 200KB)
       const options = {
         maxSizeMB: 0.2,
         maxWidthOrHeight: 800,
         useWebWorker: true,
       };
       const compressedFile = await imageCompression(file, options);
-
-      // Kirim ke Backend
       const res = await apiService.updateFotoProfil(compressedFile);
 
-      // Update UI dengan URL baru dari server
       if (res && res.foto_profil) {
         setFotoPreview(res.foto_profil);
 
-        // Opsional: Update data user di localStorage agar menetap
-        const savedUser = JSON.parse(localStorage.getItem("siclus_user"));
+        const savedUser = JSON.parse(localStorage.getItem("siclus_user") || "{}");
         if (savedUser) {
           savedUser.foto_profil = res.foto_profil;
           localStorage.setItem("siclus_user", JSON.stringify(savedUser));
-          // 🔥 TRIGGER GLOBAL RE-RENDER DI SINI 🔥
           if (onUpdateUser) onUpdateUser(savedUser);
         }
       }
@@ -50,79 +44,143 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
     }
   };
 
-  return (
-    <div className="space-y-6 text-left max-w-3xl mx-auto pb-6 relative">
-      <div className="space-y-1">
-        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">Profil Driver</h2>
-        <p className="text-sm text-slate-400 font-semibold mt-0.5">Kelola informasi data diri operasional Anda</p>
-      </div>
-      <div className="bg-white border border-slate-100 rounded-3xl shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-r from-[#00206B] to-blue-500"></div>
-        <div className="relative z-10 flex flex-col items-center mt-12 px-6 pb-8">
-          {/* INPUT FILE HIDDEN */}
-          <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+  const driverName = user?.nama_lengkap || user?.nama || user?.name || "Driver SICLUS";
+  const driverInitial = driverName.charAt(0).toUpperCase();
 
-          {/* WADAH AVATAR BISA DIKLIK */}
+  return (
+    <div className="space-y-6 max-w-4xl mx-auto pb-12 font-sans text-left">
+      {/* Header Halaman: Konsisten dengan Beranda & Riwayat */}
+      <div className="pb-1">
+        <h2 className="text-2xl font-bold text-slate-900 m-0 tracking-tight">
+          Profil Pengemudi
+        </h2>
+        <p className="text-sm text-slate-400 font-normal mt-1">
+          Informasi identitas dan rincian akun operasional pengemudi.
+        </p>
+      </div>
+
+      {/* Kartu Profil Utama (Elegan, Bersih, Tanpa Banner Gradient Lebay) */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-sm">
+        {/* Baris Atas: Avatar + Nama + Status */}
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 pb-6 border-b border-slate-100">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
+          />
+
+          {/* Avatar Bulat Utuh dengan Tombol Ubah Foto */}
           <div
             onClick={() => !isUploading && fileInputRef.current.click()}
-            className="w-28 h-28 rounded-full bg-white p-1.5 shadow-lg cursor-pointer group relative"
-            title="Klik untuk ubah foto profil"
+            className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200 flex-shrink-0 cursor-pointer group shadow-sm"
+            title="Klik untuk mengubah foto profil"
           >
-            <div className="w-full h-full rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200 relative">
-              {fotoPreview ? (
-                <img src={fotoPreview} alt="Profil" className="w-full h-full object-cover" />
-              ) : (
-                <svg className="w-14 h-14 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              )}
-
-              {/* OVERLAY LOADING ATAU HOVER */}
-              <div
-                className={`absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white transition-opacity duration-200 ${isUploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-              >
-                {isUploading ? (
-                  <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Uploading...</span>
-                ) : (
-                  <>
-                    <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                      />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className="text-[8px] font-black uppercase tracking-widest">Ubah Foto</span>
-                  </>
-                )}
+            {fotoPreview ? (
+              <img
+                src={fotoPreview}
+                alt={driverName}
+                className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-200"
+              />
+            ) : (
+              <div className="w-full h-full rounded-full bg-[#00206B] text-white flex items-center justify-center font-bold text-3xl">
+                {driverInitial}
               </div>
+            )}
+
+            {/* Overlay Ubah Foto */}
+            <div
+              className={`absolute inset-0 bg-black/50 backdrop-blur-[2px] flex flex-col items-center justify-center text-white transition-opacity duration-200 ${
+                isUploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+              }`}
+            >
+              {isUploading ? (
+                <span className="text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                  Mengunggah...
+                </span>
+              ) : (
+                <>
+                  <svg className="w-5 h-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span className="text-[9px] font-bold uppercase tracking-wider">Ubah Foto</span>
+                </>
+              )}
             </div>
           </div>
 
-          <h3 className="mt-4 text-2xl font-black text-[#00206B]">
-            {user?.nama_lengkap || user?.nama || user?.name || "Nama Driver"}
-          </h3>
-          <span className="bg-blue-50 text-blue-600 font-bold px-4 py-1.5 rounded-full text-xs mt-2 uppercase tracking-wide border border-blue-100">{user?.role || "Driver"}</span>
-
-          {/* GRID INFO DRIVER (Tanpa Armada Default) */}
-          <div className="mt-8 grid grid-cols-2 gap-3 w-full">
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">ID Driver</span>
-              <span className="font-extrabold text-[#00206B] text-sm truncate block">{user?.id || "-"}</span>
+          {/* Info Driver */}
+          <div className="flex-1 text-center sm:text-left min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 m-0 tracking-tight truncate">
+                {driverName}
+              </h3>
+              <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 self-center sm:self-auto">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                {user?.role ? user.role.toUpperCase() : "PENGEMUDI AKTIF"}
+              </span>
             </div>
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Trayek Tetap</span>
-              <span className="font-extrabold text-[#00206B] text-sm truncate block">{user?.trayek || "-"}</span>
+            <p className="text-xs text-slate-400 font-medium m-0">
+              Pengemudi Armada Angkutan Sekolah Gratis Kota Mojokerto
+            </p>
+            <p className="text-[11px] text-slate-400 mt-2">
+              Klik pada foto profil di samping untuk memperbarui foto akun Anda.
+            </p>
+          </div>
+        </div>
+
+        {/* Rincian Akun Driver (2 Box Bersih, Identik dengan Estetika Beranda) */}
+        <div className="py-6">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            Informasi Akun
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* ID Driver */}
+            <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+              <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                </svg>
+                ID Driver
+              </div>
+              <p className="text-sm font-bold text-[#00206B] mt-1 truncate">
+                {user?.id || "-"}
+              </p>
+            </div>
+
+            {/* Email Terdaftar */}
+            <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+              <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                Email Terdaftar
+              </div>
+              <p className="text-sm font-bold text-slate-800 mt-1 truncate" title={user?.email || "-"}>
+                {user?.email || "-"}
+              </p>
             </div>
           </div>
+        </div>
 
-          <div className="w-full mt-8 pt-6 border-t border-slate-100">
-            <button onClick={onLogout} className="w-full bg-[#FCE8E6] hover:bg-[#FAD2CF] transition-colors text-[#C5221F] font-extrabold py-4 px-4 rounded-2xl cursor-pointer">
-              🚪 KELUAR APLIKASI (LOGOUT)
-            </button>
-          </div>
+        {/* Tombol Keluar: Elegan, Proporsional, Profesional */}
+        <div className="pt-4 border-t border-slate-100 flex justify-end">
+          <button
+            type="button"
+            onClick={onLogout}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100/80 border border-rose-200/80 text-rose-700 text-xs font-bold py-2.5 px-5 rounded-xl transition-colors cursor-pointer active:scale-95 shadow-xs"
+          >
+            <svg className="w-4 h-4 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Keluar dari Akun
+          </button>
         </div>
       </div>
     </div>

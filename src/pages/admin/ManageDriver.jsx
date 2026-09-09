@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import { apiService } from "../../services/api";
 
 const ManageDriver = ({ onBack }) => {
-  // PENTING: Jika sebelumnya menggunakan nama state selain 'activeTab' (misal: 'tab'),  
-  // sesuaikan nama variabel di bawah ini dengan UI Tab yang sudah ada. 
-  const [activeTab, setActiveTab] = useState('supir');  
-  const [drivers, setDrivers] = useState([]); 
-  const [isLoading, setIsLoading] = useState(true); 
+  // PENTING: Jika sebelumnya menggunakan nama state selain 'activeTab' (misal: 'tab'),
+  // sesuaikan nama variabel di bawah ini dengan UI Tab yang sudah ada.
+  const [activeTab, setActiveTab] = useState("supir");
+  const [drivers, setDrivers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isLoadingJadwals, setIsLoadingJadwals] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -111,7 +111,7 @@ const ManageDriver = ({ onBack }) => {
 
   useEffect(() => {
     fetchDrivers();
-  }, []); 
+  }, []);
 
   const fetchJadwals = async () => {
     setIsLoadingJadwals(true);
@@ -342,9 +342,7 @@ const ManageDriver = ({ onBack }) => {
       {toast.show && (
         <div
           className={`fixed top-5 right-5 z-50 px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-3 font-bold text-sm border animate-[slideDown_0.2s] ${
-            toast.type === "success"
-              ? "bg-[#E6F7ED] border-[#BCECD2] text-[#137333]"
-              : "bg-[#FCE8E6] border-[#FAD2CF] text-[#C5221F]"
+            toast.type === "success" ? "bg-[#E6F7ED] border-[#BCECD2] text-[#137333]" : "bg-[#FCE8E6] border-[#FAD2CF] text-[#C5221F]"
           }`}
         >
           <span>{toast.type === "success" ? "✓" : "⚠️"}</span>
@@ -354,12 +352,8 @@ const ManageDriver = ({ onBack }) => {
 
       {/* Header (Tanpa Tombol Back) */}
       <div className="space-y-1 mb-6">
-        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">
-          Kelola Pengguna & Jadwal
-        </h2>
-        <p className="text-sm text-slate-400 font-semibold mt-0.5">
-          Manajemen master akun driver dan konfigurasi toleransi waktu cut-off operasional
-        </p>
+        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">Kelola Driver & Jadwal</h2>
+        <p className="text-sm text-slate-400 font-semibold mt-0.5">Manajemen master akun driver dan konfigurasi toleransi waktu cut-off operasional</p>
       </div>
 
       {/* Navigation Tabs (Tab 1: DAFTAR DRIVER | Tab 2: JADWAL CUT-OFF) */}
@@ -367,31 +361,23 @@ const ManageDriver = ({ onBack }) => {
         <button
           onClick={() => setActiveTab("supir")}
           className={`flex-1 py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            activeTab === "supir"
-              ? "bg-[#00206B] text-white shadow-md scale-[1.02]"
-              : "text-slate-600 hover:text-[#00206B] hover:bg-white/50"
+            activeTab === "supir" ? "bg-[#00206B] text-white shadow-md scale-[1.02]" : "text-slate-600 hover:text-[#00206B] hover:bg-white/50"
           }`}
         >
           <span>🚌</span>
           <span>Daftar Driver</span>
-          <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-white/20 font-extrabold">
-            {(drivers || []).length}
-          </span>
+          <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-white/20 font-extrabold">{(drivers || []).length}</span>
         </button>
 
         <button
           onClick={() => setActiveTab("jadwal")}
           className={`flex-1 py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            activeTab === "jadwal"
-              ? "bg-[#00206B] text-white shadow-md scale-[1.02]"
-              : "text-slate-600 hover:text-[#00206B] hover:bg-white/50"
+            activeTab === "jadwal" ? "bg-[#00206B] text-white shadow-md scale-[1.02]" : "text-slate-600 hover:text-[#00206B] hover:bg-white/50"
           }`}
         >
           <span>⏱️</span>
           <span>Jadwal Cut-Off</span>
-          <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-white/20 font-extrabold">
-            {(jadwalList || []).length}
-          </span>
+          <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-white/20 font-extrabold">{(jadwalList || []).length}</span>
         </button>
       </div>
 
@@ -402,12 +388,8 @@ const ManageDriver = ({ onBack }) => {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border-2 border-slate-200 rounded-2xl p-5 shadow-sm">
             <div>
-              <h3 className="text-base font-black text-[#00206B] m-0 uppercase tracking-wide">
-                Master Data Driver
-              </h3>
-              <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                Kelola kredensial login, penugasan trayek, dan armada bus
-              </p>
+              <h3 className="text-base font-black text-[#00206B] m-0 uppercase tracking-wide">Master Data Driver</h3>
+              <p className="text-xs text-slate-400 font-semibold mt-0.5">Kelola kredensial login, penugasan trayek, dan armada bus</p>
             </div>
             <button
               onClick={handleOpenAddUser}
@@ -416,7 +398,7 @@ const ManageDriver = ({ onBack }) => {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              + TAMBAH DRIVER BARU
+              TAMBAH DRIVER BARU
             </button>
           </div>
 
@@ -466,9 +448,9 @@ const ManageDriver = ({ onBack }) => {
               </div>
             ) : (
               <div className="text-center py-12 flex flex-col items-center justify-center">
-                 <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-2xl">🚌</div>
-                 <h3 className="text-lg font-black text-[#00206B]">Belum Ada Data Driver</h3>
-                 <p className="text-sm text-slate-400 font-medium mt-1">Klik tombol "+ TAMBAH DRIVER BARU" untuk mendaftarkan akun driver pertama.</p>
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-2xl">🚌</div>
+                <h3 className="text-lg font-black text-[#00206B]">Belum Ada Data Driver</h3>
+                <p className="text-sm text-slate-400 font-medium mt-1">Klik tombol "+ TAMBAH DRIVER BARU" untuk mendaftarkan akun driver pertama.</p>
               </div>
             )}
           </div>
@@ -482,12 +464,8 @@ const ManageDriver = ({ onBack }) => {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border-2 border-slate-200 rounded-2xl p-5 shadow-sm">
             <div>
-              <h3 className="text-base font-black text-[#00206B] m-0 uppercase tracking-wide">
-                Konfigurasi Batas Waktu Cut-Off Per Trayek
-              </h3>
-              <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                Tentukan batas toleransi waktu keberangkatan dari Dishub dan tiba di titik start untuk deteksi keterlambatan otomatis
-              </p>
+              <h3 className="text-base font-black text-[#00206B] m-0 uppercase tracking-wide">Konfigurasi Batas Waktu Cut-Off Per Trayek</h3>
+              <p className="text-xs text-slate-400 font-semibold mt-0.5">Tentukan batas toleransi waktu keberangkatan dari Dishub dan tiba di titik start untuk deteksi keterlambatan otomatis</p>
             </div>
             <button
               onClick={() => {
@@ -508,14 +486,10 @@ const ManageDriver = ({ onBack }) => {
           {/* Tabel Jadwal */}
           <div className="bg-white border-2 border-slate-200 rounded-3xl overflow-hidden shadow-sm">
             {isLoadingJadwals ? (
-              <div className="p-16 text-center text-[#00206B] font-bold animate-pulse">
-                Memuat Konfigurasi Jadwal... ⏳
-              </div>
+              <div className="p-16 text-center text-[#00206B] font-bold animate-pulse">Memuat Konfigurasi Jadwal... ⏳</div>
             ) : (jadwalList || []).length === 0 ? (
               <div className="p-16 text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mx-auto text-2xl">
-                  ⏱️
-                </div>
+                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mx-auto text-2xl">⏱️</div>
                 <h4 className="text-base font-extrabold text-slate-700 m-0">Belum Ada Jadwal Dikonfigurasi</h4>
                 <p className="text-xs text-slate-400 font-semibold max-w-sm mx-auto">
                   Belum ada data cut-off jadwal operasional di server. Silakan gunakan tombol di atas untuk menambahkan jadwal pertama.
@@ -536,27 +510,23 @@ const ManageDriver = ({ onBack }) => {
                   <tbody className="divide-y divide-slate-100">
                     {(jadwalList || []).map((jadwal, index) => (
                       <tr key={jadwal?.id || jadwal?._id || index} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-4 px-5 font-black text-sm text-[#00206B] uppercase">
-                          {jadwal?.trayek || jadwal?.nama_trayek || `Trayek ${jadwal?.id || index + 1}`}
-                        </td>
+                        <td className="py-4 px-5 font-black text-sm text-[#00206B] uppercase">{jadwal?.trayek || jadwal?.nama_trayek || `Trayek ${jadwal?.id || index + 1}`}</td>
                         <td className="py-4 px-4 text-center">
-                          <span className={`inline-block px-3 py-1 rounded-xl text-xs font-black uppercase ${
-                            (jadwal?.tipe_sesi || jadwal?.sesi || "").toUpperCase() === "PAGI"
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : "bg-blue-50 text-blue-700 border border-blue-200"
-                          }`}>
+                          <span
+                            className={`inline-block px-3 py-1 rounded-xl text-xs font-black uppercase ${
+                              (jadwal?.tipe_sesi || jadwal?.sesi || "").toUpperCase() === "PAGI"
+                                ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                : "bg-blue-50 text-blue-700 border border-blue-200"
+                            }`}
+                          >
                             {jadwal?.tipe_sesi || jadwal?.sesi || "PAGI"}
                           </span>
                         </td>
                         <td className="py-4 px-4 text-center">
-                          <span className="inline-block text-xs font-black text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg">
-                            🕒 {jadwal?.batas_keluar_dishub || "-"} WIB
-                          </span>
+                          <span className="inline-block text-xs font-black text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg">🕒 {jadwal?.batas_keluar_dishub || "-"} WIB</span>
                         </td>
                         <td className="py-4 px-4 text-center">
-                          <span className="inline-block text-xs font-black text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
-                            📍 {jadwal?.batas_tiba_start || "-"} WIB
-                          </span>
+                          <span className="inline-block text-xs font-black text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">📍 {jadwal?.batas_tiba_start || "-"} WIB</span>
                         </td>
                         <td className="py-4 px-5 text-center">
                           <button
@@ -587,15 +557,10 @@ const ManageDriver = ({ onBack }) => {
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-100 space-y-5 my-8">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <span className="text-[10px] font-black uppercase text-[#00206B] tracking-wider block">
-                  REGISTRASI DRIVER
-                </span>
+                <span className="text-[10px] font-black uppercase text-[#00206B] tracking-wider block">REGISTRASI DRIVER</span>
                 <h3 className="text-xl font-black text-[#00206B] m-0">Tambah Driver Baru</h3>
               </div>
-              <button
-                onClick={() => setShowAddUserModal(false)}
-                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors"
-              >
+              <button onClick={() => setShowAddUserModal(false)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors">
                 ✕
               </button>
             </div>
@@ -610,19 +575,43 @@ const ManageDriver = ({ onBack }) => {
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ID Driver</label>
-                  <input type="text" name="id_driver" value={formData.id_driver} onChange={handleChange} className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                  <input
+                    type="text"
+                    name="id_driver"
+                    value={formData.id_driver}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nama Lengkap</label>
-                  <input type="text" name="nama_lengkap" value={formData.nama_lengkap} onChange={handleChange} className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                  <input
+                    type="text"
+                    name="nama_lengkap"
+                    value={formData.nama_lengkap}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Email Akun</label>
-                  <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Password Login</label>
-                  <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
                 </div>
               </div>
 
@@ -635,16 +624,28 @@ const ManageDriver = ({ onBack }) => {
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nomer Kendaraan</label>
-                  <input type="text" name="nomer_kendaraan" value={formData.nomer_kendaraan} onChange={handleChange} placeholder="Contoh: W 1234 XY" className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                  <input
+                    type="text"
+                    name="nomer_kendaraan"
+                    value={formData.nomer_kendaraan}
+                    onChange={handleChange}
+                    placeholder="Contoh: W 1234 XY"
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Jenis Kendaraan</label>
-                  <input type="text" name="jenis_kendaraan" value={formData.jenis_kendaraan} onChange={handleChange} placeholder="Contoh: Minibus" className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                  <input
+                    type="text"
+                    name="jenis_kendaraan"
+                    value={formData.jenis_kendaraan}
+                    onChange={handleChange}
+                    placeholder="Contoh: Minibus"
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                    Kapasitas Kendaraan
-                  </label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Kapasitas Kendaraan</label>
                   <input
                     type="number"
                     name="kapasitas"
@@ -656,7 +657,14 @@ const ManageDriver = ({ onBack }) => {
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Trayek</label>
-                  <input type="text" name="trayek" value={formData.trayek} onChange={handleChange} placeholder="Contoh: Trayek A" className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                  <input
+                    type="text"
+                    name="trayek"
+                    value={formData.trayek}
+                    onChange={handleChange}
+                    placeholder="Contoh: Trayek A"
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
                 </div>
               </div>
 
@@ -689,15 +697,10 @@ const ManageDriver = ({ onBack }) => {
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-100 space-y-5 my-8">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <span className="text-[10px] font-black uppercase text-amber-700 tracking-wider block">
-                  PERBARUI DRIVER
-                </span>
+                <span className="text-[10px] font-black uppercase text-amber-700 tracking-wider block">PERBARUI DRIVER</span>
                 <h3 className="text-xl font-black text-[#00206B] m-0">Edit Data Driver</h3>
               </div>
-              <button
-                onClick={() => setShowEditUserModal(false)}
-                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors"
-              >
+              <button onClick={() => setShowEditUserModal(false)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors">
                 ✕
               </button>
             </div>
@@ -712,19 +715,44 @@ const ManageDriver = ({ onBack }) => {
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ID Driver</label>
-                  <input type="text" name="id_driver" disabled value={formData.id_driver} className="w-full bg-slate-100 border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none opacity-70 cursor-not-allowed" />
+                  <input
+                    type="text"
+                    name="id_driver"
+                    disabled
+                    value={formData.id_driver}
+                    className="w-full bg-slate-100 border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none opacity-70 cursor-not-allowed"
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nama Lengkap</label>
-                  <input type="text" name="nama_lengkap" value={formData.nama_lengkap} onChange={handleChange} className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                  <input
+                    type="text"
+                    name="nama_lengkap"
+                    value={formData.nama_lengkap}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Email Akun</label>
-                  <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Password Baru</label>
-                  <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Opsional - ganti password" className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Opsional - ganti password"
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
                 </div>
               </div>
 
@@ -737,16 +765,28 @@ const ManageDriver = ({ onBack }) => {
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nomer Kendaraan</label>
-                  <input type="text" name="nomer_kendaraan" value={formData.nomer_kendaraan} onChange={handleChange} placeholder="Contoh: W 1234 XY" className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                  <input
+                    type="text"
+                    name="nomer_kendaraan"
+                    value={formData.nomer_kendaraan}
+                    onChange={handleChange}
+                    placeholder="Contoh: W 1234 XY"
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Jenis Kendaraan</label>
-                  <input type="text" name="jenis_kendaraan" value={formData.jenis_kendaraan} onChange={handleChange} placeholder="Contoh: Minibus" className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                  <input
+                    type="text"
+                    name="jenis_kendaraan"
+                    value={formData.jenis_kendaraan}
+                    onChange={handleChange}
+                    placeholder="Contoh: Minibus"
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                    Kapasitas Kendaraan
-                  </label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Kapasitas Kendaraan</label>
                   <input
                     type="number"
                     name="kapasitas"
@@ -758,7 +798,14 @@ const ManageDriver = ({ onBack }) => {
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Trayek</label>
-                  <input type="text" name="trayek" value={formData.trayek} onChange={handleChange} placeholder="Contoh: Trayek A" className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]" />
+                  <input
+                    type="text"
+                    name="trayek"
+                    value={formData.trayek}
+                    onChange={handleChange}
+                    placeholder="Contoh: Trayek A"
+                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2 outline-none focus:border-[#00206B]"
+                  />
                 </div>
               </div>
 
@@ -789,21 +836,16 @@ const ManageDriver = ({ onBack }) => {
       {userToDelete && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-[fadeIn_0.15s]">
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-slate-100 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto text-2xl">
-              🗑️
-            </div>
+            <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto text-2xl">🗑️</div>
             <div>
               <h3 className="text-lg font-black text-[#00206B] m-0">Hapus Akun Driver?</h3>
               <p className="text-xs text-slate-500 font-semibold mt-1">
-                Apakah Anda yakin ingin menghapus akun driver{" "}
-                <span className="font-black text-rose-600">{userToDelete.nama_lengkap || userToDelete.nama || userToDelete.name}</span>? Tindakan ini tidak dapat dibatalkan.
+                Apakah Anda yakin ingin menghapus akun driver <span className="font-black text-rose-600">{userToDelete.nama_lengkap || userToDelete.nama || userToDelete.name}</span>? Tindakan ini
+                tidak dapat dibatalkan.
               </p>
             </div>
             <div className="flex items-center gap-2 pt-2">
-              <button
-                onClick={() => setUserToDelete(null)}
-                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs uppercase cursor-pointer"
-              >
+              <button onClick={() => setUserToDelete(null)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs uppercase cursor-pointer">
                 Batal
               </button>
               <button
@@ -829,9 +871,7 @@ const ManageDriver = ({ onBack }) => {
                 <span className={`text-[10px] font-black uppercase tracking-wider block ${isEditMode ? "text-amber-700" : "text-[#00206B]"}`}>
                   {isEditMode ? "EDIT CUT-OFF (GOD MODE)" : "KONFIGURASI CUT-OFF"}
                 </span>
-                <h3 className="text-xl font-black text-[#00206B] m-0">
-                  {isEditMode ? "Edit Toleransi Jadwal" : "Tambah Jadwal Baru"}
-                </h3>
+                <h3 className="text-xl font-black text-[#00206B] m-0">{isEditMode ? "Edit Toleransi Jadwal" : "Tambah Jadwal Baru"}</h3>
               </div>
               <button
                 type="button"
@@ -848,9 +888,7 @@ const ManageDriver = ({ onBack }) => {
 
             <form onSubmit={handleSubmitJadwal} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                  Trayek
-                </label>
+                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">Trayek</label>
                 <input
                   type="text"
                   required
@@ -862,9 +900,7 @@ const ManageDriver = ({ onBack }) => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                  Tipe Sesi
-                </label>
+                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">Tipe Sesi</label>
                 <select
                   value={formJadwal?.tipe_sesi || "PAGI"}
                   onChange={(e) => setFormJadwal({ ...(formJadwal || {}), tipe_sesi: e.target.value })}
@@ -877,9 +913,7 @@ const ManageDriver = ({ onBack }) => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                    Batas Keluar Dishub
-                  </label>
+                  <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">Batas Keluar Dishub</label>
                   <input
                     type="time"
                     required
@@ -890,9 +924,7 @@ const ManageDriver = ({ onBack }) => {
                   <span className="text-[10px] text-slate-400 font-semibold mt-0.5 block">Format: JJ:MM (cth: 06:00)</span>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">
-                    Batas Tiba di Titik Start
-                  </label>
+                  <label className="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">Batas Tiba di Titik Start</label>
                   <input
                     type="time"
                     required

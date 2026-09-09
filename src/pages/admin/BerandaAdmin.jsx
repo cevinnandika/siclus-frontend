@@ -93,18 +93,9 @@ const BerandaAdmin = ({ user }) => {
   // Filter driver yang terdeteksi TERLAMBAT atau BELUM MEMULAI SESI
   const lateOrNotStartedList = riwayatHarian.filter((item) => {
     const isLate =
-      item.status_kedisiplinan === "TERLAMBAT" ||
-      item.is_late === true ||
-      item.terlambat === true ||
-      item.status?.toUpperCase() === "TERLAMBAT" ||
-      item.cp1_late === true ||
-      item.cp2_late === true;
+      item.status_kedisiplinan === "TERLAMBAT" || item.is_late === true || item.terlambat === true || item.status?.toUpperCase() === "TERLAMBAT" || item.cp1_late === true || item.cp2_late === true;
 
-    const notStarted =
-      item.status === "belum_mulai" ||
-      item.status === "BELUM_MULAI" ||
-      item.status_operasional === "BELUM_JALAN" ||
-      (!item.jam_berangkat_kantor && !item.cp1_time);
+    const notStarted = item.status === "belum_mulai" || item.status === "BELUM_MULAI" || item.status_operasional === "BELUM_JALAN" || (!item.jam_berangkat_kantor && !item.cp1_time);
 
     return isLate || notStarted;
   });
@@ -117,10 +108,9 @@ const BerandaAdmin = ({ user }) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="space-y-1">
-          <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">
-            Selamat Datang, Administrator ({user?.nama_lengkap || user?.nama || user?.name || "Admin"})
-          </h2>
-          <p className="text-sm text-slate-500 font-semibold">{currentDate} • Pusat Kontrol Operasional SICLUS</p>
+          <h2 className="text-3xl md:text-4xl font-black text-[#00206B] m-0">{user?.nama_lengkap || user?.nama || user?.name || "Admin"}</h2>
+          <p className="text-sm text-slate-500 font-bold">Administrator</p>
+          <p className="text-xs text-slate-400 font-semibold mt-1">{currentDate}</p>
         </div>
         <button
           onClick={() => fetchData(true)}
@@ -141,16 +131,12 @@ const BerandaAdmin = ({ user }) => {
           <div className="space-y-1">
             <span className="text-xs font-black text-slate-400 uppercase tracking-wider block">TOTAL SUPIR</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-[#00206B]">
-                {isLoading ? "..." : dashboardData.total_supir_terdaftar}
-              </span>
+              <span className="text-3xl font-black text-[#00206B]">{isLoading ? "..." : dashboardData.total_supir_terdaftar}</span>
               <span className="text-xs font-bold text-slate-400">Driver</span>
             </div>
             <p className="text-[11px] font-semibold text-slate-500">Terdaftar di sistem master data</p>
           </div>
-          <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#00206B] flex-shrink-0 text-2xl shadow-inner">
-            🚌
-          </div>
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#00206B] flex-shrink-0 text-2xl shadow-inner">🚌</div>
         </div>
 
         {/* Card 2: Jalan Hari Ini */}
@@ -158,16 +144,12 @@ const BerandaAdmin = ({ user }) => {
           <div className="space-y-1">
             <span className="text-xs font-black text-emerald-600 uppercase tracking-wider block">JALAN HARI INI</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-emerald-700">
-                {isLoading ? "..." : dashboardData.total_supir_jalan}
-              </span>
+              <span className="text-3xl font-black text-emerald-700">{isLoading ? "..." : dashboardData.total_supir_jalan}</span>
               <span className="text-xs font-bold text-emerald-600">Armada Aktif</span>
             </div>
             <p className="text-[11px] font-semibold text-emerald-600/80">Driver sedang bertugas</p>
           </div>
-          <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 flex-shrink-0 text-2xl shadow-inner">
-            🟢
-          </div>
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 flex-shrink-0 text-2xl shadow-inner">🟢</div>
         </div>
 
         {/* Card 3: Telat Hari Ini */}
@@ -175,16 +157,12 @@ const BerandaAdmin = ({ user }) => {
           <div className="space-y-1">
             <span className="text-xs font-black text-rose-600 uppercase tracking-wider block">TELAT HARI INI</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-rose-700">
-                {isLoading ? "..." : dashboardData.total_supir_telat}
-              </span>
+              <span className="text-3xl font-black text-rose-700">{isLoading ? "..." : dashboardData.total_supir_telat}</span>
               <span className="text-xs font-bold text-rose-600">Insiden Telat</span>
             </div>
             <p className="text-[11px] font-semibold text-rose-600/80">Melewati toleransi jam cut-off</p>
           </div>
-          <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 flex-shrink-0 text-2xl shadow-inner">
-            🔴
-          </div>
+          <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 flex-shrink-0 text-2xl shadow-inner">🔴</div>
         </div>
       </div>
 
@@ -192,36 +170,22 @@ const BerandaAdmin = ({ user }) => {
       <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-black text-base">
-              ⚠️
-            </div>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-black text-base">⚠️</div>
             <div>
-              <h3 className="text-lg font-black text-[#00206B] m-0 tracking-wide uppercase">
-                Peringatan Kedisiplinan Terkini
-              </h3>
-              <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                Pemantauan toleransi waktu CP1 & CP2 driver hari ini
-              </p>
+              <h3 className="text-lg font-black text-[#00206B] m-0 tracking-wide uppercase">Peringatan Kedisiplinan Terkini</h3>
+              <p className="text-xs text-slate-400 font-semibold mt-0.5">Pemantauan toleransi waktu CP1 & CP2 driver hari ini</p>
             </div>
           </div>
-          <span className="text-xs font-bold px-3 py-1 bg-slate-100 text-slate-600 rounded-full border border-slate-200">
-            {displayAlerts.length} Data Terpantau
-          </span>
+          <span className="text-xs font-bold px-3 py-1 bg-slate-100 text-slate-600 rounded-full border border-slate-200">{displayAlerts.length} Data Terpantau</span>
         </div>
 
         {isLoading ? (
-          <div className="py-12 text-center text-[#00206B] font-bold animate-pulse">
-            Memuat Data Kedisiplinan Terkini... ⏳
-          </div>
+          <div className="py-12 text-center text-[#00206B] font-bold animate-pulse">Memuat Data Kedisiplinan Terkini... ⏳</div>
         ) : displayAlerts.length === 0 ? (
           <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center space-y-2">
-            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto text-xl font-black">
-              ✓
-            </div>
+            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto text-xl font-black">✓</div>
             <h4 className="text-base font-extrabold text-emerald-800 m-0">Semua Driver Disiplin & Tepat Waktu</h4>
-            <p className="text-xs text-emerald-600 font-semibold max-w-md mx-auto">
-              Tidak ada driver yang terdeteksi terlambat pada CP1/CP2 untuk jadwal hari ini.
-            </p>
+            <p className="text-xs text-emerald-600 font-semibold max-w-md mx-auto">Tidak ada driver yang terdeteksi terlambat pada CP1/CP2 untuk jadwal hari ini.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -230,20 +194,11 @@ const BerandaAdmin = ({ user }) => {
               const trayek = item.trayek || item.nama_trayek || "-";
               const bus = item.bus || item.armada || item.nopol || "-";
               const sesi = item.tipe_sesi || item.sesi || "PAGI";
-              
-              const isLate =
-                item.status_kedisiplinan === "TERLAMBAT" ||
-                item.is_late === true ||
-                item.terlambat === true ||
-                item.status?.toUpperCase() === "TERLAMBAT" ||
-                item.cp1_late ||
-                item.cp2_late;
 
-              const notStarted =
-                item.status === "belum_mulai" ||
-                item.status === "BELUM_MULAI" ||
-                item.status_operasional === "BELUM_JALAN" ||
-                (!item.jam_berangkat_kantor && !item.cp1_time);
+              const isLate =
+                item.status_kedisiplinan === "TERLAMBAT" || item.is_late === true || item.terlambat === true || item.status?.toUpperCase() === "TERLAMBAT" || item.cp1_late || item.cp2_late;
+
+              const notStarted = item.status === "belum_mulai" || item.status === "BELUM_MULAI" || item.status_operasional === "BELUM_JALAN" || (!item.jam_berangkat_kantor && !item.cp1_time);
 
               return (
                 <div
@@ -252,18 +207,14 @@ const BerandaAdmin = ({ user }) => {
                     isLate
                       ? "bg-rose-50/50 border-rose-200 hover:border-rose-300"
                       : notStarted
-                      ? "bg-amber-50/40 border-amber-200 hover:border-amber-300"
-                      : "bg-slate-50/70 border-slate-200 hover:border-slate-300"
+                        ? "bg-amber-50/40 border-amber-200 hover:border-amber-300"
+                        : "bg-slate-50/70 border-slate-200 hover:border-slate-300"
                   }`}
                 >
                   <div className="flex items-center gap-3.5">
                     <div
                       className={`w-11 h-11 rounded-2xl flex items-center justify-center text-white font-black text-sm flex-shrink-0 shadow-sm ${
-                        isLate
-                          ? "bg-gradient-to-br from-rose-600 to-red-700"
-                          : notStarted
-                          ? "bg-gradient-to-br from-amber-500 to-orange-600"
-                          : "bg-gradient-to-br from-slate-700 to-[#00206B]"
+                        isLate ? "bg-gradient-to-br from-rose-600 to-red-700" : notStarted ? "bg-gradient-to-br from-amber-500 to-orange-600" : "bg-gradient-to-br from-slate-700 to-[#00206B]"
                       }`}
                     >
                       {driverName.charAt(0).toUpperCase()}
@@ -271,9 +222,7 @@ const BerandaAdmin = ({ user }) => {
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="text-sm font-extrabold text-[#00206B] m-0">{driverName}</h4>
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700">
-                          Sesi {sesi}
-                        </span>
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700">Sesi {sesi}</span>
                       </div>
                       <p className="text-xs text-slate-500 font-semibold mt-0.5">
                         Trayek {trayek} • {bus}
@@ -288,27 +237,21 @@ const BerandaAdmin = ({ user }) => {
                           <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-ping"></span>
                           TERLAMBAT
                         </span>
-                        <p className="text-[11px] font-bold text-rose-600 mt-1">
-                          {item.keterangan || item.alasan_telat || "Melewati toleransi batas waktu CP"}
-                        </p>
+                        <p className="text-[11px] font-bold text-rose-600 mt-1">{item.keterangan || item.alasan_telat || "Melewati toleransi batas waktu CP"}</p>
                       </div>
                     ) : notStarted ? (
                       <div className="text-left sm:text-right">
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">
                           ⏳ BELUM JALAN
                         </span>
-                        <p className="text-[11px] font-bold text-amber-700 mt-1">
-                          Belum memulai checklist inspeksi
-                        </p>
+                        <p className="text-[11px] font-bold text-amber-700 mt-1">Belum memulai checklist inspeksi</p>
                       </div>
                     ) : (
                       <div className="text-left sm:text-right">
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
                           ✓ TEPAT WAKTU
                         </span>
-                        <p className="text-[11px] font-bold text-emerald-700 mt-1">
-                          Sesuai toleransi jadwal
-                        </p>
+                        <p className="text-[11px] font-bold text-emerald-700 mt-1">Sesuai toleransi jadwal</p>
                       </div>
                     )}
                   </div>

@@ -18,7 +18,6 @@ const ProfilAdmin = ({ user, onLogout }) => {
   // Fungsi untuk menyimpan ke backend (siapkan kerangkanya)
   const handleSaveName = async () => {
     try {
-      // Update juga data di localStorage/Context agar nama di Sidebar ikut berubah
       const savedUser = JSON.parse(localStorage.getItem("siclus_user") || "{}");
       savedUser.nama = adminName;
       savedUser.name = adminName;
@@ -77,8 +76,7 @@ const ProfilAdmin = ({ user, onLogout }) => {
   return (
     <div className="space-y-6 text-left max-w-3xl mx-auto pb-6 relative">
       <div className="space-y-1">
-        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">Profil Akun Admin</h2>
-        <p className="text-sm text-slate-400 font-semibold mt-0.5">Informasi kredensial dan hak akses administrator operasional SICLUS</p>
+        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">PROFIL ADMIN</h2>
       </div>
 
       <div className="bg-white border border-slate-100 rounded-3xl shadow-sm relative overflow-hidden">
@@ -172,7 +170,6 @@ const ProfilAdmin = ({ user, onLogout }) => {
               </div>
             )}
           </div>
-          <span className="bg-[#00206B] text-white font-black px-4 py-1.5 rounded-full text-[10px] mt-2 uppercase tracking-widest shadow-md">🛡️ ADMINISTRATOR UTAMA</span>
 
           <div className="mt-8 space-y-3 w-full">
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center">
@@ -187,7 +184,7 @@ const ProfilAdmin = ({ user, onLogout }) => {
 
           <div className="w-full mt-8 pt-6 border-t border-slate-100">
             <button onClick={onLogout} className="w-full bg-[#FCE8E6] hover:bg-[#FAD2CF] transition-colors text-[#C5221F] font-extrabold py-4 px-4 rounded-2xl cursor-pointer">
-              🚪 KELUAR APLIKASI (LOGOUT)
+              KELUAR APLIKASI
             </button>
           </div>
         </div>

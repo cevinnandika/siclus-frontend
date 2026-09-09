@@ -1,6 +1,36 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { apiService } from "../../services/api";
 
-const DetailLaporan = ({ report }) => {
+const DetailLaporan = ({ report, user: propUser, onBack }) => {
+  const [profilePhoto, setProfilePhoto] = useState(propUser?.foto_profil || null);
+  const [activeTab, setActiveTab] = useState("pagi");
+  const [selectedPhotoModal, setSelectedPhotoModal] = useState(null);
+
+  useEffect(() => {
+    if (propUser?.foto_profil) {
+      setProfilePhoto(propUser.foto_profil);
+    } else {
+      const saved = localStorage.getItem("siclus_user");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed?.foto_profil) {
+            setProfilePhoto(parsed.foto_profil);
+            return;
+          }
+        } catch (e) {}
+      }
+      apiService
+        .getProfilDriver()
+        .then((res) => {
+          if (res?.data?.foto_profil) {
+            setProfilePhoto(res.data.foto_profil);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [propUser]);
+
   if (!report) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4">
@@ -15,8 +45,8 @@ const DetailLaporan = ({ report }) => {
           </svg>
         </div>
         <div>
-          <h3 className="text-xl font-black text-[#00206B]">Data Tidak Ditemukan</h3>
-          <p className="text-sm text-slate-500 font-medium">Sesi terhapus. Silakan kembali ke halaman Riwayat.</p>
+          <h3 className="text-xl font-bold text-[#00206B]">Data Tidak Ditemukan</h3>
+          <p className="text-sm text-slate-500 font-medium">Sesi tidak ditemukan atau telah dihapus.</p>
         </div>
       </div>
     );
@@ -27,269 +57,420 @@ const DetailLaporan = ({ report }) => {
   const inspeksiPagi = report.inspections?.find((s) => s.tipe_sesi?.toUpperCase() === "PAGI");
   const inspeksiSiang = report.inspections?.find((s) => s.tipe_sesi?.toUpperCase() === "SIANG");
 
-  const calculateCompleteness = () => {
-    let totalPercentage = 0;
-    const checkFields = [
-      "jam_berangkat_kantor",
-      "km_berangkat_kantor",
-      "jam_berangkat_start",
-      "km_berangkat_start",
-      "jam_tiba_finish",
-      "km_tiba_finish",
-      "jumlah_penumpang",
-      "jam_tiba_kantor",
-      "km_tiba_kantor",
-    ];
-    const inspFields = ["rem", "ac", "lampu", "klakson", "wiper", "lampu_rem", "bell", "pintu", "kebersihan"];
-
-    // 1. Sesi Pagi (Maks 25%)
-    if (sesiPagi) {
-      let filled = 0;
-      checkFields.forEach((f) => {
-        if (sesiPagi[f] !== null && sesiPagi[f] !== undefined) filled++;
-      });
-      totalPercentage += (filled / checkFields.length) * 25;
+  // Format tanggal Indonesia rapi
+  const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return "-";
+    try {
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString("id-ID", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+      }
+      return dateStr;
+    } catch {
+      return dateStr;
     }
-    // 2. Inspeksi Pagi (Maks 25%)
-    if (inspeksiPagi) {
-      let filled = 0;
-      inspFields.forEach((f) => {
-        if (inspeksiPagi[f]) filled++;
-      });
-      totalPercentage += (filled / inspFields.length) * 25;
-    }
-    // 3. Sesi Siang (Maks 25%)
-    if (sesiSiang) {
-      let filled = 0;
-      checkFields.forEach((f) => {
-        if (sesiSiang[f] !== null && sesiSiang[f] !== undefined) filled++;
-      });
-      totalPercentage += (filled / checkFields.length) * 25;
-    }
-    // 4. Inspeksi Siang (Maks 25%)
-    if (inspeksiSiang) {
-      let filled = 0;
-      inspFields.forEach((f) => {
-        if (inspeksiSiang[f]) filled++;
-      });
-      totalPercentage += (filled / inspFields.length) * 25;
-    }
-
-    return Math.round(totalPercentage);
   };
-
-  const completeness = calculateCompleteness();
 
   const formatTime = (timeString) => {
     if (!timeString) return "-";
     try {
       const d = new Date(timeString);
-      if (!isNaN(d.getTime())) return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      }
       return timeString;
     } catch {
       return timeString;
     }
   };
 
-  const TimelineItem = ({ title, time, odometer, passengers, isLast, foto, nopol }) => (
-    <div className={`relative pl-7 ${isLast ? "" : "pb-8"}`}>
-      <div className="absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full bg-[#00206B] ring-4 ring-slate-50"></div>
-      {!isLast && <div className="absolute left-[6px] top-5 bottom-0 w-0.5 bg-slate-100"></div>}
+  const driverName = propUser?.nama_lengkap || propUser?.nama || report.driverName || "Driver SICLUS";
+  const driverInitial = driverName.charAt(0).toUpperCase();
 
-      <div>
-        <h4 className="text-xs font-black text-[#00206B] uppercase tracking-wider">{title}</h4>
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:max-w-sm">
-          {/* Render Nopol & Merk Kendaraan HANYA jika datanya dikirim (Biasanya di CP1) */}
-          {nopol && (
-            <div className="col-span-2 bg-amber-50 border border-amber-200 p-4 rounded-2xl flex justify-between items-center shadow-sm">
-              <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">KENDARAAN</span>
-              <span className="text-sm font-black text-amber-900">{nopol}</span>
-            </div>
-          )}
+  // Helper Penugasan Armada Otomatis
+  const getPenugasanData = (sesi) => {
+    const rawNopol = sesi?.nopol_kendaraan || report.bus || propUser?.bus || propUser?.nomer_kendaraan || "Belum Ditentukan";
+    let jenis = propUser?.jenis_kendaraan || "Belum Ditentukan";
+    let nopol = rawNopol;
 
-          <div className="bg-slate-50 p-4 rounded-2xl">
-            <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest">WAKTU</span>
-            <span className="block text-sm font-black text-slate-800 mt-1">{formatTime(time)} WIB</span>
-          </div>
-          <div className="bg-slate-50 p-4 rounded-2xl">
-            <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest">ODOMETER</span>
-            <span className="block text-sm font-black text-slate-800 mt-1">{odometer ? `${odometer} KM` : "-"}</span>
-          </div>
+    if (rawNopol.includes(" - ")) {
+      const parts = rawNopol.split(" - ");
+      jenis = parts[0] || jenis;
+      nopol = parts[1] || nopol;
+    }
 
-          {passengers !== undefined && passengers !== null && (
-            <div className="col-span-2 bg-[#00206B] p-4 rounded-2xl flex justify-between items-center shadow-sm">
-              <span className="text-[10px] font-black text-white uppercase tracking-widest">SISWA DIANGKUT</span>
-              <span className="text-sm font-black text-white">{passengers} ORANG</span>
-            </div>
-          )}
+    const trayek = report.trayek || propUser?.trayek || "Belum Ditentukan";
+    const kapasitas = propUser?.kapasitas ? `${propUser.kapasitas} Siswa` : report.kapasitas ? `${report.kapasitas} Siswa` : "Belum Ditentukan";
 
-          {/* Render Bukti Foto Selfie */}
-          {foto && (
-            <div className="col-span-2 mt-1 relative rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm aspect-[4/3]">
-              <div className="absolute top-2 left-2 bg-emerald-500 text-white text-[9px] font-black px-2 py-1 rounded shadow-sm z-10 uppercase tracking-widest">✓ FOTO VALIDASI</div>
-              <img src={foto} alt="Bukti Operasional" className="w-full h-full object-cover" />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+    return { trayek, jenis, nopol, kapasitas };
+  };
 
+  // 10 Item Inspeksi Standar SICLUS
   const inspKeys = [
-    { id: "rem", label: "REM" },
+    { id: "rem", label: "Rem" },
+    { id: "lampu", label: "Lampu" },
+    { id: "wiper", label: "Wiper" },
+    { id: "ban", label: "Ban" },
+    { id: "kebersihan", label: "Kebersihan" },
     { id: "ac", label: "AC" },
-    { id: "lampu", label: "LAMPU" },
-    { id: "klakson", label: "KLAKSON" },
-    { id: "wiper", label: "WIPER" },
-    { id: "lampu_rem", label: "LAMPU REM" },
-    { id: "bell", label: "BELL" },
-    { id: "pintu", label: "PINTU" },
-    { id: "kebersihan", label: "KEBERSIHAN" },
+    { id: "klakson", label: "Klakson" },
+    { id: "lampu_rem", label: "Lampu Rem" },
+    { id: "pintu", label: "Pintu Kendaraan" },
+    { id: "mesin", label: "Mesin" },
   ];
 
-  // warna box kodisi kendaraan
-  const RenderInspeksiBox = ({ dataInspeksi, title }) => (
-    <div className="mb-8 last:mb-0">
-      <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">{title}</h4>
-      {dataInspeksi ? (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {inspKeys.map((item, idx) => {
-              const statusValue = dataInspeksi[item.id];
-              const isOk = statusValue === "OK";
-              return (
-                <div key={idx} className={`flex items-center justify-between px-5 py-4 rounded-2xl ${isOk ? "bg-slate-50" : "bg-amber-500"}`}>
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${isOk ? "text-slate-600" : "text-white"}`}>{item.label}</span>
-
-                  <span className={`text-[9px] font-black px-2 py-1 rounded-md uppercase ${isOk ? "bg-emerald-500 text-white shadow-sm" : "bg-white text-amber-600 shadow-sm"}`}>
-                    {statusValue || "-"}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          {dataInspeksi.catatan && (
-            <div className="mt-5 bg-amber-50 p-5 rounded-2xl border-l-4 border-amber-400">
-              <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest block mb-2">CATATAN KERUSAKAN</span>
-              <p className="text-sm font-bold text-amber-900 leading-relaxed">{dataInspeksi.catatan}</p>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="text-center py-8 text-slate-400 font-black text-[10px] uppercase tracking-widest bg-slate-50 rounded-2xl">DATA INSPEKSI {title} BELUM TERSEDIA</div>
-      )}
-    </div>
-  );
+  // Aktifkan tab yang ada datanya secara default
+  const activeSession = activeTab === "pagi" ? sesiPagi : sesiSiang;
+  const activeInspeksi = activeTab === "pagi" ? inspeksiPagi : inspeksiSiang;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-10 mt-2">
-      <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-slate-100 to-transparent rounded-bl-full pointer-events-none"></div>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div>
-            <span className="inline-block px-4 py-1.5 bg-[#00206B] text-white text-[10px] font-black rounded-lg uppercase tracking-widest mb-4">LAPORAN OPERASIONAL</span>
-            <h2 className="text-3xl font-black text-[#00206B] uppercase tracking-tighter">{report.tanggal || report.date || "TANGGAL KOSONG"}</h2>
-            <div className="flex items-center gap-4 mt-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-[#00206B] flex items-center justify-center text-white font-black text-xs">
-                  {(report.driverName || "D").charAt(0).toUpperCase()}
-                </div>
-                <span className="text-sm font-black text-slate-700 uppercase">{report.driverName || "DRIVER"}</span>
+    <div className="space-y-6 max-w-5xl mx-auto pb-14 font-sans text-left">
+      {/* Tombol Navigasi Kembali */}
+      {onBack && (
+        <button onClick={onBack} className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#00206B] transition-colors cursor-pointer group">
+          <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Kembali ke Riwayat
+        </button>
+      )}
+
+      {/* Header Halaman (Identik dengan Beranda & Riwayat) */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-1">
+        <div className="space-y-1">
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 m-0 tracking-tight">Detail Riwayat Operasional</h2>
+          <p className="text-sm text-slate-400 font-normal">Catatan Perjalanan Operasional {formatDisplayDate(report.tanggal || report.date)}.</p>
+        </div>
+      </div>
+
+      {/* KARTU IDENTITAS SUPIR (ELEGAN, MINIMALIS, PROFIL BULAT UTUH) */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4 min-w-0">
+          {/* Avatar Bulat Utuh Profil Driver */}
+          <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0 flex items-center justify-center shadow-xs">
+            {profilePhoto ? (
+              <img src={profilePhoto} alt={driverName} className="w-full h-full object-cover rounded-full" />
+            ) : (
+              <div className="w-full h-full rounded-full bg-[#00206B] text-white flex items-center justify-center font-bold text-lg">{driverInitial}</div>
+            )}
+          </div>
+
+          {/* Info Driver */}
+          <div className="min-w-0">
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 m-0 tracking-tight truncate">{driverName}</h3>
+          </div>
+        </div>
+
+        {/* Status Selesai */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+            Laporan Selesai
+          </span>
+        </div>
+      </div>
+
+      {/* TAB PILIHAN SESI: BERANGKAT (PAGI) vs PULANG (SIANG) */}
+      <div className="flex items-center gap-2.5 border-b border-slate-200/80 pb-3">
+        <button
+          type="button"
+          onClick={() => setActiveTab("pagi")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            activeTab === "pagi"
+              ? "bg-[#00206B] text-white shadow-xs"
+              : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50"
+          }`}
+        >
+          <span>Sesi Pagi</span>
+          {sesiPagi && String(sesiPagi.status_waktu || "").toUpperCase() === "TEPAT WAKTU" && (
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                activeTab === "pagi"
+                  ? "bg-emerald-500 text-white"
+                  : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              }`}
+            >
+              Tepat Waktu
+            </span>
+          )}
+          {sesiPagi && String(sesiPagi.status_waktu || "").toUpperCase() === "TERLAMBAT" && (
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                activeTab === "pagi"
+                  ? "bg-rose-500 text-white"
+                  : "bg-rose-50 text-rose-600 border border-rose-200"
+              }`}
+            >
+              Terlambat
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("siang")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            activeTab === "siang"
+              ? "bg-[#00206B] text-white shadow-xs"
+              : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50"
+          }`}
+        >
+          <span>Sesi Siang</span>
+          {sesiSiang && String(sesiSiang.status_waktu || "").toUpperCase() === "TEPAT WAKTU" && (
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                activeTab === "siang"
+                  ? "bg-emerald-500 text-white"
+                  : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              }`}
+            >
+              Tepat Waktu
+            </span>
+          )}
+          {sesiSiang && String(sesiSiang.status_waktu || "").toUpperCase() === "TERLAMBAT" && (
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                activeTab === "siang"
+                  ? "bg-rose-500 text-white"
+                  : "bg-rose-50 text-rose-600 border border-rose-200"
+              }`}
+            >
+              Terlambat
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* KONTEN SESI AKTIF (PAGI ATAU SIANG) */}
+      {activeSession ? (
+        <div className="space-y-6">
+          {/* KARTU TIMELINE 3 CHECK POINT */}
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-7 shadow-sm space-y-7">
+            {/* ========================================================================= */}
+            {/* CHECK POINT 1: KELUAR GARASI DISHUB */}
+            {/* ========================================================================= */}
+            <div className="relative pl-7 border-l-2 border-slate-200 pb-2">
+              <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-[#00206B] ring-4 ring-white flex items-center justify-center">
+                <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
               </div>
-              <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
-              <span className="text-sm font-black text-slate-500 uppercase">
-                {report.trayek || "-"} ({report.bus || "-"})
-              </span>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
+                <h4 className="text-sm font-bold text-slate-900 m-0">Check Point 1 - Keluar Garasi Dishub</h4>
+                <span className="text-xs font-semibold text-slate-400">{formatTime(activeSession.jam_berangkat_kantor)} WIB</span>
+              </div>
+
+              {/* Rincian Penugasan Armada (Gaya Elegan Identik dengan BerandaDriver) */}
+              <div className="mb-4">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Rincian Penugasan Armada</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {(() => {
+                    const penugasan = getPenugasanData(activeSession);
+                    return (
+                      <>
+                        <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3 transition-colors hover:bg-slate-50">
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Trayek</span>
+                          <p className="text-xs font-bold text-[#00206B] mt-1 truncate m-0">{penugasan.trayek}</p>
+                        </div>
+                        <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3 transition-colors hover:bg-slate-50">
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Jenis Kendaraan</span>
+                          <p className="text-xs font-bold text-slate-800 mt-1 truncate m-0">{penugasan.jenis}</p>
+                        </div>
+                        <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3 transition-colors hover:bg-slate-50">
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Nomor Polisi</span>
+                          <p className="text-xs font-bold text-slate-800 mt-1 truncate m-0">{penugasan.nopol}</p>
+                        </div>
+                        <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3 transition-colors hover:bg-slate-50">
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Kapasitas</span>
+                          <p className="text-xs font-bold text-slate-800 mt-1 truncate m-0">{penugasan.kapasitas}</p>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Data Odometer Awal & Foto Validasi */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Odometer Awal</span>
+                  <p className="text-sm font-bold text-slate-800 m-0">{activeSession.km_berangkat_kantor ? `${activeSession.km_berangkat_kantor} KM` : "-"}</p>
+                </div>
+
+                {/* Thumbnail Foto Selfie Validasi Awal */}
+                {activeSession.foto_awal ? (
+                  <div
+                    onClick={() => setSelectedPhotoModal(activeSession.foto_awal)}
+                    className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-100 h-28 flex items-center justify-center cursor-pointer group shadow-xs"
+                    title="Klik untuk memperbesar foto"
+                  >
+                    <img src={activeSession.foto_awal} alt="Foto CP1" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    <div className="absolute top-2 left-2 bg-emerald-600/90 backdrop-blur-xs text-white text-[9px] font-bold px-2 py-0.5 rounded tracking-wider shadow-xs">✓ FOTO VALIDASI</div>
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold">
+                      Lihat Foto Penuh
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-3.5 flex items-center justify-center text-xs text-slate-400">Foto validasi tidak tersedia</div>
+                )}
+              </div>
+            </div>
+
+            {/* ========================================================================= */}
+            {/* CHECK POINT 2: TIBA DI TITIK FINISH (SEKOLAH) */}
+            {/* ========================================================================= */}
+            <div className="relative pl-7 border-l-2 border-slate-200 pb-2">
+              <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-[#00206B] ring-4 ring-white flex items-center justify-center">
+                <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
+                <h4 className="text-sm font-bold text-slate-900 m-0">Check Point 2 - Tiba di Titik Finish (Sekolah)</h4>
+                <span className="text-xs font-semibold text-slate-400">{formatTime(activeSession.jam_tiba_finish)} WIB</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Odometer Tiba</span>
+                  <p className="text-sm font-bold text-slate-800 m-0">{activeSession.km_tiba_finish ? `${activeSession.km_tiba_finish} KM` : "-"}</p>
+                </div>
+
+                <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Jumlah Siswa Diangkut</span>
+                  <p className="text-sm font-bold text-[#00206B] m-0">
+                    {activeSession.jumlah_penumpang !== undefined && activeSession.jumlah_penumpang !== null ? `${activeSession.jumlah_penumpang} Siswa` : "-"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ========================================================================= */}
+            {/* CHECK POINT 3: KEMBALI KE DISHUB */}
+            {/* ========================================================================= */}
+            <div className="relative pl-7">
+              <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-[#00206B] ring-4 ring-white flex items-center justify-center">
+                <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
+                <h4 className="text-sm font-bold text-slate-900 m-0">Check Point 3 - Kembali ke Garasi Dishub</h4>
+                <span className="text-xs font-semibold text-slate-400">{formatTime(activeSession.jam_tiba_kantor)} WIB</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Odometer Akhir</span>
+                  <p className="text-sm font-bold text-slate-800 m-0">{activeSession.km_tiba_kantor ? `${activeSession.km_tiba_kantor} KM` : "-"}</p>
+                </div>
+
+                {/* Thumbnail Foto Selfie Validasi Akhir */}
+                {activeSession.foto_akhir ? (
+                  <div
+                    onClick={() => setSelectedPhotoModal(activeSession.foto_akhir)}
+                    className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-100 h-28 flex items-center justify-center cursor-pointer group shadow-xs"
+                    title="Klik untuk memperbesar foto"
+                  >
+                    <img src={activeSession.foto_akhir} alt="Foto CP3" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    <div className="absolute top-2 left-2 bg-emerald-600/90 backdrop-blur-xs text-white text-[9px] font-bold px-2 py-0.5 rounded tracking-wider shadow-xs">✓ FOTO VALIDASI</div>
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold">
+                      Lihat Foto Penuh
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-3.5 flex items-center justify-center text-xs text-slate-400">Foto validasi akhir tidak tersedia</div>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-5 bg-slate-50 p-5 rounded-2xl">
-            <div className="relative w-16 h-16 flex items-center justify-center">
-              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#E2E8F0" strokeWidth="4" />
-                <path
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke={completeness >= 80 ? "#00206B" : completeness >= 50 ? "#F59E0B" : "#EF4444"}
-                  strokeWidth="4"
-                  strokeDasharray={`${completeness}, 100`}
-                />
-              </svg>
-              <span className="absolute text-sm font-black text-[#00206B]">{completeness}%</span>
+          {/* ========================================================================= */}
+          {/* KONDISI KENDARAAN (INSPEKSI FISIK 10 ITEM) */}
+          {/* ========================================================================= */}
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-7 shadow-sm">
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
+              <h4 className="text-sm font-bold text-slate-900 m-0">Kondisi Fisik Kendaraan (Hasil Inspeksi)</h4>
+              <span className="text-xs font-semibold text-slate-400">10 Komponen Terperiksa</span>
             </div>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">KELENGKAPAN</p>
-              <p className={`text-sm font-black mt-1 uppercase ${completeness >= 80 ? "text-[#00206B]" : completeness >= 50 ? "text-amber-500" : "text-rose-500"}`}>
-                {completeness >= 80 ? "DATA AMAN" : completeness >= 50 ? "BELUM LENGKAP" : "DATA KURANG"}
-              </p>
+
+            {activeInspeksi ? (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+                  {inspKeys.map((item) => {
+                    const val = activeInspeksi[item.id] || (item.id === "pintu" ? activeInspeksi["pintu_kendaraan"] : null);
+                    const isOk = val === "OK";
+                    const isKurang = val === "KURANG";
+                    return (
+                      <div
+                        key={item.id}
+                        className={`p-3 rounded-xl border flex justify-between items-center transition-all ${
+                          isOk
+                            ? "bg-emerald-50/50 border-emerald-200/70 text-emerald-900"
+                            : isKurang
+                              ? "bg-amber-50 border-amber-300 text-amber-900 shadow-xs"
+                              : "bg-slate-50 border-slate-200/80 text-slate-500"
+                        }`}
+                      >
+                        <span className="text-xs font-semibold truncate pr-1">{item.label}</span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded tracking-wider flex-shrink-0 ${
+                            isOk ? "bg-emerald-100 text-emerald-800" : isKurang ? "bg-amber-500 text-white font-bold" : "bg-slate-200 text-slate-600"
+                          }`}
+                        >
+                          {val || "-"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {activeInspeksi.catatan && (
+                  <div className="mt-4 bg-amber-50/80 p-4 rounded-xl border border-amber-200">
+                    <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block mb-1">Catatan Kerusakan Kendaraan</span>
+                    <p className="text-xs font-semibold text-amber-950 m-0 leading-relaxed">{activeInspeksi.catatan}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8 text-slate-400 font-medium text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">Data inspeksi fisik untuk sesi ini belum dicatat.</div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* JIKA SESI TERSEBUT BELUM DIISI */
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-12 text-center shadow-sm space-y-3">
+          <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h4 className="text-base font-bold text-slate-800 m-0">Data Sesi {activeTab === "pagi" ? "Pagi" : "Siang"} Kosong</h4>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto">Pengemudi tidak menjalankan atau belum menutup sesi operasional ini pada tanggal tersebut.</p>
+        </div>
+      )}
+
+      {/* MODAL PREVIEW FOTO VALIDASI (JIKA DIKLIK) */}
+      {selectedPhotoModal && (
+        <div onClick={() => setSelectedPhotoModal(null)} className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl overflow-hidden max-w-md w-full shadow-2xl relative">
+            <div className="p-3.5 border-b border-slate-100 flex justify-between items-center">
+              <span className="text-xs font-bold text-[#00206B] uppercase tracking-wider">Foto Bukti Validasi Operasional</span>
+              <button
+                type="button"
+                onClick={() => setSelectedPhotoModal(null)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="aspect-[4/3] bg-black">
+              <img src={selectedPhotoModal} alt="Preview Bukti" className="w-full h-full object-contain" />
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-3xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-sm font-black text-[#00206B] uppercase tracking-widest">SESI BERANGKAT (PAGI)</h3>
-            {/* RENDER BADGE STATUS KEDISIPLINAN DI SINI */}
-            {String(sesiPagi?.status_waktu || "").toUpperCase() === "TERLAMBAT" ? (
-              <span className="bg-rose-100 text-rose-600 border border-rose-200 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">
-                ⚠️ Terlambat
-              </span>
-            ) : String(sesiPagi?.status_waktu || "").toUpperCase() === "TEPAT WAKTU" ? (
-              <span className="bg-emerald-100 text-emerald-600 border border-emerald-200 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">
-                ✅ Tepat Waktu
-              </span>
-            ) : null}
-          </div>
-          {sesiPagi ? (
-            <div>
-              {/* CP1: Inject nopol_kendaraan dan foto_awal */}
-              <TimelineItem title="KELUAR GARASI DISHUB" time={sesiPagi.jam_berangkat_kantor} odometer={sesiPagi.km_berangkat_kantor} nopol={sesiPagi.nopol_kendaraan} foto={sesiPagi.foto_awal} />
-              <TimelineItem title="TIBA DI TITIK START" time={sesiPagi.jam_berangkat_start} odometer={sesiPagi.km_berangkat_start} />
-              <TimelineItem title="TIBA DI SEKOLAH (FINISH)" time={sesiPagi.jam_tiba_finish} odometer={sesiPagi.km_tiba_finish} passengers={sesiPagi.jumlah_penumpang} />
-              {/* CP4: Inject foto_akhir */}
-              <TimelineItem title="KEMBALI KE DISHUB" time={sesiPagi.jam_tiba_kantor} odometer={sesiPagi.km_tiba_kantor} foto={sesiPagi.foto_akhir} isLast={true} />
-            </div>
-          ) : (
-            <div className="text-center py-12 text-slate-400 font-black text-xs uppercase tracking-widest bg-slate-50 rounded-2xl">DATA SESI PAGI KOSONG</div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-3xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-sm font-black text-[#00206B] uppercase tracking-widest">SESI PULANG (SIANG)</h3>
-            {/* RENDER BADGE STATUS KEDISIPLINAN DI SINI */}
-            {String(sesiSiang?.status_waktu || "").toUpperCase() === "TERLAMBAT" ? (
-              <span className="bg-rose-100 text-rose-600 border border-rose-200 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">
-                ⚠️ Terlambat
-              </span>
-            ) : String(sesiSiang?.status_waktu || "").toUpperCase() === "TEPAT WAKTU" ? (
-              <span className="bg-emerald-100 text-emerald-600 border border-emerald-200 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow-sm">
-                ✅ Tepat Waktu
-              </span>
-            ) : null}
-          </div>
-          {sesiSiang ? (
-            <div>
-              {/* CP1: Inject nopol_kendaraan dan foto_awal */}
-              <TimelineItem title="KELUAR GARASI DISHUB" time={sesiSiang.jam_berangkat_kantor} odometer={sesiSiang.km_berangkat_kantor} nopol={sesiSiang.nopol_kendaraan} foto={sesiSiang.foto_awal} />
-              <TimelineItem title="TIBA DI TITIK START" time={sesiSiang.jam_berangkat_start} odometer={sesiSiang.km_berangkat_start} />
-              <TimelineItem title="TIBA DI SEKOLAH (FINISH)" time={sesiSiang.jam_tiba_finish} odometer={sesiSiang.km_tiba_finish} passengers={sesiSiang.jumlah_penumpang} />
-              {/* CP4: Inject foto_akhir */}
-              <TimelineItem title="KEMBALI KE DISHUB" time={sesiSiang.jam_tiba_kantor} odometer={sesiSiang.km_tiba_kantor} foto={sesiSiang.foto_akhir} isLast={true} />
-            </div>
-          ) : (
-            <div className="text-center py-12 text-slate-400 font-black text-xs uppercase tracking-widest bg-slate-50 rounded-2xl">DATA SESI SIANG KOSONG</div>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm mt-6">
-        <h3 className="text-sm font-black text-[#00206B] uppercase tracking-widest mb-6">KONDISI KENDARAAN (INSPEKSI)</h3>
-        <RenderInspeksiBox dataInspeksi={inspeksiPagi} title="SESI PAGI" />
-        <RenderInspeksiBox dataInspeksi={inspeksiSiang} title="SESI SIANG" />
-      </div>
+      )}
     </div>
   );
 };

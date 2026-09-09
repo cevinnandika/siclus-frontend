@@ -25,6 +25,8 @@ const Beranda = ({
 
   const [jamSekarang, setJamSekarang] = useState(new Date());
   const [jadwalSesi, setJadwalSesi] = useState({ pagi: null, siang: null });
+  const [penugasan, setPenugasan] = useState(null);
+  const [laporanDriver, setLaporanDriver] = useState(null);
   const [isStartingReport, setIsStartingReport] = useState(false);
 
   // Ticking Clock & Fetch Data
@@ -44,25 +46,50 @@ const Beranda = ({
         console.error("Gagal menarik jadwal:", error);
       }
     };
+
+    const fetchPenugasan = async () => {
+      try {
+        const res = await apiService.getPenugasanHariIni();
+        if (res && res.data) {
+          setPenugasan(res.data);
+        }
+      } catch (error) {
+        console.log("Belum ada penugasan hari ini.");
+      }
+    };
+
+    const fetchLaporan = async () => {
+      try {
+        const res = await apiService.getLaporanHariIni();
+        if (res) {
+          setLaporanDriver(res.data || res);
+        }
+      } catch (error) {
+        console.log("Belum ada laporan hari ini.");
+      }
+    };
+
     fetchJadwal();
+    fetchPenugasan();
+    fetchLaporan();
 
     return () => clearInterval(timer);
   }, []);
 
-  // Format jam ke "HH:MM" (contoh: "05:15") secara aman
+  // Format jam ke "HH:MM:SS" secara aman
   const jamTeks =
     jamSekarang instanceof Date && !isNaN(jamSekarang.getTime())
       ? jamSekarang
-          .toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false })
-          .replace(".", ":")
-      : "00:00";
+          .toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
+          .replace(/\./g, ":")
+      : "00:00:00";
 
   // Cek Status Keterlambatan dengan proteksi null/undefined
   const batasPagi = String(jadwalSesi?.pagi?.batas_keluar_dishub || "06:00").slice(0, 5);
   const batasSiang = String(jadwalSesi?.siang?.batas_keluar_dishub || "12:30").slice(0, 5);
 
-  const isPagiTelat = jamTeks > batasPagi;
-  const isSiangTelat = jamTeks > batasSiang;
+  const isPagiTelat = jamTeks.slice(0, 5) > batasPagi;
+  const isSiangTelat = jamTeks.slice(0, 5) > batasSiang;
 
   const currentHour =
     jamSekarang instanceof Date && !isNaN(jamSekarang.getTime())
@@ -76,26 +103,55 @@ const Beranda = ({
   const siangHour = shiftRules?.siang ?? (!isNaN(parsedSiangHour) ? parsedSiangHour : 12);
   const isSiangTime = currentHour >= siangHour;
 
-  // Proteksi data Driver/User
+  // Proteksi data Driver/User & Penugasan
   const driverName = activeUser?.nama_lengkap || activeUser?.nama || activeUser?.name || "Driver";
-  const driverInitial = (driverName || "D").charAt(0).toUpperCase();
-  const userTrayek = activeUser?.trayek || "Belum ada trayek";
-  const userBus = activeUser?.bus || "Belum ada armada";
+
+  // 4 Data Penugasan dari Admin
+  const displayTrayek = penugasan?.trayek || activeUser?.trayek || "Belum Ditentukan";
+  const displayJenis = penugasan?.jenis_kendaraan || activeUser?.jenis_kendaraan || activeUser?.bus || "Belum Ditentukan";
+  const displayNopol = penugasan?.nopol_kendaraan || activeUser?.nomer_kendaraan || activeUser?.bus || "Belum Ditentukan";
+  const displayKapasitas = penugasan?.kapasitas_penumpang 
+    ? `${penugasan.kapasitas_penumpang} Penumpang` 
+    : (activeUser?.kapasitas ? `${activeUser.kapasitas} Penumpang` : "Belum Ditentukan");
+
+  // Validasi apakah sudah ditugaskan admin
+  const hasPenugasan = Boolean(
+    (penugasan && penugasan.trayek && penugasan.trayek !== "-" && penugasan.trayek !== "Belum Ditentukan") ||
+    (activeUser?.trayek && activeUser.trayek !== "-" && activeUser.trayek !== "Belum Ditentukan")
+  );
 
   // Proteksi data Laporan & Trip Sessions
-  const safeReport = laporanHariIni ?? laporan ?? null;
-  const reportStatus = safeReport?.status || "Belum Ada Data";
+  const safeReport = laporanHariIni ?? laporanDriver ?? laporan ?? null;
   const tripSessions = Array.isArray(safeReport?.trip_sessions)
     ? safeReport.trip_sessions
-    : Array.isArray(laporanHariIni?.trip_sessions)
-    ? laporanHariIni.trip_sessions
-    : Array.isArray(laporan?.trip_sessions)
-    ? laporan.trip_sessions
     : [];
+
+  const hasFinishedPagi = tripSessions.some(
+    (s) => (s?.tipe_sesi || "").toLowerCase() === "pagi" || s?.tipe_sesi === 1
+  );
+  const hasFinishedSiang = tripSessions.some(
+    (s) => (s?.tipe_sesi || "").toLowerCase() === "siang" || s?.tipe_sesi === 2
+  );
+
+  // Penentuan shift operasional aktif
+  const effectiveShift = hasFinishedSiang
+    ? "selesai"
+    : hasFinishedPagi
+    ? "siang"
+    : (currentShift || "pagi");
+
+  const isShiftSiang = effectiveShift === "siang";
+  const isShiftSelesai = effectiveShift === "selesai";
+
+  // Logika Kesiapan Memulai Laporan & Jeda Operasional:
+  // - Jika shift pagi: aktif jika admin sudah menugaskan armada
+  // - Jika shift siang: aktif HANYA jika sudah masuk jam siang (isSiangTime) dan sudah ditugaskan
+  // Jika di masa jeda (belum jam siang): canStartReport = false -> tombol abu-abu disabled "Belum Dimulai"!
+  const canStartReport = isShiftSiang ? (hasPenugasan && isSiangTime) : hasPenugasan;
 
   // Handler Inisiasi Laporan Harian (Simpan ke localStorage)
   const handleMulaiLaporan = async () => {
-    if (isStartingReport) return;
+    if (isStartingReport || !canStartReport) return;
     setIsStartingReport(true);
     try {
       const localNow = new Date();
@@ -106,18 +162,22 @@ const Beranda = ({
 
       const payload = {
         tanggal: today,
-        trayek: activeUser?.trayek || "-",
-        bus: activeUser?.bus || "-",
+        trayek: displayTrayek !== "Belum Ditentukan" ? displayTrayek : (activeUser?.trayek || "-"),
+        bus: displayNopol !== "Belum Ditentukan" ? displayNopol : (activeUser?.bus || "-"),
       };
 
       const res = await apiService.mulaiLaporanHarian(payload);
 
-      // BARIS WAJIB: Simpan ID laporan master ke memori lokal
-      if (res && res.id) {
-        localStorage.setItem("siclus_active_laporan_id", String(res.id));
+      // Simpan ID laporan master ke memori lokal
+      const masterId = res?.id || res?.data?.id || (safeReport && safeReport.id) || null;
+      if (masterId) {
+        localStorage.setItem("siclus_active_laporan_id", String(masterId));
       }
+      localStorage.setItem("siclus_draft_step", "1");
 
-      if (typeof onStartInspection === "function") {
+      if (isShiftSiang && typeof onStartSiang === "function") {
+        onStartSiang();
+      } else if (typeof onStartInspection === "function") {
         onStartInspection();
       } else {
         navigate("/driver/laporan");
@@ -130,54 +190,13 @@ const Beranda = ({
     }
   };
 
-  const handleStartSiang = async () => {
-    if (isStartingReport) return;
-    setIsStartingReport(true);
-    try {
-      const savedLaporanId = localStorage.getItem("siclus_active_laporan_id");
-      if (!savedLaporanId) {
-        const localNow = new Date();
-        const year = localNow.getFullYear();
-        const month = String(localNow.getMonth() + 1).padStart(2, "0");
-        const day = String(localNow.getDate()).padStart(2, "0");
-        const today = `${year}-${month}-${day}`;
-
-        const payload = {
-          tanggal: today,
-          trayek: activeUser?.trayek || "-",
-          bus: activeUser?.bus || "-",
-        };
-
-        const res = await apiService.mulaiLaporanHarian(payload);
-        if (res && res.id) {
-          localStorage.setItem("siclus_active_laporan_id", String(res.id));
-        }
-      }
-
-      if (typeof onStartSiang === "function") {
-        onStartSiang();
-      } else {
-        navigate("/driver/laporan");
-      }
-    } catch (error) {
-      console.error("Gagal memulai laporan siang:", error);
-      if (typeof onStartSiang === "function") {
-        onStartSiang();
-      } else {
-        navigate("/driver/laporan");
-      }
-    } finally {
-      setIsStartingReport(false);
-    }
-  };
-
   // Loading skeleton jika activeUser masih undefined/null
   if (!activeUser) {
     return (
       <div className="space-y-6 text-left max-w-5xl mx-auto pb-6 animate-pulse">
         <div className="h-8 bg-slate-200 rounded-xl w-1/3"></div>
         <div className="h-4 bg-slate-100 rounded-lg w-1/4"></div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 items-stretch">
           <div className="lg:col-span-2 h-64 bg-white border border-slate-100 rounded-2xl p-6"></div>
           <div className="h-64 bg-white border border-slate-100 rounded-2xl p-6"></div>
         </div>
@@ -185,101 +204,79 @@ const Beranda = ({
     );
   }
 
-  const renderKotakSiang = () => {
-    const isDisabled = currentShift === "pagi" || !isSiangTime || currentShift === "selesai";
-    const btnText =
-      currentShift === "selesai"
-        ? "TUGAS SELESAI"
-        : currentShift === "pagi"
-        ? "SELESAIKAN PAGI DULU"
-        : isSiangTime
-        ? "MULAI LAPORAN SIANG"
-        : `TUNGGU JAM ${siangHour}:00 WIB`;
-
-    return (
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4 transition-all hover:shadow-md">
-        <div className="flex items-center gap-3 text-[#00206B]">
-          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div>
-            <h3 className="text-base font-extrabold m-0">Laporan Siang</h3>
-            <p className="text-[11px] text-slate-500 font-bold mt-1">Buka Pukul {siangHour}:00 WIB</p>
-          </div>
-        </div>
-
-        <button
-          onClick={handleStartSiang}
-          disabled={isDisabled || isStartingReport}
-          className={`w-full font-extrabold py-3.5 px-3 rounded-xl transition-all flex items-center justify-center gap-2 text-xs ${
-            !isDisabled && !isStartingReport
-              ? "bg-[#00206B] hover:bg-[#00174E] text-white shadow-md active:scale-[0.98] cursor-pointer"
-              : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-          }`}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            {isDisabled ? (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-            )}
-          </svg>
-          {isStartingReport ? "MEMPROSES..." : btnText}
-        </button>
-      </div>
-    );
-  };
-
+  // Komponen Batas Operasional (Sidebar Kanan) - Jam Polos Tanpa Dot
   const renderCardJadwal = () => (
-    <div className="bg-white border-2 border-slate-100 rounded-2xl p-5 shadow-sm space-y-4 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-1 h-full bg-[#00206B]"></div>
+    <div className="bg-white border border-slate-400/80 rounded-2xl p-6 sm:p-7 shadow-sm flex-1 flex flex-col justify-between">
+      <div>
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            Batas Operasional
+          </span>
+          <span className="font-mono text-xs font-semibold text-slate-600">
+            {jamTeks} WIB
+          </span>
+        </div>
 
-      <div className="flex justify-between items-center border-b-2 border-slate-50 pb-3">
-        <h3 className="text-[11px] font-black text-slate-400 tracking-widest uppercase">Batas Operasional</h3>
-        {/* JAM REALTIME BERGERAK */}
-        <div className="bg-slate-800 text-emerald-400 font-mono text-sm font-black px-3 py-1 rounded-lg flex items-center gap-2 shadow-inner">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          {jamTeks} WIB
+        <div className="space-y-3">
+          {/* SESI PAGI */}
+          <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/60 flex items-center justify-between transition-colors">
+            <div>
+              <p className="text-xs font-semibold text-slate-800 uppercase tracking-wide">
+                Sesi Pagi
+              </p>
+              {isPagiTelat ? (
+                <span className="text-[11px] font-medium text-amber-600 mt-0.5 block">
+                  Lewat Batas
+                </span>
+              ) : (
+                <span className="text-[11px] font-medium text-emerald-600 mt-0.5 block">
+                  Tepat Waktu
+                </span>
+              )}
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] font-medium text-slate-400 uppercase block mb-0.5">
+                Batas Keluar
+              </span>
+              <span className="text-xs font-bold text-slate-700">
+                {batasPagi} WIB
+              </span>
+            </div>
+          </div>
+
+          {/* SESI SIANG */}
+          <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/60 flex items-center justify-between transition-colors">
+            <div>
+              <p className="text-xs font-semibold text-slate-800 uppercase tracking-wide">
+                Sesi Siang
+              </p>
+              {isSiangTelat ? (
+                <span className="text-[11px] font-medium text-amber-600 mt-0.5 block">
+                  Lewat Batas
+                </span>
+              ) : (
+                <span className="text-[11px] font-medium text-emerald-600 mt-0.5 block">
+                  Tepat Waktu
+                </span>
+              )}
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] font-medium text-slate-400 uppercase block mb-0.5">
+                Batas Keluar
+              </span>
+              <span className="text-xs font-bold text-slate-700">
+                {batasSiang} WIB
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-3">
-        {/* SESI PAGI */}
-        <div className={`flex justify-between items-center p-3 rounded-xl border ${isPagiTelat ? "bg-rose-50 border-rose-100" : "bg-slate-50 border-slate-100"}`}>
-          <div>
-            <p className="text-xs font-black text-slate-700 uppercase">Sesi Pagi</p>
-            {isPagiTelat ? (
-              <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider">⚠️ Terlambat</span>
-            ) : (
-              <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Aman</span>
-            )}
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Maksimal Keluar</p>
-            <p className={`text-sm font-black ${isPagiTelat ? "text-rose-600" : "text-[#00206B]"}`}>{batasPagi} WIB</p>
-          </div>
-        </div>
-
-        {/* SESI SIANG */}
-        <div className={`flex justify-between items-center p-3 rounded-xl border ${isSiangTelat ? "bg-rose-50 border-rose-100" : "bg-slate-50 border-slate-100"}`}>
-          <div>
-            <p className="text-xs font-black text-slate-700 uppercase">Sesi Siang</p>
-            {isSiangTelat ? (
-              <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider">⚠️ Terlambat</span>
-            ) : (
-              <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Aman</span>
-            )}
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Maksimal Keluar</p>
-            <p className={`text-sm font-black ${isSiangTelat ? "text-rose-600" : "text-[#00206B]"}`}>{batasSiang} WIB</p>
-          </div>
-        </div>
+      <div className="pt-4 mt-6 border-t border-slate-100 text-center">
+        <p className="text-[11px] font-normal text-slate-400 m-0">
+          Toleransi waktu operasional tercatat otomatis
+        </p>
       </div>
-
-      <p className="text-[9px] font-bold text-slate-400 text-center uppercase tracking-widest pt-2">
-        Lewat batas waktu otomatis tercatat "Terlambat"
-      </p>
     </div>
   );
 
@@ -287,63 +284,118 @@ const Beranda = ({
   if (tripStatus === "sedang_berlangsung") {
     return (
       <div className="space-y-6 text-left max-w-5xl mx-auto pb-6">
-        <header className="space-y-1">
-          <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0">
-            Selamat bertugas, <span className="block text-3xl md:text-4xl font-black">{driverName}</span>
-          </h2>
-          <p className="text-sm text-slate-400 font-semibold">{currentDate}</p>
-        </header>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <header className="space-y-1">
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 m-0 tracking-tight">
+              Selamat bertugas, <span className="text-[#00206B]">{driverName}</span>
+            </h2>
+            <p className="text-xs text-slate-400 font-medium">{currentDate}</p>
+          </header>
+          <button
+            onClick={() => window.location.reload()}
+            className="self-start sm:self-auto inline-flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition-colors cursor-pointer active:scale-95"
+          >
+            <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Segarkan Data
+          </button>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 bg-[#E6F7ED] border border-[#BCECD2] text-[#137333] font-bold text-xs px-3 py-1.5 rounded-full uppercase tracking-wider">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                SEDANG BERLANGSUNG
-              </div>
-              <span className="text-sm font-black text-[#00206B]">Sistem Terhubung</span>
-            </div>
-
-            <div className="flex items-center gap-4 bg-slate-50 rounded-xl p-4 border border-slate-100">
-              <div className="w-12 h-12 rounded-lg bg-[#00206B] text-white flex items-center justify-center font-black text-xl shadow-sm">
-                {driverInitial}
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+          <div className="lg:col-span-2 flex flex-col">
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-7 shadow-sm flex-1 flex flex-col justify-between">
               <div>
-                <h4 className="text-base font-extrabold text-[#00206B] m-0">{userTrayek}</h4>
-                <p className="text-sm text-slate-500 font-medium mt-0.5">{userBus}</p>
+                {/* Header: Operasional di atas, Keterangan di bawah */}
+                <div className="pb-4 border-b border-slate-100">
+                  <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                    {isShiftSiang ? "Operasional Siang" : "Operasional Pagi"}
+                  </h3>
+                  <p className="text-xs font-medium text-slate-400 mt-0.5">
+                    {isShiftSiang ? "Pengantaran Siswa" : "Penjemputan Siswa"}
+                  </p>
+                </div>
+
+                <div className="py-5">
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                    Rincian Penugasan
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                        <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                        Trayek Penugasan
+                      </div>
+                      <p className="text-sm font-bold text-[#00206B] mt-1 truncate">
+                        {displayTrayek}
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                        <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h8m-8 4h8m-4 4h4M4 6h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                        </svg>
+                        Jenis Kendaraan
+                      </div>
+                      <p className="text-sm font-semibold text-slate-800 mt-1 truncate">
+                        {displayJenis}
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                        <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                        </svg>
+                        Nomor Polisi
+                      </div>
+                      <p className="text-sm font-semibold text-slate-800 mt-1 truncate">
+                        {displayNopol}
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                        <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Kapasitas Penumpang
+                      </div>
+                      <p className="text-sm font-semibold text-slate-800 mt-1 truncate">
+                        {displayKapasitas}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3">
+                <button
+                  onClick={() => {
+                    if (typeof onQuickAction === "function") {
+                      onQuickAction("laporan");
+                    } else if (typeof onStartInspection === "function") {
+                      onStartInspection();
+                    } else {
+                      navigate("/driver/laporan");
+                    }
+                  }}
+                  className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-sm py-3.5 px-6 rounded-xl shadow-sm hover:shadow transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.99]"
+                >
+                  <span>Lanjutkan Laporan</span>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </button>
               </div>
             </div>
-
-            <button
-              onClick={() => {
-                if (typeof onQuickAction === "function") {
-                  onQuickAction("laporan");
-                } else if (typeof onStartInspection === "function") {
-                  onStartInspection();
-                } else {
-                  navigate("/driver/laporan");
-                }
-              }}
-              className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-extrabold py-4 px-4 rounded-xl shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-base cursor-pointer"
-            >
-              LANJUTKAN LAPORAN
-            </button>
           </div>
 
-          <aside className="space-y-4">
-            {renderKotakSiang()}
+          <aside className="lg:col-span-1 flex flex-col">
             {renderCardJadwal()}
-            <div className="bg-white border border-slate-100 rounded-2xl p-5 flex items-center gap-4 shadow-sm">
-              <div className="text-[#00206B]">
-                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                </svg>
-              </div>
-              <div>
-                <span className="text-xs font-black text-[#00206B] block uppercase tracking-wide">LOKASI TERVALIDASI</span>
-                <span className="text-xs text-slate-400 font-semibold block">Dishub Mojokerto</span>
-              </div>
-            </div>
           </aside>
         </div>
       </div>
@@ -353,51 +405,54 @@ const Beranda = ({
   // State: Belum Mulai (Initial / Post-Finish)
   return (
     <div className="space-y-6 text-left max-w-5xl mx-auto pb-6">
-      <header className="space-y-1">
-        <h2 className="text-3xl md:text-4xl font-black text-[#00206B] m-0">
-          {driverName}
-        </h2>
-        <p className="text-sm text-slate-500 font-bold">Driver Angkutan Sekolah</p>
-        <p className="text-xs text-slate-400 font-semibold mt-1">{currentDate}</p>
-      </header>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <header className="space-y-1">
+          <h2 className="text-3xl md:text-4xl font-black text-[#00206B] m-0 tracking-tight">
+            {driverName}
+          </h2>
+          <p className="text-sm text-slate-400 font-normal">Selamat Datang Driver Dishub Kota Mojokerto</p>
+          <p className="text-xs text-slate-400 font-bold mt-0.5">{currentDate}</p>
+        </header>
+        <button
+          onClick={() => window.location.reload()}
+          className="self-start sm:self-auto inline-flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition-colors cursor-pointer active:scale-95"
+        >
+          <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Segarkan Data
+        </button>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          {(isLaporanLocked && currentShift === "siang") || currentShift === "selesai" ? (
-            <div className="bg-white border-2 border-slate-200 rounded-2xl p-8 shadow-sm flex flex-col items-center justify-center text-center space-y-4 min-h-[300px]">
-              <div className="w-20 h-20 bg-[#E6F7ED] text-[#137333] rounded-full flex items-center justify-center border-4 border-[#BCECD2]">
-                <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        <div className="lg:col-span-2 flex flex-col">
+          {isShiftSelesai ? (
+            /* Tampilan jika SELURUH tugas hari ini telah selesai */
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-8 shadow-sm flex-1 flex flex-col items-center justify-center text-center space-y-4">
+              <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center border border-emerald-200/70">
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <div>
-                <h3 className="text-xl font-black text-[#00206B] m-0">
-                  {currentShift === "selesai" ? "TUGAS HARI INI SELESAI" : "Shift Pagi Selesai"}
-                </h3>
-                <p className="text-sm text-slate-500 font-medium mt-2 max-w-xs mx-auto">
-                  {currentShift === "selesai" 
-                    ? "Terima kasih! Anda telah menyelesaikan seluruh tugas operasional hari ini. Laporan akan dibuka kembali besok." 
-                    : "Anda telah menyelesaikan tugas pagi. Silakan istirahat, dan mulai laporan siang pada menu di samping ketika waktunya tiba."}
+                <h3 className="text-xl font-bold text-slate-900 m-0">Tugas Hari Ini Selesai</h3>
+                <p className="text-sm text-slate-500 font-normal mt-2 max-w-sm mx-auto">
+                  Terima kasih! Anda telah menyelesaikan seluruh tugas operasional hari ini. Laporan akan dibuka kembali besok.
                 </p>
-                <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg text-xs font-bold text-slate-600">
+                <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full text-xs font-medium text-slate-600">
                   <span>Status:</span>
-                  <span className="text-[#00206B] font-extrabold uppercase">
-                    {laporanHariIni?.status || (currentShift === "selesai" ? "Selesai" : "Shift Pagi Selesai")}
-                  </span>
+                  <span className="text-[#00206B] font-bold">{safeReport?.status || "Selesai"}</span>
                 </div>
               </div>
 
-              {/* RENDER AMAN TRIP SESSIONS JIKA TERSEDIA */}
               {tripSessions.length > 0 && (
-                <div className="w-full max-w-md mt-4 border-t border-slate-100 pt-4 text-left">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Riwayat Sesi Hari Ini</p>
+                <div className="w-full max-w-sm mt-4 border-t border-slate-100 pt-4 text-left">
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Riwayat Sesi Hari Ini</p>
                   <div className="space-y-2">
                     {tripSessions.map((sesi, idx) => (
-                      <div key={idx} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
-                        <span className="font-bold text-[#00206B] uppercase">Sesi {sesi?.tipe_sesi || idx + 1}</span>
-                        <span className="text-[10px] font-extrabold text-emerald-600 uppercase bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                          {sesi?.status || "Terkirim"}
-                        </span>
+                      <div key={idx} className="flex justify-between items-center bg-slate-50/70 p-3 rounded-xl border border-slate-100 text-xs">
+                        <span className="font-semibold text-slate-800">Sesi {sesi?.tipe_sesi || idx + 1}</span>
+                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60">{sesi?.status || "Terkirim"}</span>
                       </div>
                     ))}
                   </div>
@@ -405,55 +460,123 @@ const Beranda = ({
               )}
             </div>
           ) : (
-            <>
-              <div className="bg-[#E6F7ED] border border-[#BCECD2] rounded-xl p-4 flex items-center gap-2 text-[#137333] shadow-sm">
-                <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span className="text-sm font-black uppercase tracking-wide">SISTEM TERHUBUNG KE SERVER</span>
-              </div>
+            /* Tampilan Utama: Operasional Pagi atau Operasional Siang */
+            <div className="bg-white border border-slate-400/80 rounded-2xl p-6 sm:p-7 shadow-sm flex-1 flex flex-col justify-between">
+              <div>
+                {/* Header: Operasional di atas, Keterangan di bawah. Polos tanpa badge Siap Dimulai */}
+                <div className="pb-4 border-b border-slate-100">
+                  <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                    {isShiftSiang ? "Operasional Siang" : "Operasional Pagi"}
+                  </h3>
+                  <p className="text-xs font-medium text-slate-400 mt-0.5">
+                    {isShiftSiang ? "Pengantaran Siswa" : "Penjemputan Siswa"}
+                  </p>
+                </div>
 
-              <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-1">
-                    <h3 className="text-lg font-extrabold text-[#00206B] m-0">Perjalanan Hari Ini</h3>
-                    <span className="inline-block bg-slate-100 text-slate-500 font-extrabold text-xs px-3 py-1.5 rounded mt-1.5">
-                      {laporanHariIni?.status || "BELUM DIMULAI"}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-base font-extrabold text-[#00206B] block">{userTrayek}</span>
-                    <span className="text-xs text-slate-400 font-semibold block mt-0.5">{userBus}</span>
+                {/* Spesifikasi Penugasan Armada */}
+                <div className="py-5">
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                    Rincian Penugasan
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                        <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                          />
+                        </svg>
+                        Trayek Penugasan
+                      </div>
+                      <p className={`text-sm font-bold mt-1 truncate ${displayTrayek !== "Belum Ditentukan" ? "text-[#00206B]" : "text-slate-400 font-normal"}`}>{displayTrayek}</p>
+                    </div>
+
+                    <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                        <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h8m-8 4h8m-4 4h4M4 6h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                        </svg>
+                        Jenis Kendaraan
+                      </div>
+                      <p className={`text-sm mt-1 truncate ${displayJenis !== "Belum Ditentukan" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayJenis}</p>
+                    </div>
+
+                    <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                        <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                        </svg>
+                        Nomor Polisi
+                      </div>
+                      <p className={`text-sm mt-1 truncate ${displayNopol !== "Belum Ditentukan" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayNopol}</p>
+                    </div>
+
+                    <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                        <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                          />
+                        </svg>
+                        Kapasitas Penumpang
+                      </div>
+                      <p className={`text-sm mt-1 truncate ${displayKapasitas !== "Belum Ditentukan" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayKapasitas}</p>
+                    </div>
                   </div>
                 </div>
 
                 {/* Sesi / Trip Sessions jika ada */}
                 {tripSessions.length > 0 && (
-                  <div className="border-t border-slate-100 pt-3 space-y-2">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Sesi Terdaftar</p>
+                  <div className="border-t border-slate-100 pt-3 mt-1 space-y-2">
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Sesi Terdaftar</p>
                     <div className="grid grid-cols-2 gap-2">
                       {tripSessions.map((sesi, idx) => (
-                        <div key={idx} className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-xs">
-                          <span className="font-bold text-[#00206B] uppercase block">Sesi {sesi?.tipe_sesi || idx + 1}</span>
+                        <div key={idx} className="bg-slate-50/70 p-2.5 rounded-lg border border-slate-100 text-xs flex items-center justify-between">
+                          <span className="font-semibold text-slate-800 uppercase">Sesi {sesi?.tipe_sesi || idx + 1}</span>
                           <span className="text-[10px] text-slate-500">{sesi?.status || "Terekam"}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
-
-                <button
-                  onClick={handleMulaiLaporan}
-                  disabled={isStartingReport}
-                  className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-black text-sm py-4 px-4 rounded-xl shadow-[0_4px_14px_0_rgba(0,32,107,0.39)] hover:shadow-[0_6px_20px_rgba(0,32,107,0.23)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isStartingReport ? "MEMULAI LAPORAN..." : "MULAI LAPORAN PERJALANAN"}
-                </button>
               </div>
-            </>
+
+              {/* Action Button:
+                  - Biru jika siap dimulai (shift pagi sudah ditugaskan, ATAU shift siang sudah masuk waktu siang)
+                  - Abu-abu disabled jika belum ditugaskan ATAU masih dalam masa jeda (shift siang belum masuk jam siang)
+              */}
+              <div className="pt-3">
+                {canStartReport ? (
+                  <button
+                    type="button"
+                    onClick={handleMulaiLaporan}
+                    disabled={isStartingReport}
+                    className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-sm py-3.5 px-6 rounded-xl shadow-sm hover:shadow transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                    {isStartingReport ? "Memulai Laporan..." : "Mulai Laporan Perjalanan"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full bg-slate-100 border border-slate-200/80 text-slate-400 font-semibold text-sm py-3.5 px-6 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <span>Belum Dimulai</span>
+                  </button>
+                )}
+              </div>
+            </div>
           )}
         </div>
 
-        <aside className="space-y-4">
-          {renderKotakSiang()}
+        <aside className="lg:col-span-1 flex flex-col">
           {renderCardJadwal()}
         </aside>
       </div>
