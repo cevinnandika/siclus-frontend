@@ -90,6 +90,8 @@ const LiveCamera = ({ onCapture, onCancel }) => {
 
 const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift }) => {
   const navigate = useNavigate();
+  const [activeShift, setActiveShift] = useState(() => currentShift || "pagi");
+  const [isAllShiftDone, setIsAllShiftDone] = useState(false);
 
   // 1. DATA USER: Tarik dari prop atau fallback ke localStorage / API
   const [profileData, setProfileData] = useState(() => {
@@ -168,6 +170,74 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
             return updated;
           });
         }
+
+        // Sinkronisasi Laporan Hari Ini dari Backend
+        try {
+          const resLaporan = await apiService.getLaporanHariIni();
+          const reportData = resLaporan?.data || resLaporan;
+          if (reportData && reportData.id) {
+            setLaporanId(reportData.id);
+            localStorage.setItem("siclus_active_laporan_id", String(reportData.id));
+
+            // Cek status sesi Pagi dan Siang dari riwayat nyata backend
+            const sessions = Array.isArray(reportData.trip_sessions) ? reportData.trip_sessions : [];
+            const hasFinishedPagi = sessions.some(
+              (s) => (s?.tipe_sesi || "").toLowerCase() === "pagi" && Boolean(s?.km_tiba_kantor)
+            );
+            const hasFinishedSiang = sessions.some(
+              (s) => (s?.tipe_sesi || "").toLowerCase() === "siang" && Boolean(s?.km_tiba_kantor)
+            );
+
+            if (hasFinishedPagi && hasFinishedSiang) {
+              setIsAllShiftDone(true);
+              setActiveShift("selesai");
+              setActiveCP(4);
+            } else {
+              const currentEffectiveShift = hasFinishedPagi ? "siang" : (currentShift || "pagi");
+              setActiveShift(currentEffectiveShift);
+
+              const currentShiftSession = sessions.find(
+                (s) => (s?.tipe_sesi || "").toLowerCase() === currentEffectiveShift.toLowerCase()
+              );
+
+              if (currentShiftSession) {
+                setSesiId(currentShiftSession.id);
+                if (currentShiftSession.km_tiba_kantor) {
+                  // Sesi ini sudah selesai tuntas
+                  setActiveCP(4);
+                } else if (currentShiftSession.km_tiba_finish) {
+                  setActiveCP(3);
+                  localStorage.setItem("siclus_draft_step", "3");
+                } else if (currentShiftSession.km_berangkat_kantor) {
+                  setActiveCP(2);
+                  localStorage.setItem("siclus_draft_step", "2");
+                } else {
+                  setActiveCP(1);
+                  localStorage.setItem("siclus_draft_step", "1");
+                }
+              } else {
+                setActiveCP(1);
+                localStorage.setItem("siclus_draft_step", "1");
+              }
+            }
+          } else if (dataPenugasan && dataPenugasan.trayek) {
+            const localNow = new Date();
+            const todayStr = `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2, "0")}-${String(localNow.getDate()).padStart(2, "0")}`;
+            const initRes = await apiService.mulaiLaporanHarian({
+              tanggal: todayStr,
+              trayek: dataPenugasan.trayek || "-",
+              bus: dataPenugasan.nopol_kendaraan || "-",
+            });
+            const newReport = initRes?.data || initRes;
+            if (newReport && newReport.id) {
+              setLaporanId(newReport.id);
+              localStorage.setItem("siclus_active_laporan_id", String(newReport.id));
+            }
+            setActiveCP(1);
+          }
+        } catch (errLaporan) {
+          console.warn("Gagal auto-sinkronisasi laporan hari ini:", errLaporan);
+        }
       } catch (err) {
         console.warn("Gagal sinkronisasi data profil driver:", err);
       }
@@ -203,15 +273,11 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
   };
   const initialDraft = getDraft();
 
-  // STATE UNTUK STEP AKTIF (CP1, CP2, CP3)
-  // JIKA BELUM MULAI DARI BERANDA (tidak ada siclus_active_laporan_id), activeCP = 0 (SEMUA BAR ABU-ABU TERTUTUP)
+  // STATE UNTUK STEP AKTIF (CP1, CP2, CP3) - DEFAULT SELALU 1 (TAHAP 1 TERBUKA)
   const [activeCP, setActiveCP] = useState(() => {
-    const savedLaporanId = localStorage.getItem("siclus_active_laporan_id");
-    if (!savedLaporanId) {
-      return 0; // Belum klik mulai di beranda
-    }
     const savedStep = localStorage.getItem("siclus_draft_step");
-    return savedStep ? parseInt(savedStep, 10) : 1;
+    const parsed = savedStep ? parseInt(savedStep, 10) : 1;
+    return parsed >= 1 && parsed <= 3 ? parsed : 1;
   });
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -339,13 +405,13 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
 
       await apiService.submitInspeksi(activeLaporanId, { 
         ...inspeksi, 
-        tipe_sesi: currentShift.toUpperCase(),
+        tipe_sesi: (activeShift || "pagi").toUpperCase(),
         catatan: adaKurang ? catatan : "" 
       });
 
       const platNomorFinal = user?.nomer_kendaraan || user?.bus || nopol || "-";
       const cp1Res = await apiService.submitCP1(activeLaporanId, {
-        tipe_sesi: currentShift,
+        tipe_sesi: activeShift || "pagi",
         nopol_kendaraan: platNomorFinal,
         km_berangkat_kantor: parseInt(odoAwal),
         foto_awal: uploadRes.url_foto,
@@ -397,12 +463,18 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
         foto_akhir: uploadRes.url_foto,
       });
 
-      // Bersihkan draft lokal setelah seluruh tugas selesai
+      // Bersihkan draft lokal setelah tugas selesai
       localStorage.removeItem("siclus_draft_step");
       localStorage.removeItem("siclus_draft_form");
-      localStorage.removeItem("siclus_active_laporan_id");
 
-      toast.success("Shift Berhasil Ditutup!", { id: "shift-finish-success" });
+      const isSiangDone = activeShift === "siang";
+      if (isSiangDone) {
+        setIsAllShiftDone(true);
+        setActiveShift("selesai");
+        localStorage.removeItem("siclus_active_laporan_id");
+      }
+
+      toast.success(`Sesi ${activeShift === "siang" ? "Siang" : "Pagi"} Berhasil Ditutup!`, { id: "shift-finish-success" });
       if (onFinishShift) onFinishShift();
       navigate("/driver/beranda");
     } catch (err) {
@@ -443,13 +515,56 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
     </div>
   );
 
+  if (isAllShiftDone || activeShift === "selesai") {
+    return (
+      <div className="space-y-4 max-w-xl mx-auto py-12 px-4 font-sans text-center animate-[fadeIn_0.3s]">
+        <div className="bg-white border border-slate-100 rounded-3xl p-8 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] space-y-6">
+          <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-200/80 text-[#00206B] flex items-center justify-center mx-auto">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-xl font-bold text-slate-900 m-0 tracking-tight">Operasional Hari Ini Selesai</h2>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              Seluruh rangkaian laporan operasional (Sesi Pagi & Sesi Siang) telah berhasil tercatat di sistem Dishub.
+            </p>
+          </div>
+
+          <div className="bg-slate-50/70 border border-slate-100 rounded-xl p-4 text-left space-y-2.5 max-w-sm mx-auto">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-slate-600">Sesi Pagi</span>
+              <span className="text-[10px] font-semibold text-slate-700 bg-white border border-slate-200 px-2.5 py-0.5 rounded-md">
+                Terkirim
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-slate-600">Sesi Siang</span>
+              <span className="text-[10px] font-semibold text-slate-700 bg-white border border-slate-200 px-2.5 py-0.5 rounded-md">
+                Terkirim
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate("/driver/beranda")}
+            className="w-full max-w-sm mx-auto bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-xs py-3 px-6 rounded-xl shadow-xs transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+          >
+            <span>Kembali ke Beranda</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 max-w-5xl mx-auto pb-12 px-4 md:px-0 font-sans text-left">
       {/* Header Halaman */}
       <div className="pb-1">
         <h2 className="text-2xl font-bold text-slate-900 m-0 tracking-tight">Laporan Operasional</h2>
         <p className="text-xs text-slate-400 font-medium mt-0.5 tracking-wide">
-          Sesi {currentShift === "siang" ? "Siang" : "Pagi"} • Formulir Operasional Perjalanan
+          Sesi {activeShift === "siang" ? "Siang" : "Pagi"} • Formulir Operasional Perjalanan
         </p>
       </div>
 
@@ -663,15 +778,19 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
           <span className="text-[11px] font-medium text-slate-500">Terkirim</span>
         </div>
       ) : (
-        /* CP 1 Belum Mulai: Bar Abu-abu Tertutup */
-        <div className="border border-slate-200/80 rounded-xl bg-slate-50/70 p-4 flex justify-between items-center transition-all cursor-not-allowed">
-          <h3 className="font-semibold text-xs text-slate-400 m-0">
+        /* CP 1 Belum Mulai / Klik untuk Buka */
+        <button
+          type="button"
+          onClick={() => setActiveCP(1)}
+          className="w-full text-left border border-slate-200/80 rounded-xl bg-slate-50/70 p-4 flex justify-between items-center transition-all hover:bg-slate-100/70 cursor-pointer"
+        >
+          <h3 className="font-semibold text-xs text-slate-700 m-0">
             Tahap 1: Keberangkatan Dishub
           </h3>
           <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
           </svg>
-        </div>
+        </button>
       )}
 
       {/* ========================================================================= */}
@@ -906,6 +1025,19 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
               )}
             </div>
           </form>
+        </div>
+      ) : activeCP > 3 ? (
+        /* CP 3 Selesai: Collapsed dengan Badge Selesai */
+        <div className="border border-slate-200/80 rounded-xl bg-slate-50/50 p-4 flex justify-between items-center transition-all">
+          <div className="flex items-center gap-2.5">
+            <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-semibold">
+              ✓
+            </span>
+            <h3 className="font-semibold text-xs text-slate-800 m-0">
+              Tahap 3: Kembali ke Dishub
+            </h3>
+          </div>
+          <span className="text-[11px] font-medium text-slate-500">Terkirim</span>
         </div>
       ) : (
         /* CP 3 Terkunci: Bar Abu-abu Tertutup */

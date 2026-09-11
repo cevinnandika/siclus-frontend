@@ -33,6 +33,8 @@ const ManageDriver = ({ onBack }) => {
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   // --- STATE PENUGASAN & JADWAL OPERASIONAL GABUNGAN ---
   const [penugasanList, setPenugasanList] = useState([]);
@@ -319,6 +321,7 @@ const ManageDriver = ({ onBack }) => {
       email: "",
       password: "",
     });
+    setShowPassword(false);
     setShowAddUserModal(true);
   };
 
@@ -331,6 +334,7 @@ const ManageDriver = ({ onBack }) => {
       email: u.email || "",
       password: "",
     });
+    setShowEditPassword(false);
     setShowEditUserModal(true);
   };
 
@@ -349,14 +353,13 @@ const ManageDriver = ({ onBack }) => {
       showToast("Email akun driver wajib diisi!", "error");
       return;
     }
-    if (!formData.password || formData.password.trim().length < 6) {
-      showToast("Password driver minimal 6 karakter!", "error");
+    if (!formData.password || formData.password.trim().length < 8) {
+      showToast("Password driver minimal 8 karakter!", "error");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Payload MATCH 100% dengan skema Pydantic backend
       const payload = {
         id: idDriverTrimmed,
         id_driver: idDriverTrimmed,
@@ -536,7 +539,7 @@ const ManageDriver = ({ onBack }) => {
 
       {/* Header Halaman: Konsisten dengan RiwayatDriver */}
       <div className="pb-1">
-        <h2 className="text-2xl font-bold text-slate-900 m-0 tracking-tight">Kelola Driver & Jadwal</h2>
+        <h2 className="text-2xl font-bold text-slate-900 m-0 tracking-tight">Kelola Driver</h2>
         <p className="text-xs text-slate-400 font-medium mt-0.5 tracking-wide">Manajemen master akun driver dan konfigurasi toleransi waktu cut-off operasional</p>
       </div>
 
@@ -546,19 +549,11 @@ const ManageDriver = ({ onBack }) => {
           type="button"
           onClick={() => setActiveTab("penugasan")}
           className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === "penugasan"
-              ? "bg-[#00206B] text-white shadow-xs"
-              : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50"
+            activeTab === "penugasan" ? "bg-[#00206B] text-white shadow-xs" : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50"
           }`}
         >
           <span>Penugasan & Jadwal</span>
-          <span
-            className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
-              activeTab === "penugasan"
-                ? "bg-white/20 text-white"
-                : "bg-slate-100 text-slate-600 border border-slate-200"
-            }`}
-          >
+          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${activeTab === "penugasan" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600 border border-slate-200"}`}>
             {(penugasanList || []).length}
           </span>
         </button>
@@ -567,19 +562,11 @@ const ManageDriver = ({ onBack }) => {
           type="button"
           onClick={() => setActiveTab("supir")}
           className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === "supir"
-              ? "bg-[#00206B] text-white shadow-xs"
-              : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50"
+            activeTab === "supir" ? "bg-[#00206B] text-white shadow-xs" : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50"
           }`}
         >
           <span>Daftar Driver</span>
-          <span
-            className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
-              activeTab === "supir"
-                ? "bg-white/20 text-white"
-                : "bg-slate-100 text-slate-600 border border-slate-200"
-            }`}
-          >
+          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${activeTab === "supir" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600 border border-slate-200"}`}>
             {(drivers || []).length}
           </span>
         </button>
@@ -747,14 +734,10 @@ const ManageDriver = ({ onBack }) => {
                         <tr key={p.id || idx} className="hover:bg-slate-50/70 transition-colors border-b border-slate-100">
                           <td className="py-4 px-5">
                             <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#00206B] font-black text-xs">
-                                {initials}
-                              </div>
+                              <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#00206B] font-black text-xs">{initials}</div>
                               <div>
                                 <div className="font-bold text-sm text-[#00206B] uppercase">{driverName}</div>
-                                <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded inline-block mt-0.5">
-                                  {p.id_supir}
-                                </span>
+                                <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded inline-block mt-0.5">{p.id_supir}</span>
                               </div>
                             </div>
                           </td>
@@ -770,8 +753,12 @@ const ManageDriver = ({ onBack }) => {
                           </td>
                           <td className="py-4 px-5">
                             <div className="text-[11px] font-medium text-slate-600 space-y-0.5">
-                              <div><span className="font-bold text-slate-800">Pagi:</span> {pagiKeluar} – {pagiKembali}</div>
-                              <div><span className="font-bold text-slate-800">Siang:</span> {siangKeluar} – {siangKembali}</div>
+                              <div>
+                                <span className="font-bold text-slate-800">Pagi:</span> {pagiKeluar} – {pagiKembali}
+                              </div>
+                              <div>
+                                <span className="font-bold text-slate-800">Siang:</span> {siangKeluar} – {siangKembali}
+                              </div>
                             </div>
                           </td>
                           <td className="py-4 px-5 text-center">
@@ -781,7 +768,11 @@ const ManageDriver = ({ onBack }) => {
                                 className="bg-white border border-slate-200 hover:border-[#00206B] text-slate-600 hover:text-[#00206B] px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 015.25 6H10" />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 015.25 6H10"
+                                  />
                                 </svg>
                                 Edit
                               </button>
@@ -790,7 +781,11 @@ const ManageDriver = ({ onBack }) => {
                                 className="bg-white border border-slate-200 hover:border-rose-400 text-slate-500 hover:text-rose-600 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                                  />
                                 </svg>
                                 Hapus
                               </button>
@@ -872,15 +867,35 @@ const ManageDriver = ({ onBack }) => {
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Password Login</label>
-                  <input
-                    type="password"
-                    name="password"
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder=""
-                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2.5 outline-none focus:border-[#00206B]"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      required
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Minimal 8 karakter"
+                      className="w-full bg-white border border-slate-200 text-sm font-normal text-[#00206B] rounded-xl pl-4 pr-11 py-2.5 outline-none focus:border-[#00206B]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-[#00206B] transition-colors focus:outline-none cursor-pointer"
+                      title={showPassword ? "Sembunyikan Password" : "Tampilkan Password"}
+                    >
+                      {showPassword ? (
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                          <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -962,14 +977,34 @@ const ManageDriver = ({ onBack }) => {
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Password Baru</label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Kosongkan jika tidak diganti"
-                    className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2.5 outline-none focus:border-[#00206B]"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showEditPassword ? "text" : "password"}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Kosongkan jika tidak diganti"
+                      className="w-full bg-white border border-slate-200 text-sm font-normal text-[#00206B] rounded-xl pl-4 pr-11 py-2.5 outline-none focus:border-[#00206B]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEditPassword(!showEditPassword)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-[#00206B] transition-colors focus:outline-none cursor-pointer"
+                      title={showEditPassword ? "Sembunyikan Password" : "Tampilkan Password"}
+                    >
+                      {showEditPassword ? (
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                          <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1012,7 +1047,8 @@ const ManageDriver = ({ onBack }) => {
             <div>
               <h3 className="text-lg font-black text-[#00206B] m-0">Hapus Akun Driver?</h3>
               <p className="text-xs text-slate-500 font-semibold mt-1">
-                Apakah Anda yakin ingin menghapus akun driver <span className="font-black text-rose-600">{userToDelete.nama_lengkap || userToDelete.nama || userToDelete.name}</span>? Tindakan ini tidak dapat dibatalkan.
+                Apakah Anda yakin ingin menghapus akun driver <span className="font-black text-rose-600">{userToDelete.nama_lengkap || userToDelete.nama || userToDelete.name}</span>? Tindakan ini
+                tidak dapat dibatalkan.
               </p>
             </div>
 
@@ -1025,21 +1061,16 @@ const ManageDriver = ({ onBack }) => {
                 </svg>
                 <span className="text-[11px] font-bold">Batal otomatis dalam:</span>
               </div>
-              <span className="text-xs font-black bg-amber-200/80 text-amber-900 px-2.5 py-0.5 rounded-lg tabular-nums">
-                {deleteCountdown}s
-              </span>
+              <span className="text-xs font-black bg-amber-200/80 text-amber-900 px-2.5 py-0.5 rounded-lg tabular-nums">{deleteCountdown}s</span>
             </div>
 
             <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
-              <div
-                className="bg-amber-500 h-1 rounded-full transition-all duration-1000 ease-linear"
-                style={{ width: `${(deleteCountdown / 5) * 100}%` }}
-              />
+              <div className="bg-amber-500 h-1 rounded-full transition-all duration-1000 ease-linear" style={{ width: `${(deleteCountdown / 5) * 100}%` }} />
             </div>
 
             <div className="flex items-center gap-2 pt-1">
-              <button 
-                onClick={() => setUserToDelete(null)} 
+              <button
+                onClick={() => setUserToDelete(null)}
                 className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs uppercase cursor-pointer transition-colors"
               >
                 Batal
@@ -1065,18 +1096,10 @@ const ManageDriver = ({ onBack }) => {
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-100 space-y-5 my-8">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest block">
-                  {isEditPenugasanMode ? "Perbarui Penugasan" : "Penugasan Armada"}
-                </span>
-                <h3 className="text-xl font-extrabold text-[#00206B] m-0">
-                  {isEditPenugasanMode ? "Edit Penugasan & Jadwal" : "Tugaskan Armada Baru"}
-                </h3>
+                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest block">{isEditPenugasanMode ? "Perbarui Penugasan" : "Penugasan Armada"}</span>
+                <h3 className="text-xl font-extrabold text-[#00206B] m-0">{isEditPenugasanMode ? "Edit Penugasan & Jadwal" : "Tugaskan Armada Baru"}</h3>
               </div>
-              <button 
-                type="button" 
-                onClick={() => setShowPenugasanModal(false)} 
-                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-              >
+              <button type="button" onClick={() => setShowPenugasanModal(false)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors cursor-pointer">
                 ✕
               </button>
             </div>
@@ -1221,7 +1244,7 @@ const ManageDriver = ({ onBack }) => {
                       type="text"
                       value={formPenugasan.jam_pengisian_siang}
                       onChange={(e) => setFormPenugasan({ ...formPenugasan, jam_pengisian_siang: e.target.value })}
-                      placeholder="00:00"
+                      placeholder=""
                       className="w-full bg-white border border-slate-200 text-xs font-bold text-[#00206B] rounded-xl px-3 py-2 text-center outline-none focus:border-[#00206B]"
                     />
                   </div>
@@ -1261,7 +1284,7 @@ const ManageDriver = ({ onBack }) => {
                   disabled={isSubmitting}
                   className="px-6 py-3 rounded-xl bg-[#00206B] hover:bg-[#00174E] text-white font-black text-xs uppercase tracking-wider shadow-md cursor-pointer disabled:opacity-50 transition-all active:scale-95"
                 >
-                  {isSubmitting ? "Menyimpan..." : (isEditPenugasanMode ? "Simpan Perubahan" : "Simpan Penugasan")}
+                  {isSubmitting ? "Menyimpan..." : isEditPenugasanMode ? "Simpan Perubahan" : "Simpan Penugasan"}
                 </button>
               </div>
             </form>
@@ -1287,7 +1310,8 @@ const ManageDriver = ({ onBack }) => {
             <div>
               <h3 className="text-lg font-black text-[#00206B] m-0">Hapus Penugasan Armada?</h3>
               <p className="text-xs text-slate-500 font-semibold mt-1">
-                Apakah Anda yakin ingin membatalkan & menghapus penugasan untuk <span className="font-black text-rose-600">{penugasanToDelete.users?.nama || penugasanToDelete.id_supir}</span> pada tanggal <span className="font-black text-slate-700">{penugasanToDelete.tanggal}</span>? Tindakan ini tidak dapat dibatalkan.
+                Apakah Anda yakin ingin membatalkan & menghapus penugasan untuk <span className="font-black text-rose-600">{penugasanToDelete.users?.nama || penugasanToDelete.id_supir}</span> pada
+                tanggal <span className="font-black text-slate-700">{penugasanToDelete.tanggal}</span>? Tindakan ini tidak dapat dibatalkan.
               </p>
             </div>
 
@@ -1300,16 +1324,11 @@ const ManageDriver = ({ onBack }) => {
                 </svg>
                 <span className="text-[11px] font-bold">Batal otomatis dalam:</span>
               </div>
-              <span className="text-xs font-black bg-amber-200/80 text-amber-900 px-2.5 py-0.5 rounded-lg tabular-nums">
-                {deleteCountdown}s
-              </span>
+              <span className="text-xs font-black bg-amber-200/80 text-amber-900 px-2.5 py-0.5 rounded-lg tabular-nums">{deleteCountdown}s</span>
             </div>
 
             <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
-              <div
-                className="bg-amber-500 h-1 rounded-full transition-all duration-1000 ease-linear"
-                style={{ width: `${(deleteCountdown / 5) * 100}%` }}
-              />
+              <div className="bg-amber-500 h-1 rounded-full transition-all duration-1000 ease-linear" style={{ width: `${(deleteCountdown / 5) * 100}%` }} />
             </div>
 
             <div className="flex items-center gap-2 pt-1">

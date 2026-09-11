@@ -85,13 +85,13 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
 
   const currentHour = jamSekarang instanceof Date && !isNaN(jamSekarang.getTime()) ? jamSekarang.getHours() : new Date().getHours();
 
-  // Jam Buka Operasional Siang & Pagi mengikuti input Admin
-  const jamBukaSiang = formSiang !== "-" && formSiang !== "" ? formSiang : "13:00";
+  // Jam Buka Operasional Siang mengikuti jam buka formulir siang
+  const jamBukaSiang = formSiang !== "-" ? formSiang : "13:00";
   const jamSekarangHM = jamTeks.slice(0, 5);
-  const isSiangTime = formSiang === "00:00" || formSiang === "-" ? true : jamSekarangHM >= jamBukaSiang;
+  const isSiangTime = jamSekarangHM >= jamBukaSiang;
   
-  const jamBukaPagi = formPagi !== "-" && formPagi !== "" ? formPagi : "06:00";
-  const isPagiTime = formPagi === "00:00" || formPagi === "-" ? true : jamSekarangHM >= jamBukaPagi;
+  const jamBukaPagi = formPagi !== "-" ? formPagi : "06:00";
+  const isPagiTime = jamSekarangHM >= jamBukaPagi;
 
   // Proteksi data Driver/User & Penugasan
   const driverName = activeUser?.nama_lengkap || activeUser?.nama || activeUser?.name || "Driver";
@@ -115,7 +115,8 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
   const hasFinishedSiang = tripSessions.some((s) => (s?.tipe_sesi || "").toLowerCase() === "siang" || s?.tipe_sesi === 2);
 
   // Penentuan shift operasional aktif
-  const effectiveShift = hasFinishedSiang ? "selesai" : (isSiangTime && hasFinishedPagi ? "siang" : (hasFinishedPagi ? "siang" : currentShift || "pagi"));
+  // Jika sudah waktunya siang, langsung anggap shift efektif "siang" walaupun pagi bolong.
+  const effectiveShift = hasFinishedSiang ? "selesai" : (isSiangTime ? "siang" : (hasFinishedPagi ? "siang" : currentShift || "pagi"));
 
   const isShiftSiang = effectiveShift === "siang";
   const isShiftSelesai = effectiveShift === "selesai";
@@ -149,11 +150,7 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
 
       if (dataLaporan) {
         setLaporanDriver(dataLaporan);
-        if (dataLaporan.id) {
-          localStorage.setItem("siclus_active_laporan_id", String(dataLaporan.id));
-        }
       }
-      localStorage.setItem("siclus_draft_step", "1");
 
       if (typeof onQuickAction === "function") {
         onQuickAction("laporan");
@@ -164,7 +161,6 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
       }
     } catch (error) {
       console.error("Gagal memulai laporan:", error);
-      localStorage.setItem("siclus_draft_step", "1");
       if (typeof onQuickAction === "function") {
         onQuickAction("laporan");
       } else {
@@ -192,27 +188,9 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
   // Komponen Batas Operasional (Sidebar Kanan) - Minimalis & Elegan
   const renderCardJadwal = () => {
     const isSiang = isShiftSiang || isJedaOperasional;
-    const formWaktu = isSiang ? formSiang : formPagi;
-    const keluarWaktu = isSiang ? batasSiang : batasPagi;
-    const kembaliWaktu = isSiang ? kembaliSiang : kembaliPagi;
-
-    if (isShiftSelesai) {
-      return (
-        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 ease-out flex-1 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-5">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Batas Operasional</span>
-              <span className="text-xs font-medium text-slate-400 tabular-nums">{jamTeks.slice(0, 5)} WIB</span>
-            </div>
-            <div className="text-center py-10 space-y-2">
-              <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mx-auto text-base font-semibold">✓</div>
-              <p className="text-sm font-semibold text-slate-800">Tugas Selesai</p>
-              <p className="text-xs text-slate-400">Seluruh operasional hari ini telah tuntas.</p>
-            </div>
-          </div>
-        </div>
-      );
-    }
+    const formWaktu = isShiftSelesai ? "-" : (isSiang ? formSiang : formPagi);
+    const keluarWaktu = isShiftSelesai ? "-" : (isSiang ? batasSiang : batasPagi);
+    const kembaliWaktu = isShiftSelesai ? "-" : (isSiang ? kembaliSiang : kembaliPagi);
 
     return (
       <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 ease-out flex-1 flex flex-col justify-between">
@@ -221,7 +199,9 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
           <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4">
             <div>
               <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Batas Operasional</span>
-              <span className="text-xs font-bold text-[#00206B] mt-0.5 block">{isSiang ? "Sesi Siang" : "Sesi Pagi"}</span>
+              <span className="text-xs font-bold text-[#00206B] mt-0.5 block">
+                {isShiftSelesai ? "Operasional Selesai" : isSiang ? "Sesi Siang" : "Sesi Pagi"}
+              </span>
             </div>
             <span className="text-xs font-medium text-slate-500 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg tabular-nums">{jamTeks.slice(0, 5)} WIB</span>
           </div>
@@ -230,17 +210,23 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 border border-slate-100">
               <span className="text-xs font-medium text-slate-600">Waktu Pengisian</span>
-              <span className="text-sm font-semibold text-slate-800 tabular-nums">{formWaktu !== "-" ? `${formWaktu} WIB` : "-"}</span>
+              <span className={`text-sm tabular-nums ${formWaktu !== "-" ? "font-semibold text-slate-800" : "font-normal text-slate-400"}`}>
+                {formWaktu !== "-" ? `${formWaktu} WIB` : "-"}
+              </span>
             </div>
 
             <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 border border-slate-100">
               <span className="text-xs font-medium text-slate-600">Batas Keluar</span>
-              <span className="text-sm font-semibold text-slate-800 tabular-nums">{keluarWaktu !== "-" ? `${keluarWaktu} WIB` : "-"}</span>
+              <span className={`text-sm tabular-nums ${keluarWaktu !== "-" ? "font-semibold text-slate-800" : "font-normal text-slate-400"}`}>
+                {keluarWaktu !== "-" ? `${keluarWaktu} WIB` : "-"}
+              </span>
             </div>
 
             <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 border border-slate-100">
               <span className="text-xs font-medium text-slate-600">Batas Kembali</span>
-              <span className="text-sm font-semibold text-slate-800 tabular-nums">{kembaliWaktu !== "-" ? `${kembaliWaktu} WIB` : "-"}</span>
+              <span className={`text-sm tabular-nums ${kembaliWaktu !== "-" ? "font-semibold text-slate-800" : "font-normal text-slate-400"}`}>
+                {kembaliWaktu !== "-" ? `${kembaliWaktu} WIB` : "-"}
+              </span>
             </div>
           </div>
         </div>
@@ -349,13 +335,6 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
               <div className="pt-3">
                 <button
                   onClick={() => {
-                    const activeId = safeReport?.id || laporanDriver?.id;
-                    if (activeId) {
-                      localStorage.setItem("siclus_active_laporan_id", String(activeId));
-                    }
-                    if (!localStorage.getItem("siclus_draft_step")) {
-                      localStorage.setItem("siclus_draft_step", "1");
-                    }
                     if (typeof onQuickAction === "function") {
                       onQuickAction("laporan");
                     } else if (typeof onStartInspection === "function") {
@@ -403,42 +382,8 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         <div className="lg:col-span-2 flex flex-col">
-          {isShiftSelesai ? (
-            /* Tampilan jika SELURUH tugas hari ini telah selesai */
-            <div className="bg-white border border-slate-100 rounded-3xl p-8 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 ease-out flex-1 flex flex-col items-center justify-center text-center space-y-4">
-              <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center border border-emerald-200/70">
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-900 m-0">Tugas Hari Ini Selesai</h3>
-                <p className="text-sm text-slate-500 font-normal mt-2 max-w-sm mx-auto">
-                  Terima kasih! Anda telah menyelesaikan seluruh tugas operasional hari ini. Laporan akan dibuka kembali besok.
-                </p>
-                <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full text-xs font-medium text-slate-600">
-                  <span>Status:</span>
-                  <span className="text-[#00206B] font-bold">{safeReport?.status || "Selesai"}</span>
-                </div>
-              </div>
-
-              {tripSessions.length > 0 && (
-                <div className="w-full max-w-sm mt-4 border-t border-slate-100 pt-4 text-left">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Riwayat Sesi Hari Ini</p>
-                  <div className="space-y-2">
-                    {tripSessions.map((sesi, idx) => (
-                      <div key={idx} className="flex justify-between items-center bg-slate-50/70 p-3 rounded-xl border border-slate-100 text-xs">
-                        <span className="font-semibold text-slate-800">Sesi {sesi?.tipe_sesi || idx + 1}</span>
-                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60">{sesi?.status || "Terkirim"}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Tampilan Utama: Operasional Pagi atau Operasional Siang */
-            <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-7 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 ease-out flex-1 flex flex-col justify-between">
+          {/* Tampilan Utama: Rincian Penugasan Armada */}
+          <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-7 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 ease-out flex-1 flex flex-col justify-between">
               <div>
                 {/* Header: Operasional di atas, Keterangan di bawah */}
                 <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
@@ -585,7 +530,6 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
                 )}
               </div>
             </div>
-          )}
         </div>
 
         <aside className="lg:col-span-1 flex flex-col">{renderCardJadwal()}</aside>

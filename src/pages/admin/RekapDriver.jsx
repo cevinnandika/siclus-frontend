@@ -285,7 +285,7 @@ const RekapAdmin = () => {
       <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
         {isLoading ? (
           <div className="text-center text-[#00206B] font-bold py-14 animate-pulse">
-            Menghitung akumulasi data server... ⏳
+            Menghitung akumulasi data server...
           </div>
         ) : groupedData.length === 0 ? (
           <div className="text-center text-slate-400 font-medium py-14 space-y-2">

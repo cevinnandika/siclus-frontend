@@ -17,6 +17,12 @@ const Login = ({ onLoginSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    if (!pin || pin.trim().length < 8) {
+      setError("Password wajib minimal 8 karakter!");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -111,7 +117,7 @@ const Login = ({ onLoginSuccess }) => {
             </div>
           </div>
           <div className="space-y-1 group">
-            <label className="text-[11px] sm:text-sm font-bold text-[#00206B] ml-1 uppercase tracking-wide">PIN / Password</label>
+            <label className="text-[11px] sm:text-sm font-bold text-[#00206B] ml-1 uppercase tracking-wide">Password</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 sm:pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#00206B] transition-colors">
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
