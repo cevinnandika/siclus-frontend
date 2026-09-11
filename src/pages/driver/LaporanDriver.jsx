@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiService } from "../../services/api";
+import toast from 'react-hot-toast';
 import imageCompression from "browser-image-compression";
 
 const dataURLtoFile = (dataurl, filename) => {
@@ -21,18 +22,25 @@ const LiveCamera = ({ onCapture, onCancel }) => {
   const [stream, setStream] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
     const startCamera = async () => {
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        if (!isMounted) {
+          mediaStream.getTracks().forEach((track) => track.stop());
+          return;
+        }
         setStream(mediaStream);
         if (videoRef.current) videoRef.current.srcObject = mediaStream;
       } catch (err) {
-        alert("Akses kamera ditolak!");
+        if (!isMounted) return;
+        toast.error("Akses kamera ditolak!", { id: "camera-access-error" });
         onCancel();
       }
     };
     startCamera();
     return () => {
+      isMounted = false;
       if (stream) stream.getTracks().forEach((track) => track.stop());
     };
   }, []);
@@ -95,37 +103,61 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
   const user = React.useMemo(() => ({
     ...profileData,
     ...propUser,
-    trayek: propUser?.trayek || profileData?.trayek || "",
-    jenis_kendaraan: propUser?.jenis_kendaraan || profileData?.jenis_kendaraan || propUser?.tipe_kendaraan || profileData?.tipe_kendaraan || "",
-    nomer_kendaraan: propUser?.nomer_kendaraan || profileData?.nomer_kendaraan || propUser?.bus || profileData?.bus || "",
-    kapasitas: propUser?.kapasitas || profileData?.kapasitas || "",
+    trayek: profileData?.trayek || "",
+    jenis_kendaraan: profileData?.jenis_kendaraan || "",
+    nomer_kendaraan: profileData?.nomer_kendaraan || "",
+    kapasitas: profileData?.kapasitas || "",
   }), [profileData, propUser]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchLatestProfile = async () => {
       try {
         const resProfile = await apiService.getProfilDriver();
+        if (!isMounted) return;
         const dataProfile = resProfile?.data || resProfile;
         
         let dataPenugasan = {};
         try {
           const resPenugasan = await apiService.getPenugasanHariIni();
+          if (!isMounted) return;
+
           if (resPenugasan && resPenugasan.data) {
             dataPenugasan = resPenugasan.data;
+          } else {
+             // Jika tidak ada penugasan, cek apakah ada draft aktif yang terputus
+             const hadDraft = Boolean(
+               localStorage.getItem("siclus_draft_step") ||
+               localStorage.getItem("siclus_draft_form") ||
+               localStorage.getItem("siclus_active_laporan_id")
+             );
+
+             localStorage.removeItem("siclus_draft_step");
+             localStorage.removeItem("siclus_draft_form");
+             localStorage.removeItem("siclus_active_laporan_id");
+
+             const alertMsg = hadDraft
+               ? "Penugasan Anda telah dibatalkan atau diubah oleh Admin. Silakan periksa beranda."
+               : "Belum ada penugasan kendaraan untuk Anda hari ini. Silakan periksa beranda.";
+
+             toast.error(alertMsg, { id: "penugasan-driver-alert" });
+             navigate("/driver/beranda", { replace: true });
+             return; // Hentikan proses
           }
         } catch (error) {
            console.log("Belum ada penugasan hari ini.");
         }
 
-        if (dataProfile) {
+        if (dataProfile && isMounted) {
           setProfileData((prev) => {
             const updated = {
               ...prev,
               ...dataProfile,
-              trayek: dataPenugasan.trayek || dataProfile.trayek || prev.trayek,
-              jenis_kendaraan: dataPenugasan.jenis_kendaraan || dataProfile.jenis_kendaraan || prev.jenis_kendaraan,
-              nomer_kendaraan: dataPenugasan.nopol_kendaraan || dataProfile.bus || prev.nomer_kendaraan,
-              kapasitas: dataPenugasan.kapasitas_penumpang || prev.kapasitas,
+              trayek: dataPenugasan.trayek || "-",
+              jenis_kendaraan: dataPenugasan.jenis_kendaraan || "-",
+              nomer_kendaraan: dataPenugasan.nopol_kendaraan || "-",
+              kapasitas: dataPenugasan.kapasitas_penumpang || "-",
             };
             
             try {
@@ -142,7 +174,11 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
     };
 
     fetchLatestProfile();
-  }, []);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
 
   // --- PERSISTENT DRAFT INITIALIZATION ---
   const getDraft = () => {
@@ -293,7 +329,7 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
 
   const submitCP1 = async () => {
     const activeLaporanId = laporanId || localStorage.getItem("siclus_active_laporan_id");
-    if (!activeLaporanId) return alert("Sistem memuat ID Laporan. Silakan kembali ke Beranda dan klik Mulai Laporan.");
+    if (!activeLaporanId) return toast.error("Sistem memuat ID Laporan. Silakan kembali ke Beranda dan klik Mulai Laporan.", { id: "load-laporan-id" });
     setIsProcessing(true);
     try {
       const fileFoto = dataURLtoFile(photoPreview, `selfie_awal.jpg`);
@@ -322,7 +358,7 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
       setPhotoPreview(null);
       setActiveCP(2);
     } catch (err) {
-      alert("Gagal kirim CP1: " + (err.response?.data?.detail || err.message));
+      toast.error("Gagal kirim CP1: " + (err.response?.data?.detail || err.message), { id: "cp1-error" });
       setCpToConfirm(null);
     } finally {
       setIsProcessing(false);
@@ -341,7 +377,7 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
       setCpToConfirm(null);
       setActiveCP(3);
     } catch (err) {
-      alert("Gagal kirim CP2: " + (err.response?.data?.detail || err.message));
+      toast.error("Gagal kirim CP2: " + (err.response?.data?.detail || err.message), { id: "cp2-error" });
       setCpToConfirm(null);
     } finally {
       setIsProcessing(false);
@@ -366,11 +402,11 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
       localStorage.removeItem("siclus_draft_form");
       localStorage.removeItem("siclus_active_laporan_id");
 
-      alert("Shift Berhasil Ditutup!");
+      toast.success("Shift Berhasil Ditutup!", { id: "shift-finish-success" });
       if (onFinishShift) onFinishShift();
       navigate("/driver/beranda");
     } catch (err) {
-      alert("Gagal kirim CP3: " + (err.response?.data?.detail || err.message));
+      toast.error("Gagal kirim CP3: " + (err.response?.data?.detail || err.message), { id: "cp3-error" });
       setCpToConfirm(null);
     } finally {
       setIsProcessing(false);
@@ -412,24 +448,24 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
       {/* Header Halaman */}
       <div className="pb-1">
         <h2 className="text-2xl font-bold text-slate-900 m-0 tracking-tight">Laporan Operasional</h2>
-        <p className="text-xs text-slate-400 font-medium mt-0.5 uppercase tracking-wider">
-          Sesi {currentShift} | CheckPoint Perjalanan
+        <p className="text-xs text-slate-400 font-medium mt-0.5 tracking-wide">
+          Sesi {currentShift === "siang" ? "Siang" : "Pagi"} • Formulir Operasional Perjalanan
         </p>
       </div>
 
       {/* ========================================================================= */}
-      {/* CHECK POINT 1: KELUAR DISHUB */}
+      {/* TAHAP 1: KEBERANGKATAN DISHUB */}
       {/* ========================================================================= */}
       {activeCP === 1 ? (
-        <div className="border border-[#00206B]/30 rounded-2xl bg-white shadow-sm overflow-hidden transition-all">
+        <div className="bg-white border border-slate-100 rounded-3xl shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] overflow-hidden transition-all duration-300">
           <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#00206B]"></span>
-              <h3 className="font-bold text-[#00206B] text-xs uppercase tracking-wider m-0">
-                CHECK POINT 1: KELUAR DISHUB
+              <h3 className="font-semibold text-slate-800 text-xs tracking-wide m-0">
+                Tahap 1: Keberangkatan Dishub
               </h3>
             </div>
-            <span className="text-[11px] font-semibold text-[#00206B] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200/60">
+            <span className="text-[11px] font-medium text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200/60">
               Sedang Diisi
             </span>
           </div>
@@ -446,19 +482,19 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3">
                       <span className="text-[10px] font-semibold text-slate-400 uppercase block">Trayek</span>
-                      <p className="text-xs font-bold text-[#00206B] mt-0.5 truncate">{user?.trayek || "Belum Ditentukan"}</p>
+                      <p className="text-xs font-bold text-[#00206B] mt-0.5 truncate">{user?.trayek || "-"}</p>
                     </div>
                     <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3">
                       <span className="text-[10px] font-semibold text-slate-400 uppercase block">Jenis Kendaraan</span>
-                      <p className="text-xs font-semibold text-slate-700 mt-0.5 truncate">{user?.jenis_kendaraan || user?.bus || "Belum Ditentukan"}</p>
+                      <p className="text-xs font-semibold text-slate-700 mt-0.5 truncate">{user?.jenis_kendaraan || user?.bus || "-"}</p>
                     </div>
                     <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3">
                       <span className="text-[10px] font-semibold text-slate-400 uppercase block">Nomor Polisi</span>
-                      <p className="text-xs font-semibold text-slate-700 mt-0.5 truncate">{user?.nomer_kendaraan || user?.bus || "Belum Ditentukan"}</p>
+                      <p className="text-xs font-semibold text-slate-700 mt-0.5 truncate">{user?.nomer_kendaraan || user?.bus || "-"}</p>
                     </div>
                     <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3">
                       <span className="text-[10px] font-semibold text-slate-400 uppercase block">Kapasitas</span>
-                      <p className="text-xs font-semibold text-slate-700 mt-0.5 truncate">{user?.kapasitas ? `${user.kapasitas} Penumpang` : "Belum Ditentukan"}</p>
+                      <p className="text-xs font-semibold text-slate-700 mt-0.5 truncate">{user?.kapasitas ? `${user.kapasitas} Penumpang` : "-"}</p>
                     </div>
                   </div>
                 </div>
@@ -574,9 +610,9 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
             {/* Tombol Aksi / Konfirmasi CP 1 */}
             <div className="pt-6 border-t border-slate-100 mt-6">
               {cpToConfirm === 1 ? (
-                <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-xl text-center space-y-3">
-                  <p className="text-xs font-semibold text-amber-900 m-0">
-                    Pastikan angka Odometer (<span className="font-bold">{odoAwal} KM</span>) dan kelengkapan armada sudah sesuai. Kirim data CP 1 sekarang?
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-3">
+                  <p className="text-xs font-semibold text-slate-800 m-0">
+                    Pastikan angka Odometer (<span className="font-bold text-[#00206B]">{odoAwal} KM</span>) dan kelengkapan armada sudah sesuai. Kirim data keberangkatan?
                   </p>
                   <div className="flex gap-2.5 max-w-xs mx-auto">
                     <button
@@ -600,11 +636,11 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
                 <button
                   type="submit"
                   disabled={!isCP1Ready || isProcessing}
-                  className={`w-full py-3.5 px-6 rounded-xl font-semibold text-sm transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer ${
-                    isCP1Ready ? "bg-[#00206B] hover:bg-[#00174E] text-white" : "bg-slate-100 border border-slate-200/80 text-slate-400 cursor-not-allowed"
+                  className={`w-full py-3.5 px-6 rounded-xl font-semibold text-sm transition-all duration-300 shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-95 ${
+                    isCP1Ready ? "bg-[#00206B] hover:bg-[#00174E] hover:shadow-md text-white" : "bg-slate-100 border border-slate-200/80 text-slate-400 cursor-not-allowed active:scale-100"
                   }`}
                 >
-                  <span>Kirim CP 1 & Catat Jam Keluar</span>
+                  <span>Kirim Laporan Keberangkatan</span>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                   </svg>
@@ -615,22 +651,22 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
         </div>
       ) : activeCP > 1 ? (
         /* CP 1 Selesai: Collapsed dengan Badge Selesai */
-        <div className="border border-emerald-200/70 rounded-xl bg-emerald-50/40 p-4 flex justify-between items-center transition-all">
+        <div className="border border-slate-200/80 rounded-xl bg-slate-50/50 p-4 flex justify-between items-center transition-all">
           <div className="flex items-center gap-2.5">
-            <span className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">
+            <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-semibold">
               ✓
             </span>
-            <h3 className="font-bold text-xs uppercase tracking-wider text-emerald-900 m-0">
-              CHECK POINT 1: KELUAR DISHUB
+            <h3 className="font-semibold text-xs text-slate-800 m-0">
+              Tahap 1: Keberangkatan Dishub
             </h3>
           </div>
-          <span className="text-[11px] font-semibold text-emerald-700">Terkirim</span>
+          <span className="text-[11px] font-medium text-slate-500">Terkirim</span>
         </div>
       ) : (
-        /* CP 1 Belum Mulai: Bar Abu-abu Tertutup Persis Foto 1 */
+        /* CP 1 Belum Mulai: Bar Abu-abu Tertutup */
         <div className="border border-slate-200/80 rounded-xl bg-slate-50/70 p-4 flex justify-between items-center transition-all cursor-not-allowed">
-          <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 m-0">
-            CHECK POINT 1: KELUAR DISHUB
+          <h3 className="font-semibold text-xs text-slate-400 m-0">
+            Tahap 1: Keberangkatan Dishub
           </h3>
           <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -639,18 +675,18 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
       )}
 
       {/* ========================================================================= */}
-      {/* CHECK POINT 2: TIBA DI TITIK FINISH */}
+      {/* TAHAP 2: TIBA DI TITIK AKHIR */}
       {/* ========================================================================= */}
       {activeCP === 2 ? (
-        <div className="border border-[#00206B]/30 rounded-2xl bg-white shadow-sm overflow-hidden transition-all">
+        <div className="bg-white border border-slate-100 rounded-3xl shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] overflow-hidden transition-all duration-300">
           <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#00206B]"></span>
-              <h3 className="font-bold text-[#00206B] text-xs uppercase tracking-wider m-0">
-                CHECK POINT 2: TIBA DI TITIK FINISH
+              <h3 className="font-semibold text-slate-800 text-xs tracking-wide m-0">
+                Tahap 2: Tiba di Titik Akhir
               </h3>
             </div>
-            <span className="text-[11px] font-semibold text-[#00206B] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200/60">
+            <span className="text-[11px] font-medium text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200/60">
               Sedang Diisi
             </span>
           </div>
@@ -659,7 +695,7 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Odometer Sekolah (KM)
+                  Odometer Titik Akhir (KM)
                 </label>
                 <div className="relative">
                   <input
@@ -675,7 +711,7 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
               </div>
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Total Siswa Diangkut
+                  Jumlah Penumpang / Siswa
                 </label>
                 <input
                   type="number"
@@ -683,16 +719,16 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
                   value={penumpang}
                   onChange={(e) => setPenumpang(e.target.value)}
                   className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-[#00206B] outline-none focus:border-[#00206B] focus:ring-1 focus:ring-[#00206B]/20"
-                  placeholder="Jumlah siswa"
+                  placeholder="Jumlah penumpang"
                 />
               </div>
             </div>
 
             <div className="pt-3 border-t border-slate-100">
               {cpToConfirm === 2 ? (
-                <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-xl text-center space-y-3">
-                  <p className="text-xs font-semibold text-amber-900 m-0">
-                    Odometer Akhir: <span className="font-bold">{odo3} KM</span> & Siswa: <span className="font-bold">{penumpang} orang</span>. Kirim data CP 2?
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-3">
+                  <p className="text-xs font-semibold text-slate-800 m-0">
+                    Odometer Titik Akhir: <span className="font-bold text-[#00206B]">{odo3} KM</span> & Penumpang: <span className="font-bold text-[#00206B]">{penumpang} orang</span>. Kirim data sekarang?
                   </p>
                   <div className="flex gap-2.5 max-w-xs mx-auto">
                     <button
@@ -716,11 +752,11 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
                 <button
                   type="submit"
                   disabled={!odo3 || !penumpang || isProcessing}
-                  className={`w-full py-3.5 px-6 rounded-xl font-semibold text-sm transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer ${
-                    odo3 && penumpang ? "bg-[#00206B] hover:bg-[#00174E] text-white" : "bg-slate-100 border border-slate-200/80 text-slate-400 cursor-not-allowed"
+                  className={`w-full py-3.5 px-6 rounded-xl font-semibold text-sm transition-all duration-300 shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-95 ${
+                    odo3 && penumpang ? "bg-[#00206B] hover:bg-[#00174E] hover:shadow-md text-white" : "bg-slate-100 border border-slate-200/80 text-slate-400 cursor-not-allowed active:scale-100"
                   }`}
                 >
-                  <span>Simpan & Catat Waktu Selesai</span>
+                  <span>Kirim Laporan Titik Akhir</span>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                   </svg>
@@ -731,22 +767,22 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
         </div>
       ) : activeCP > 2 ? (
         /* CP 2 Selesai: Collapsed dengan Badge Selesai */
-        <div className="border border-emerald-200/70 rounded-xl bg-emerald-50/40 p-4 flex justify-between items-center transition-all">
+        <div className="border border-slate-200/80 rounded-xl bg-slate-50/50 p-4 flex justify-between items-center transition-all">
           <div className="flex items-center gap-2.5">
-            <span className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">
+            <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-semibold">
               ✓
             </span>
-            <h3 className="font-bold text-xs uppercase tracking-wider text-emerald-900 m-0">
-              CHECK POINT 2: TIBA DI TITIK FINISH
+            <h3 className="font-semibold text-xs text-slate-800 m-0">
+              Tahap 2: Tiba di Titik Akhir
             </h3>
           </div>
-          <span className="text-[11px] font-semibold text-emerald-700">Terkirim</span>
+          <span className="text-[11px] font-medium text-slate-500">Terkirim</span>
         </div>
       ) : (
-        /* CP 2 Terkunci: Bar Abu-abu Tertutup Persis Foto 1 */
+        /* CP 2 Terkunci: Bar Abu-abu Tertutup */
         <div className="border border-slate-200/80 rounded-xl bg-slate-50/70 p-4 flex justify-between items-center transition-all cursor-not-allowed">
-          <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 m-0">
-            CHECK POINT 2: TIBA DI TITIK FINISH
+          <h3 className="font-semibold text-xs text-slate-400 m-0">
+            Tahap 2: Tiba di Titik Akhir
           </h3>
           <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -755,19 +791,19 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
       )}
 
       {/* ========================================================================= */}
-      {/* CHECK POINT 3: KEMBALI KE DISHUB */}
+      {/* TAHAP 3: KEMBALI KE DISHUB */}
       {/* ========================================================================= */}
       {activeCP === 3 ? (
-        <div className="border border-[#00206B]/30 rounded-2xl bg-white shadow-sm overflow-hidden transition-all">
+        <div className="bg-white border border-slate-100 rounded-3xl shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] overflow-hidden transition-all duration-300">
           <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#00206B]"></span>
-              <h3 className="font-bold text-[#00206B] text-xs uppercase tracking-wider m-0">
-                CHECK POINT 3: KEMBALI KE DISHUB
+              <h3 className="font-semibold text-slate-800 text-xs tracking-wide m-0">
+                Tahap 3: Kembali ke Dishub
               </h3>
             </div>
-            <span className="text-[11px] font-semibold text-[#00206B] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200/60">
-              Tahap Terakhir
+            <span className="text-[11px] font-medium text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200/60">
+              Tahap Akhir
             </span>
           </div>
 
@@ -775,7 +811,7 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Odometer Akhir Garasi (KM)
+                  Odometer Akhir (KM)
                 </label>
                 <div className="relative">
                   <input
@@ -792,7 +828,7 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
 
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Foto Selfie Akhir Shift
+                  Foto Selfie Pengemudi
                 </label>
                 {isCameraOpen ? (
                   <LiveCamera
@@ -816,7 +852,7 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
                     <span className="text-xs font-semibold text-[#00206B]">Buka Kamera Selfie Akhir</span>
                   </button>
                 ) : (
-                  <div className="relative w-full max-w-xs mx-auto aspect-[3/4] rounded-xl overflow-hidden border border-emerald-300 shadow-sm">
+                  <div className="relative w-full max-w-xs mx-auto aspect-[3/4] rounded-xl overflow-hidden border border-slate-200 shadow-sm">
                     <img src={photoPreview} alt="Selfie Akhir" className="w-full h-full object-cover" />
                     <button
                       type="button"
@@ -832,9 +868,9 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
 
             <div className="pt-3 border-t border-slate-100">
               {cpToConfirm === 3 ? (
-                <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-xl text-center space-y-3">
-                  <p className="text-xs font-semibold text-amber-900 m-0">
-                    Tutup shift operasional harian dengan Odometer Akhir: <span className="font-bold">{odo4} KM</span>?
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-3">
+                  <p className="text-xs font-semibold text-slate-800 m-0">
+                    Selesaikan operasional dengan Odometer Akhir: <span className="font-bold text-[#00206B]">{odo4} KM</span>?
                   </p>
                   <div className="flex gap-2.5 max-w-xs mx-auto">
                     <button
@@ -843,7 +879,7 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
                       disabled={isProcessing}
                       className="flex-1 bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-xs py-2.5 rounded-xl shadow-xs cursor-pointer"
                     >
-                      {isProcessing ? "Menutup..." : "Ya, Tutup Shift"}
+                      {isProcessing ? "Menutup..." : "Ya, Selesaikan"}
                     </button>
                     <button
                       type="button"
@@ -858,11 +894,11 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
                 <button
                   type="submit"
                   disabled={!odo4 || !isPhotoSaved || isProcessing}
-                  className={`w-full py-3.5 px-6 rounded-xl font-semibold text-sm transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer ${
-                    odo4 && isPhotoSaved ? "bg-[#00206B] hover:bg-[#00174E] text-white" : "bg-slate-100 border border-slate-200/80 text-slate-400 cursor-not-allowed"
+                  className={`w-full py-3.5 px-6 rounded-xl font-semibold text-sm transition-all duration-300 shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-95 ${
+                    odo4 && isPhotoSaved ? "bg-[#00206B] hover:bg-[#00174E] hover:shadow-md text-white" : "bg-slate-100 border border-slate-200/80 text-slate-400 cursor-not-allowed active:scale-100"
                   }`}
                 >
-                  <span>Submit Final & Tutup Shift</span>
+                  <span>Selesaikan & Tutup Operasional</span>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                   </svg>
@@ -872,10 +908,10 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
           </form>
         </div>
       ) : (
-        /* CP 3 Terkunci: Bar Abu-abu Tertutup Persis Foto 1 */
+        /* CP 3 Terkunci: Bar Abu-abu Tertutup */
         <div className="border border-slate-200/80 rounded-xl bg-slate-50/70 p-4 flex justify-between items-center transition-all cursor-not-allowed">
-          <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 m-0">
-            CHECK POINT 3: KEMBALI KE DISHUB
+          <h3 className="font-semibold text-xs text-slate-400 m-0">
+            Tahap 3: Kembali ke Dishub
           </h3>
           <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />

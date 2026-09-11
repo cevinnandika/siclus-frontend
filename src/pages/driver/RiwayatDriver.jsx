@@ -38,21 +38,40 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
     apiService
       .getRiwayatDriver()
       .then((res) => {
-        const rawList = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+        const rawList = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
         const formattedData = rawList.map((item) => {
-          const isShiftClosed = item.trip_sessions?.some((sesi) => sesi.jam_tiba_kantor !== null);
+          const sesiList = item.trip_sessions || [];
+          const sesiPagi = sesiList.find((s) => (s?.tipe_sesi || "").toUpperCase() === "PAGI");
+          const sesiSiang = sesiList.find((s) => (s?.tipe_sesi || "").toUpperCase() === "SIANG");
+
+          const isPagiDone = Boolean(sesiPagi && sesiPagi.jam_tiba_kantor);
+          const isSiangDone = Boolean(sesiSiang && sesiSiang.jam_tiba_kantor);
+
+          let statusLabel = "Tercatat";
+
+          if (isPagiDone && isSiangDone) {
+            statusLabel = "2 Sesi Selesai";
+          } else if (isPagiDone && !isSiangDone) {
+            statusLabel = "Sesi Pagi Selesai";
+          } else if (!isPagiDone && isSiangDone) {
+            statusLabel = "Sesi Siang Selesai";
+          } else if (sesiList.length > 0) {
+            statusLabel = "Sedang Berjalan";
+          }
+
           return {
             ...item,
             driverName: user?.nama_lengkap || user?.nama || user?.name || "Driver",
             date: item.tanggal,
             trayek: item.trayek,
             bus: item.bus,
-            submittedAt: isShiftClosed ? "SELESAI DIREKAM" : (item.trip_sessions?.length > 0 ? "SEDANG BERJALAN" : "BELUM DIMULAI"),
+            statusLabel,
+            hasActivity: sesiList.length > 0,
           };
         });
 
-        // Hanya tampilkan laporan yang statusnya sudah Selesai Direkam
-        const filteredData = formattedData.filter((report) => report.submittedAt === "SELESAI DIREKAM");
+        // Tampilkan semua laporan yang memiliki rekaman sesi
+        const filteredData = formattedData.filter((report) => report.hasActivity);
 
         // Urutkan dari laporan terbaru
         filteredData.sort((a, b) => new Date(b.created_at || b.tanggal) - new Date(a.created_at || a.tanggal));
@@ -68,105 +87,85 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center p-20">
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">
-          Memuat Riwayat Perjalanan...
-        </span>
+        <span className="text-xs font-medium text-slate-400 tracking-wider animate-pulse">Memuat riwayat perjalanan...</span>
       </div>
     );
   }
 
-  const driverInitial = (user?.nama_lengkap || user?.nama || user?.name || "R").charAt(0).toUpperCase();
-
   return (
     <div className="space-y-5 max-w-5xl mx-auto pb-12 px-4 md:px-0 font-sans text-left">
-      {/* Header Halaman: Nama Sesuai Menu & Subtitle Masuk Akal */}
+      {/* Header Halaman */}
       <div className="pb-1">
-        <h2 className="text-2xl font-bold text-slate-900 m-0 tracking-tight">
-          Riwayat Perjalanan
-        </h2>
-        <p className="text-sm text-slate-400 font-normal mt-1">
-          Daftar catatan dan laporan operasional harian yang telah diselesaikan.
-        </p>
+        <h2 className="text-2xl font-bold text-slate-900 m-0 tracking-tight">Riwayat Perjalanan</h2>
+        <p className="text-xs text-slate-400 font-medium mt-0.5 tracking-wide">Daftar catatan dan laporan operasional harian</p>
       </div>
 
       {reports.length > 0 ? (
         <div className="space-y-3 pt-1">
           {reports.map((report, index) => {
-            const rawId =
-              user?.id ||
-              (report.id_supir && !report.id_supir.includes("@") ? report.id_supir : "") ||
-              user?.email?.split("@")[0].toUpperCase() ||
-              "DRIVER";
-            const driverIdDisplay =
-              rawId.toUpperCase().startsWith("DRV") || rawId.toUpperCase().startsWith("ID")
-                ? rawId
-                : `ID: ${rawId}`;
+            const rawId = user?.id || (report.id_supir && !report.id_supir.includes("@") ? report.id_supir : "") || user?.email?.split("@")[0].toUpperCase() || "DRIVER";
+            const driverIdDisplay = rawId.toUpperCase().startsWith("DRV") || rawId.toUpperCase().startsWith("ID") ? rawId : `ID: ${rawId}`;
 
             return (
               <div
                 key={index}
                 onClick={() => onViewDetail && onViewDetail(report)}
-                className="bg-white border border-slate-200/80 hover:border-[#00206B]/50 rounded-2xl p-4 sm:px-5 sm:py-3.5 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex items-center justify-between group"
+                className="bg-white border border-slate-100 hover:border-slate-200 rounded-3xl p-4 sm:px-5 sm:py-4 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 ease-out cursor-pointer flex items-center justify-between group"
               >
-                {/* Kiri: Avatar Bulat Utuh + Info Laporan & Tanggal (Satu Bar Bersih & Rapi) */}
+                {/* Kiri: Icon Rapi + Info Laporan & Tanggal */}
                 <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-                  {/* Avatar Bulat Utuh: Menampilkan Foto Profil Supir atau Inisial Bulat Sempurna */}
-                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-slate-100 border border-slate-200/80 flex-shrink-0 flex items-center justify-center shadow-sm">
+                  <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 flex-shrink-0 flex items-center justify-center text-slate-500 overflow-hidden">
                     {profilePhoto ? (
-                      <img
-                        src={profilePhoto}
-                        alt={user?.nama_lengkap || "Driver"}
-                        className="w-full h-full object-cover rounded-full"
-                      />
+                      <img src={profilePhoto} alt="Driver" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full rounded-full bg-[#00206B] text-white flex items-center justify-center font-bold text-sm sm:text-base">
-                        {driverInitial}
-                      </div>
+                      <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                        />
+                      </svg>
                     )}
                   </div>
 
-                  {/* Teks Info: Judul Laporan Operasional & Tanggal + ID Driver dalam Satu Baris Terpadu */}
+                  {/* Teks Info: Judul Laporan & Status Minimalis */}
                   <div className="min-w-0">
-                    <h3 className="text-sm sm:text-base font-bold text-slate-900 m-0 tracking-tight truncate group-hover:text-[#00206B] transition-colors">
-                      Laporan Operasional
-                    </h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-slate-500 font-medium">
-                        {report.date}
-                      </span>
-                      <span className="text-slate-300 text-xs">|</span>
-                      <span className="text-xs text-slate-400 font-semibold tracking-wide">
-                        {driverIdDisplay}
-                      </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm font-semibold text-slate-800 m-0 tracking-tight truncate group-hover:text-[#00206B] transition-colors">Laporan Operasional</h3>
+                      <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/60">{report.statusLabel}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-slate-500 font-medium">{report.date}</span>
+                      <span className="text-slate-300 text-xs">•</span>
+                      <span className="text-xs text-slate-400 font-medium">{driverIdDisplay}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Kanan: Navigasi Lihat Rincian + Tombol Chevron Bulat Elegan */}
-                <div className="flex items-center gap-3 pl-3 flex-shrink-0 text-slate-400 group-hover:text-[#00206B] transition-colors">
-                  <span className="text-xs font-semibold hidden sm:inline text-slate-500 group-hover:text-[#00206B]">
-                    Lihat Rincian
-                  </span>
-                  <div className="w-8 h-8 rounded-full bg-slate-50 group-hover:bg-[#00206B] text-slate-400 group-hover:text-white flex items-center justify-center transition-all duration-200 shadow-sm">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
+                {/* Kanan: Navigasi Lihat Rincian Minimalis */}
+                <div className="flex items-center gap-2 pl-3 flex-shrink-0 text-slate-400 group-hover:text-[#00206B] transition-colors">
+                  <span className="text-xs font-medium hidden sm:inline text-slate-400 group-hover:text-[#00206B] transition-colors">Lihat Rincian</span>
+                  <svg className="w-4 h-4 text-slate-300 group-hover:text-[#00206B] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
                 </div>
               </div>
             );
           })}
         </div>
       ) : (
-        <div className="text-center py-16 bg-white border border-slate-200/80 rounded-2xl shadow-sm">
+        <div className="text-center py-16 bg-white border border-slate-100 rounded-3xl shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)]">
           <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
             </svg>
           </div>
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            Belum Ada Data Laporan
-          </span>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Belum Ada Data Laporan</span>
         </div>
       )}
     </div>

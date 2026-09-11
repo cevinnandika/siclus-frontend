@@ -94,8 +94,8 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
 
   // Helper Penugasan Armada Otomatis
   const getPenugasanData = (sesi) => {
-    const rawNopol = sesi?.nopol_kendaraan || report.bus || propUser?.bus || propUser?.nomer_kendaraan || "Belum Ditentukan";
-    let jenis = propUser?.jenis_kendaraan || "Belum Ditentukan";
+    const rawNopol = sesi?.nopol_kendaraan || report.bus || propUser?.bus || propUser?.nomer_kendaraan || "-";
+    let jenis = propUser?.jenis_kendaraan || "-";
     let nopol = rawNopol;
 
     if (rawNopol.includes(" - ")) {
@@ -104,8 +104,8 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
       nopol = parts[1] || nopol;
     }
 
-    const trayek = report.trayek || propUser?.trayek || "Belum Ditentukan";
-    const kapasitas = propUser?.kapasitas ? `${propUser.kapasitas} Siswa` : report.kapasitas ? `${report.kapasitas} Siswa` : "Belum Ditentukan";
+    const trayek = report.trayek || propUser?.trayek || "-";
+    const kapasitas = propUser?.kapasitas ? `${propUser.kapasitas} Siswa` : report.kapasitas ? `${report.kapasitas} Siswa` : "-";
 
     return { trayek, jenis, nopol, kapasitas };
   };
@@ -168,7 +168,7 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
 
         {/* Status Selesai */}
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200/60">
             Laporan Selesai
           </span>
         </div>
@@ -179,7 +179,7 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
         <button
           type="button"
           onClick={() => setActiveTab("pagi")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === "pagi"
               ? "bg-[#00206B] text-white shadow-xs"
               : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50"
@@ -188,10 +188,10 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
           <span>Sesi Pagi</span>
           {sesiPagi && String(sesiPagi.status_waktu || "").toUpperCase() === "TEPAT WAKTU" && (
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+              className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
                 activeTab === "pagi"
-                  ? "bg-emerald-500 text-white"
-                  : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  ? "bg-white/20 text-white"
+                  : "bg-slate-100 text-slate-600 border border-slate-200"
               }`}
             >
               Tepat Waktu
@@ -199,10 +199,10 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
           )}
           {sesiPagi && String(sesiPagi.status_waktu || "").toUpperCase() === "TERLAMBAT" && (
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+              className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
                 activeTab === "pagi"
-                  ? "bg-rose-500 text-white"
-                  : "bg-rose-50 text-rose-600 border border-rose-200"
+                  ? "bg-white/20 text-white"
+                  : "bg-slate-100 text-slate-600 border border-slate-200"
               }`}
             >
               Terlambat
@@ -213,7 +213,7 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
         <button
           type="button"
           onClick={() => setActiveTab("siang")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === "siang"
               ? "bg-[#00206B] text-white shadow-xs"
               : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50"
@@ -222,10 +222,10 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
           <span>Sesi Siang</span>
           {sesiSiang && String(sesiSiang.status_waktu || "").toUpperCase() === "TEPAT WAKTU" && (
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+              className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
                 activeTab === "siang"
-                  ? "bg-emerald-500 text-white"
-                  : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  ? "bg-white/20 text-white"
+                  : "bg-slate-100 text-slate-600 border border-slate-200"
               }`}
             >
               Tepat Waktu
@@ -233,10 +233,10 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
           )}
           {sesiSiang && String(sesiSiang.status_waktu || "").toUpperCase() === "TERLAMBAT" && (
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+              className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
                 activeTab === "siang"
-                  ? "bg-rose-500 text-white"
-                  : "bg-rose-50 text-rose-600 border border-rose-200"
+                  ? "bg-white/20 text-white"
+                  : "bg-slate-100 text-slate-600 border border-slate-200"
               }`}
             >
               Terlambat
@@ -251,7 +251,7 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
           {/* KARTU TIMELINE 3 CHECK POINT */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-7 shadow-sm space-y-7">
             {/* ========================================================================= */}
-            {/* CHECK POINT 1: KELUAR GARASI DISHUB */}
+            {/* TAHAP 1: KEBERANGKATAN DISHUB */}
             {/* ========================================================================= */}
             <div className="relative pl-7 border-l-2 border-slate-200 pb-2">
               <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-[#00206B] ring-4 ring-white flex items-center justify-center">
@@ -259,11 +259,11 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
-                <h4 className="text-sm font-bold text-slate-900 m-0">Check Point 1 - Keluar Garasi Dishub</h4>
+                <h4 className="text-sm font-bold text-slate-900 m-0">Tahap 1: Keberangkatan Dishub</h4>
                 <span className="text-xs font-semibold text-slate-400">{formatTime(activeSession.jam_berangkat_kantor)} WIB</span>
               </div>
 
-              {/* Rincian Penugasan Armada (Gaya Elegan Identik dengan BerandaDriver) */}
+              {/* Rincian Penugasan Armada */}
               <div className="mb-4">
                 <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Rincian Penugasan Armada</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -307,8 +307,8 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
                     className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-100 h-28 flex items-center justify-center cursor-pointer group shadow-xs"
                     title="Klik untuk memperbesar foto"
                   >
-                    <img src={activeSession.foto_awal} alt="Foto CP1" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                    <div className="absolute top-2 left-2 bg-emerald-600/90 backdrop-blur-xs text-white text-[9px] font-bold px-2 py-0.5 rounded tracking-wider shadow-xs">✓ FOTO VALIDASI</div>
+                    <img src={activeSession.foto_awal} alt="Foto Tahap 1" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    <div className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-white text-[9px] font-medium px-2 py-0.5 rounded tracking-wider shadow-xs">✓ FOTO VALIDASI</div>
                     <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold">
                       Lihat Foto Penuh
                     </div>
@@ -320,7 +320,7 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
             </div>
 
             {/* ========================================================================= */}
-            {/* CHECK POINT 2: TIBA DI TITIK FINISH (SEKOLAH) */}
+            {/* TAHAP 2: TIBA DI TITIK AKHIR */}
             {/* ========================================================================= */}
             <div className="relative pl-7 border-l-2 border-slate-200 pb-2">
               <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-[#00206B] ring-4 ring-white flex items-center justify-center">
@@ -328,7 +328,7 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
-                <h4 className="text-sm font-bold text-slate-900 m-0">Check Point 2 - Tiba di Titik Finish (Sekolah)</h4>
+                <h4 className="text-sm font-bold text-slate-900 m-0">Tahap 2: Tiba di Titik Akhir</h4>
                 <span className="text-xs font-semibold text-slate-400">{formatTime(activeSession.jam_tiba_finish)} WIB</span>
               </div>
 
@@ -339,7 +339,7 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
                 </div>
 
                 <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 flex items-center justify-between">
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Jumlah Siswa Diangkut</span>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Jumlah Penumpang / Siswa</span>
                   <p className="text-sm font-bold text-[#00206B] m-0">
                     {activeSession.jumlah_penumpang !== undefined && activeSession.jumlah_penumpang !== null ? `${activeSession.jumlah_penumpang} Siswa` : "-"}
                   </p>
@@ -348,7 +348,7 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
             </div>
 
             {/* ========================================================================= */}
-            {/* CHECK POINT 3: KEMBALI KE DISHUB */}
+            {/* TAHAP 3: KEMBALI KE DISHUB */}
             {/* ========================================================================= */}
             <div className="relative pl-7">
               <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-[#00206B] ring-4 ring-white flex items-center justify-center">
@@ -356,7 +356,7 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
-                <h4 className="text-sm font-bold text-slate-900 m-0">Check Point 3 - Kembali ke Garasi Dishub</h4>
+                <h4 className="text-sm font-bold text-slate-900 m-0">Tahap 3: Kembali ke Dishub</h4>
                 <span className="text-xs font-semibold text-slate-400">{formatTime(activeSession.jam_tiba_kantor)} WIB</span>
               </div>
 

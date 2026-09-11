@@ -1,4 +1,6 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import toast from 'react-hot-toast';
 
 const RingkasanHarian = ({ inspections = [], trips = [], currentShift, onResetAllLogs }) => {
   const latestTrip = trips[0];
@@ -122,7 +124,7 @@ const RingkasanHarian = ({ inspections = [], trips = [], currentShift, onResetAl
           {/* Action Buttons */}
           <div className="space-y-3 pt-2">
             <button
-              onClick={() => alert("Laporan harian berhasil disimpan ke server!")}
+              onClick={() => toast.success("Laporan harian berhasil disimpan ke server!")}
               className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-extrabold py-4 px-4 rounded-xl shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
               SIMPAN LAPORAN HARIAN

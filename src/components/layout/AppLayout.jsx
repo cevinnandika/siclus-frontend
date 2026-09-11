@@ -5,7 +5,7 @@ const AppLayout = ({ children, title = "SICLUS", onBack = null, activeMenu = "be
 
   const adminMenuItems = [
     { id: "dashboard", label: "Dashboard", icon: <path strokeLinecap="round" strokeLinejoin="round" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" /> },
-    { id: "riwayat", label: "Riwayat Driver", icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /> },
+
     {
       id: "rekap",
       label: "Rekap Driver",

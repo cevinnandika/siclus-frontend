@@ -5,13 +5,14 @@ import { apiService } from "./services/api";
 // Layouts
 import AppLayout from "./components/layout/AppLayout";
 import BottomNav from "./components/layout/BottomNav";
+import { Toaster } from 'react-hot-toast';
 
 // Pages - Auth
 import Login from "./pages/auth/Login";
 
 // Pages - Admin
 import BerandaAdmin from "./pages/admin/BerandaAdmin";
-import RiwayatAdmin from "./pages/admin/RiwayatAdmin";
+
 import ManageDriver from "./pages/admin/ManageDriver";
 import RekapAdmin from "./pages/admin/RekapDriver";
 import ProfilAdmin from "./pages/admin/ProfilAdmin";
@@ -179,13 +180,31 @@ function App() {
 
   return (
     <div className="min-h-screen w-full bg-[#131314] font-sans antialiased overflow-hidden">
+      <Toaster 
+        position="top-center" 
+        reverseOrder={false} 
+        gutter={8}
+        toastOptions={{
+          duration: 3500,
+          style: {
+            background: '#ffffff',
+            color: '#1e293b',
+            border: '1px solid #f1f5f9',
+            borderRadius: '1.25rem',
+            padding: '12px 16px',
+            fontSize: '13px',
+            fontWeight: '600',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04)',
+          },
+        }}
+      />
       {!user ? (
         <Routes>
           <Route path="/login" element={<Login onLoginSuccess={handleLogin} />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       ) : (
-        <AppLayout user={user} title={"SICLUS"} onBack={location.pathname.includes("detail") ? () => navigate(-1) : null} activeMenu={location.pathname.split("/").pop()} onMenuClick={handleMenuClick}>
+        <AppLayout user={user} title={"SICLUS"} onBack={null} activeMenu={location.pathname.split("/").pop()} onMenuClick={handleMenuClick}>
           <Routes>
             {/* ZONA KHUSUS DRIVER */}
             <Route path="/" element={<Navigate to={user?.role?.toLowerCase() === "admin" ? "/admin/dashboard" : "/driver/beranda"} replace />} />
@@ -261,10 +280,10 @@ function App() {
                 <ProtectedRoute user={user} allowedRole="admin">
                   <Routes>
                     <Route path="dashboard" element={<BerandaAdmin user={user} />} />
-                    <Route path="riwayat" element={<RiwayatAdmin />} />
+
                     <Route path="rekap" element={<RekapAdmin user={user} />} />
                     <Route path="kelola" element={<ManageDriver onBack={() => navigate("/admin/dashboard")} />} />
-                    <Route path="akun" element={<ProfilAdmin user={user} onLogout={handleLogout} />} />
+                    <Route path="akun" element={<ProfilAdmin user={user} onLogout={handleLogout} onUpdateUser={setUser} />} />
                     
                     {/* FIX KRUSIAL: Gunakan Absolute Path "/admin/dashboard" BUKAN "dashboard" */}
                     <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />

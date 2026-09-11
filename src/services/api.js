@@ -72,6 +72,10 @@ export const apiService = {
   },
   
   // -- Laporan Operasional --
+  getLaporanHariIni: async () => {
+    const response = await apiClient.get("/laporan/hari-ini");
+    return response.data;
+  },
   mulaiLaporan: async (data) => {
     const response = await apiClient.post("/laporan/mulai", data);
     return response.data;
@@ -115,6 +119,14 @@ export const apiService = {
   // ==========================================
   createPenugasanHarian: async (data) => {
     const response = await apiClient.post("/admin/penugasan", data);
+    return response.data;
+  },
+  updatePenugasanHarian: async (id, data) => {
+    const response = await apiClient.put(`/admin/penugasan/${id}`, data);
+    return response.data;
+  },
+  deletePenugasanHarian: async (id) => {
+    const response = await apiClient.delete(`/admin/penugasan/${id}`);
     return response.data;
   },
   getSemuaPenugasan: async () => {

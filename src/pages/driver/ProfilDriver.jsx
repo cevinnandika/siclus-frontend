@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { apiService } from "../../services/api";
 import imageCompression from "browser-image-compression";
+import toast from 'react-hot-toast';
 
 const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
   const [isUploading, setIsUploading] = useState(false);
@@ -29,6 +30,7 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
 
       if (res && res.foto_profil) {
         setFotoPreview(res.foto_profil);
+        toast.success("Foto profil berhasil diperbarui!");
 
         const savedUser = JSON.parse(localStorage.getItem("siclus_user") || "{}");
         if (savedUser) {
@@ -38,7 +40,7 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
         }
       }
     } catch (error) {
-      alert("Gagal upload foto profil: " + (error.response?.data?.detail || error.message));
+      toast.error("Gagal upload foto profil: " + (error.response?.data?.detail || error.message));
     } finally {
       setIsUploading(false);
     }
@@ -51,16 +53,13 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
     <div className="space-y-6 max-w-4xl mx-auto pb-12 font-sans text-left">
       {/* Header Halaman: Konsisten dengan Beranda & Riwayat */}
       <div className="pb-1">
-        <h2 className="text-2xl font-bold text-slate-900 m-0 tracking-tight">
-          Profil Pengemudi
-        </h2>
-        <p className="text-sm text-slate-400 font-normal mt-1">
+        <h2 className="text-2xl font-bold text-slate-900 m-0 tracking-tight">Profil Pengemudi</h2>
+        <p className="text-xs text-slate-400 font-medium mt-0.5 tracking-wide">
           Informasi identitas dan rincian akun operasional pengemudi.
         </p>
       </div>
 
-      {/* Kartu Profil Utama (Elegan, Bersih, Tanpa Banner Gradient Lebay) */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-sm">
+      <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] transition-all duration-300">
         {/* Baris Atas: Avatar + Nama + Status */}
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 pb-6 border-b border-slate-100">
           <input

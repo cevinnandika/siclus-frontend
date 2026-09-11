@@ -188,77 +188,112 @@ const RekapAdmin = () => {
     <div className="space-y-6 max-w-6xl mx-auto pb-8 animate-[fadeIn_0.3s] text-left">
       {/* Header & Filter Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h2 className="text-2xl md:text-3xl font-black text-[#00206B] m-0 tracking-wide uppercase">
+        <div className="pb-1">
+          <h2 className="text-2xl font-bold text-slate-900 m-0 tracking-tight">
             Rekapitulasi Kinerja
           </h2>
-          <p className="text-sm text-slate-400 font-semibold mt-0.5">
+          <p className="text-xs text-slate-400 font-medium mt-0.5 tracking-wide">
             Pantau akumulasi performa driver per rentang waktu
           </p>
         </div>
 
         {/* BAGIAN FILTER KANAN ATAS */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Search Bar yang sudah ada */}
-          <div className="relative">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+          {/* Search Bar */}
+          <div className="relative flex items-center">
+            <svg
+              className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
             <input
               type="text"
               placeholder="Cari supir / trayek..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-white border border-slate-200 text-xs font-bold text-[#00206B] rounded-xl px-3.5 py-3 pl-9 outline-none focus:border-[#00206B] shadow-sm placeholder:text-slate-400"
+              className="h-10 w-44 sm:w-52 bg-white border border-slate-200 hover:border-slate-300 focus:border-[#00206B] focus:ring-2 focus:ring-[#00206B]/5 text-xs font-semibold text-slate-700 rounded-xl pl-9 pr-8 outline-none shadow-xs placeholder:text-slate-400 placeholder:font-normal transition-all"
             />
-            <svg
-              className="w-4 h-4 text-slate-400 absolute left-3 top-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                title="Hapus pencarian"
+                className="absolute right-2.5 p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
 
           {/* FILTER KALENDER (DATE RANGE) */}
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Dari:</span>
-            <input 
-              type="date" 
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="text-xs font-bold text-[#00206B] outline-none bg-transparent cursor-pointer"
-            />
-            
-            <span className="text-[10px] font-bold text-slate-400 uppercase ml-2">Sampai:</span>
-            <input 
-              type="date" 
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="text-xs font-bold text-[#00206B] outline-none bg-transparent cursor-pointer"
-            />
+          <div className="flex items-center h-10 bg-white border border-slate-200 hover:border-slate-300 focus-within:border-[#00206B] focus-within:ring-2 focus-within:ring-[#00206B]/5 rounded-xl px-3 shadow-xs transition-all text-xs">
+            {/* Dari */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-400 select-none">
+                Dari
+              </span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-[112px] text-xs font-semibold text-slate-700 outline-none bg-transparent cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-50 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 transition-opacity"
+              />
+            </div>
+
+            {/* Separator */}
+            <span className="text-slate-300 mx-1.5 select-none font-normal">–</span>
+
+            {/* Sampai */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-400 select-none">
+                Sampai
+              </span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-[112px] text-xs font-semibold text-slate-700 outline-none bg-transparent cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-50 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 transition-opacity"
+              />
+            </div>
+
+            {/* Reset Date Filter Button */}
+            {(startDate || endDate) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                }}
+                title="Hapus filter rentang tanggal"
+                className="ml-2 pl-2 border-l border-slate-200 text-slate-400 hover:text-rose-600 transition-colors p-0.5 rounded hover:bg-rose-50 cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
-          
-          {/* Tombol Reset Filter */}
-          {(startDate || endDate) && (
-            <button 
-              onClick={() => { setStartDate(""); setEndDate(""); }}
-              className="text-xs text-rose-500 font-bold hover:underline cursor-pointer"
-            >
-              Reset
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Tabel Akumulasi per Supir */}
-      <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 shadow-sm overflow-hidden">
+      <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
         {isLoading ? (
           <div className="text-center text-[#00206B] font-bold py-14 animate-pulse">
             Menghitung akumulasi data server... ⏳
           </div>
         ) : groupedData.length === 0 ? (
           <div className="text-center text-slate-400 font-medium py-14 space-y-2">
-            <div className="text-3xl">📂</div>
+            <div className="w-14 h-14 border border-slate-100 bg-slate-50 text-slate-300 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+            </div>
             <p className="font-bold text-slate-600 m-0">Belum ada data di periode ini.</p>
             <p className="text-xs text-slate-400">Silakan pilih rentang waktu lainnya pada filter di atas.</p>
           </div>
@@ -267,20 +302,20 @@ const RekapAdmin = () => {
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
                 <tr className="border-b-2 border-slate-200 bg-slate-50">
-                  <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase rounded-tl-xl tracking-wider">
+                  <th className="py-4 px-5 text-[10px] font-bold text-slate-400 tracking-widest uppercase rounded-tl-xl">
                     Nama Driver
                   </th>
-                  <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase tracking-wider">Trayek</th>
-                  <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase text-center tracking-wider">
+                  <th className="py-4 px-5 text-[10px] font-bold text-slate-400 tracking-widest uppercase">Trayek</th>
+                  <th className="py-4 px-5 text-[10px] font-bold text-slate-400 tracking-widest uppercase text-center">
                     Hari Jalan
                   </th>
-                  <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase text-center tracking-wider">
+                  <th className="py-4 px-5 text-[10px] font-bold text-slate-400 tracking-widest uppercase text-center">
                     Total Siswa
                   </th>
-                  <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase text-center tracking-wider">
+                  <th className="py-4 px-5 text-[10px] font-bold text-slate-400 tracking-widest uppercase text-center">
                     Disiplin Waktu
                   </th>
-                  <th className="py-4 px-5 text-xs font-black text-[#00206B] uppercase text-center rounded-tr-xl tracking-wider">
+                  <th className="py-4 px-5 text-[10px] font-bold text-slate-400 tracking-widest uppercase text-center rounded-tr-xl">
                     Aksi
                   </th>
                 </tr>
@@ -294,7 +329,7 @@ const RekapAdmin = () => {
                   >
                     <td className="py-4 px-5">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#00206B] to-blue-500 text-white flex items-center justify-center font-black text-sm shadow-sm flex-shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 text-[#00206B] flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0">
                           {supir.nama_supir.charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -306,7 +341,7 @@ const RekapAdmin = () => {
                       </div>
                     </td>
                     <td className="py-4 px-5">
-                      <span className="text-xs font-extrabold text-slate-700 uppercase bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg inline-block">
+                      <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-md uppercase tracking-wider inline-block">
                         {supir.trayek_utama}
                       </span>
                     </td>
@@ -321,17 +356,17 @@ const RekapAdmin = () => {
                     <td className="py-4 px-5 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <span
-                          className="bg-[#E6F7ED] text-[#137333] border border-[#BCECD2] font-black text-[10px] px-2.5 py-1 rounded-lg shadow-sm"
+                          className="text-emerald-600 bg-white border border-slate-200 font-bold text-[10px] px-2.5 py-1 rounded-md shadow-sm uppercase tracking-widest"
                           title="Total Sesi Tepat Waktu"
                         >
-                          🟢 {supir.total_tepat} Tepat
+                          {supir.total_tepat} Tepat
                         </span>
                         {supir.total_telat > 0 ? (
                           <span
-                            className="bg-[#FCE8E6] text-[#C5221F] border border-[#FAD2CF] font-black text-[10px] px-2.5 py-1 rounded-lg shadow-sm"
+                            className="text-rose-600 bg-white border border-slate-200 font-bold text-[10px] px-2.5 py-1 rounded-md shadow-sm uppercase tracking-widest"
                             title="Total Sesi Terlambat"
                           >
-                            🔴 {supir.total_telat} Telat
+                            {supir.total_telat} Telat
                           </span>
                         ) : (
                           <span className="text-[10px] font-bold text-slate-400">0 Telat</span>
@@ -344,12 +379,9 @@ const RekapAdmin = () => {
                           e.stopPropagation();
                           setSelectedDriver(supir);
                         }}
-                        className="inline-flex items-center gap-1.5 bg-[#00206B] hover:bg-[#00174E] text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition-all active:scale-95 cursor-pointer"
+                        className="inline-flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:border-[#00206B] text-slate-500 hover:text-[#00206B] px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer"
                       >
                         <span>Lihat Log</span>
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
                       </button>
                     </td>
                   </tr>
@@ -366,7 +398,7 @@ const RekapAdmin = () => {
           <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 space-y-6 shadow-2xl border border-slate-100 my-8">
             <div className="flex items-start justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#00206B] to-blue-600 text-white flex items-center justify-center font-black text-lg shadow-md">
+                <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 text-[#00206B] flex items-center justify-center font-black text-lg shadow-sm">
                   {selectedDriver.nama_supir.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -413,8 +445,8 @@ const RekapAdmin = () => {
                 <span className="text-[10px] font-black uppercase text-slate-400 block mb-1">Disiplin Waktu</span>
                 {/* Disiplin Waktu */}
                 <div className="flex flex-col items-center justify-center">
-                  <span className="text-sm font-bold text-emerald-600">✓ {selectedDriver?.total_tepat || 0} Tepat</span>
-                  <span className="text-sm font-bold text-rose-600">⚠️ {selectedDriver?.total_telat || 0} Telat</span>
+                  <span className="text-sm font-bold text-emerald-600 border border-slate-200 px-3 py-1 rounded-md mb-1">{selectedDriver?.total_tepat || 0} Tepat</span>
+                  <span className="text-sm font-bold text-rose-600 border border-slate-200 px-3 py-1 rounded-md">{selectedDriver?.total_telat || 0} Telat</span>
                 </div>
               </div>
             </div>
@@ -436,9 +468,9 @@ const RekapAdmin = () => {
                     </div>
                     <button 
                       onClick={() => setSelectedReportDetail(lap)}
-                      className="text-[10px] font-black uppercase tracking-widest text-[#00206B] border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer"
+                      className="text-[10px] font-bold uppercase tracking-widest text-[#00206B] border border-slate-200 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-md cursor-pointer transition-colors shadow-sm"
                     >
-                      Detail Checkpoint 🔍
+                      Cek Detail
                     </button>
                   </div>
                 ))

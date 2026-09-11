@@ -2,19 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiService } from "../../services/api";
 
-const Beranda = ({
-  activeUser,
-  onQuickAction,
-  onLogout,
-  tripStatus = "belum_mulai",
-  onStartInspection,
-  currentShift,
-  isLaporanLocked,
-  shiftRules,
-  onStartSiang,
-  laporanHariIni,
-  laporan,
-}) => {
+const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mulai", onStartInspection, currentShift, isLaporanLocked, shiftRules, onStartSiang, laporanHariIni, laporan }) => {
   const navigate = useNavigate();
   const currentDate = new Date().toLocaleDateString("id-ID", {
     weekday: "long",
@@ -36,7 +24,7 @@ const Beranda = ({
     const fetchJadwal = async () => {
       try {
         const res = await apiService.getJadwalDriver();
-        const rawList = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+        const rawList = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
         if (rawList.length > 0) {
           const pagi = rawList.find((j) => (j?.tipe_sesi || "").toUpperCase() === "PAGI") || null;
           const siang = rawList.find((j) => (j?.tipe_sesi || "").toUpperCase() === "SIANG") || null;
@@ -79,75 +67,65 @@ const Beranda = ({
   // Format jam ke "HH:MM:SS" secara aman
   const jamTeks =
     jamSekarang instanceof Date && !isNaN(jamSekarang.getTime())
-      ? jamSekarang
-          .toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
-          .replace(/\./g, ":")
+      ? jamSekarang.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).replace(/\./g, ":")
       : "00:00:00";
 
-  // Cek Status Keterlambatan dengan proteksi null/undefined
-  const batasPagi = String(jadwalSesi?.pagi?.batas_keluar_dishub || "06:00").slice(0, 5);
-  const batasSiang = String(jadwalSesi?.siang?.batas_keluar_dishub || "12:30").slice(0, 5);
+  // Toleransi & 3 Milestone Jam Operasional (Pagi & Siang)
+  const formPagi = jadwalSesi?.pagi?.jam_formulir_pengisian ? String(jadwalSesi.pagi.jam_formulir_pengisian).slice(0, 5) : "-";
+  const batasPagi = jadwalSesi?.pagi?.batas_keluar_dishub ? String(jadwalSesi.pagi.batas_keluar_dishub).slice(0, 5) : "-";
+  const kembaliPagi = jadwalSesi?.pagi?.batas_kembali_dishub || jadwalSesi?.pagi?.batas_tiba_start ? String(jadwalSesi.pagi.batas_kembali_dishub || jadwalSesi.pagi.batas_tiba_start).slice(0, 5) : "-";
+
+  const formSiang = jadwalSesi?.siang?.jam_formulir_pengisian ? String(jadwalSesi.siang.jam_formulir_pengisian).slice(0, 5) : "-";
+  const batasSiang = jadwalSesi?.siang?.batas_keluar_dishub ? String(jadwalSesi.siang.batas_keluar_dishub).slice(0, 5) : "-";
+  const kembaliSiang =
+    jadwalSesi?.siang?.batas_kembali_dishub || jadwalSesi?.siang?.batas_tiba_start ? String(jadwalSesi.siang.batas_kembali_dishub || jadwalSesi.siang.batas_tiba_start).slice(0, 5) : "-";
 
   const isPagiTelat = jamTeks.slice(0, 5) > batasPagi;
   const isSiangTelat = jamTeks.slice(0, 5) > batasSiang;
 
-  const currentHour =
-    jamSekarang instanceof Date && !isNaN(jamSekarang.getTime())
-      ? jamSekarang.getHours()
-      : new Date().getHours();
+  const currentHour = jamSekarang instanceof Date && !isNaN(jamSekarang.getTime()) ? jamSekarang.getHours() : new Date().getHours();
 
-  const parsedSiangHour = jadwalSesi?.siang?.batas_keluar_dishub
-    ? parseInt(String(jadwalSesi.siang.batas_keluar_dishub).split(":")[0], 10)
-    : 12;
-
-  const siangHour = shiftRules?.siang ?? (!isNaN(parsedSiangHour) ? parsedSiangHour : 12);
-  const isSiangTime = currentHour >= siangHour;
+  // Jam Buka Operasional Siang & Pagi mengikuti input Admin
+  const jamBukaSiang = formSiang !== "-" && formSiang !== "" ? formSiang : "13:00";
+  const jamSekarangHM = jamTeks.slice(0, 5);
+  const isSiangTime = formSiang === "00:00" || formSiang === "-" ? true : jamSekarangHM >= jamBukaSiang;
+  
+  const jamBukaPagi = formPagi !== "-" && formPagi !== "" ? formPagi : "06:00";
+  const isPagiTime = formPagi === "00:00" || formPagi === "-" ? true : jamSekarangHM >= jamBukaPagi;
 
   // Proteksi data Driver/User & Penugasan
   const driverName = activeUser?.nama_lengkap || activeUser?.nama || activeUser?.name || "Driver";
 
   // 4 Data Penugasan dari Admin
-  const displayTrayek = penugasan?.trayek || activeUser?.trayek || "Belum Ditentukan";
-  const displayJenis = penugasan?.jenis_kendaraan || activeUser?.jenis_kendaraan || activeUser?.bus || "Belum Ditentukan";
-  const displayNopol = penugasan?.nopol_kendaraan || activeUser?.nomer_kendaraan || activeUser?.bus || "Belum Ditentukan";
-  const displayKapasitas = penugasan?.kapasitas_penumpang 
-    ? `${penugasan.kapasitas_penumpang} Penumpang` 
-    : (activeUser?.kapasitas ? `${activeUser.kapasitas} Penumpang` : "Belum Ditentukan");
+  const displayTrayek = penugasan?.trayek || "-";
+  const displayJenis = penugasan?.jenis_kendaraan || "-";
+  const displayNopol = penugasan?.nopol_kendaraan || "-";
+  const displayKapasitas = penugasan?.kapasitas_penumpang ? `${penugasan.kapasitas_penumpang} Penumpang` : "-";
 
   // Validasi apakah sudah ditugaskan admin
   const hasPenugasan = Boolean(
-    (penugasan && penugasan.trayek && penugasan.trayek !== "-" && penugasan.trayek !== "Belum Ditentukan") ||
-    (activeUser?.trayek && activeUser.trayek !== "-" && activeUser.trayek !== "Belum Ditentukan")
+    penugasan && penugasan.trayek && penugasan.trayek !== "-" && penugasan.trayek !== "Belum Ditentukan"
   );
 
   // Proteksi data Laporan & Trip Sessions
   const safeReport = laporanHariIni ?? laporanDriver ?? laporan ?? null;
-  const tripSessions = Array.isArray(safeReport?.trip_sessions)
-    ? safeReport.trip_sessions
-    : [];
+  const tripSessions = Array.isArray(safeReport?.trip_sessions) ? safeReport.trip_sessions : [];
 
-  const hasFinishedPagi = tripSessions.some(
-    (s) => (s?.tipe_sesi || "").toLowerCase() === "pagi" || s?.tipe_sesi === 1
-  );
-  const hasFinishedSiang = tripSessions.some(
-    (s) => (s?.tipe_sesi || "").toLowerCase() === "siang" || s?.tipe_sesi === 2
-  );
+  const hasFinishedPagi = tripSessions.some((s) => (s?.tipe_sesi || "").toLowerCase() === "pagi" || s?.tipe_sesi === 1);
+  const hasFinishedSiang = tripSessions.some((s) => (s?.tipe_sesi || "").toLowerCase() === "siang" || s?.tipe_sesi === 2);
 
   // Penentuan shift operasional aktif
-  const effectiveShift = hasFinishedSiang
-    ? "selesai"
-    : hasFinishedPagi
-    ? "siang"
-    : (currentShift || "pagi");
+  const effectiveShift = hasFinishedSiang ? "selesai" : (isSiangTime && hasFinishedPagi ? "siang" : (hasFinishedPagi ? "siang" : currentShift || "pagi"));
 
   const isShiftSiang = effectiveShift === "siang";
   const isShiftSelesai = effectiveShift === "selesai";
 
-  // Logika Kesiapan Memulai Laporan & Jeda Operasional:
-  // - Jika shift pagi: aktif jika admin sudah menugaskan armada
-  // - Jika shift siang: aktif HANYA jika sudah masuk jam siang (isSiangTime) dan sudah ditugaskan
-  // Jika di masa jeda (belum jam siang): canStartReport = false -> tombol abu-abu disabled "Belum Dimulai"!
-  const canStartReport = isShiftSiang ? (hasPenugasan && isSiangTime) : hasPenugasan;
+  // Kondisi Jeda Operasional: Sesi Pagi selesai, Sesi Siang belum, dan belum masuk jam siang
+  const isJedaOperasional = hasFinishedPagi && !hasFinishedSiang && !isSiangTime;
+  const isJedaPagi = !hasFinishedPagi && !isPagiTime;
+
+  // Logika Kesiapan Memulai Laporan:
+  const canStartReport = isShiftSiang ? hasPenugasan && isSiangTime && !hasFinishedSiang : hasPenugasan && isPagiTime && !hasFinishedPagi;
 
   // Handler Inisiasi Laporan Harian (Simpan ke localStorage)
   const handleMulaiLaporan = async () => {
@@ -162,29 +140,36 @@ const Beranda = ({
 
       const payload = {
         tanggal: today,
-        trayek: displayTrayek !== "Belum Ditentukan" ? displayTrayek : (activeUser?.trayek || "-"),
-        bus: displayNopol !== "Belum Ditentukan" ? displayNopol : (activeUser?.bus || "-"),
+        trayek: displayTrayek,
+        bus: displayNopol,
       };
 
       const res = await apiService.mulaiLaporanHarian(payload);
+      const dataLaporan = res?.data || res;
 
-      // Simpan ID laporan master ke memori lokal
-      const masterId = res?.id || res?.data?.id || (safeReport && safeReport.id) || null;
-      if (masterId) {
-        localStorage.setItem("siclus_active_laporan_id", String(masterId));
+      if (dataLaporan) {
+        setLaporanDriver(dataLaporan);
+        if (dataLaporan.id) {
+          localStorage.setItem("siclus_active_laporan_id", String(dataLaporan.id));
+        }
       }
       localStorage.setItem("siclus_draft_step", "1");
 
-      if (isShiftSiang && typeof onStartSiang === "function") {
-        onStartSiang();
+      if (typeof onQuickAction === "function") {
+        onQuickAction("laporan");
       } else if (typeof onStartInspection === "function") {
         onStartInspection();
       } else {
         navigate("/driver/laporan");
       }
     } catch (error) {
-      console.error("Gagal memulai laporan harian:", error);
-      alert("Gagal memulai laporan: " + (error.response?.data?.detail || error.message));
+      console.error("Gagal memulai laporan:", error);
+      localStorage.setItem("siclus_draft_step", "1");
+      if (typeof onQuickAction === "function") {
+        onQuickAction("laporan");
+      } else {
+        navigate("/driver/laporan");
+      }
     } finally {
       setIsStartingReport(false);
     }
@@ -197,88 +182,71 @@ const Beranda = ({
         <div className="h-8 bg-slate-200 rounded-xl w-1/3"></div>
         <div className="h-4 bg-slate-100 rounded-lg w-1/4"></div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 items-stretch">
-          <div className="lg:col-span-2 h-64 bg-white border border-slate-100 rounded-2xl p-6"></div>
-          <div className="h-64 bg-white border border-slate-100 rounded-2xl p-6"></div>
+          <div className="lg:col-span-2 h-64 bg-white border border-slate-100 rounded-3xl p-6 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)]"></div>
+          <div className="h-64 bg-white border border-slate-100 rounded-3xl p-6 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)]"></div>
         </div>
       </div>
     );
   }
 
-  // Komponen Batas Operasional (Sidebar Kanan) - Jam Polos Tanpa Dot
-  const renderCardJadwal = () => (
-    <div className="bg-white border border-slate-400/80 rounded-2xl p-6 sm:p-7 shadow-sm flex-1 flex flex-col justify-between">
-      <div>
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-            Batas Operasional
-          </span>
-          <span className="font-mono text-xs font-semibold text-slate-600">
-            {jamTeks} WIB
-          </span>
-        </div>
+  // Komponen Batas Operasional (Sidebar Kanan) - Minimalis & Elegan
+  const renderCardJadwal = () => {
+    const isSiang = isShiftSiang || isJedaOperasional;
+    const formWaktu = isSiang ? formSiang : formPagi;
+    const keluarWaktu = isSiang ? batasSiang : batasPagi;
+    const kembaliWaktu = isSiang ? kembaliSiang : kembaliPagi;
 
-        <div className="space-y-3">
-          {/* SESI PAGI */}
-          <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/60 flex items-center justify-between transition-colors">
-            <div>
-              <p className="text-xs font-semibold text-slate-800 uppercase tracking-wide">
-                Sesi Pagi
-              </p>
-              {isPagiTelat ? (
-                <span className="text-[11px] font-medium text-amber-600 mt-0.5 block">
-                  Lewat Batas
-                </span>
-              ) : (
-                <span className="text-[11px] font-medium text-emerald-600 mt-0.5 block">
-                  Tepat Waktu
-                </span>
-              )}
+    if (isShiftSelesai) {
+      return (
+        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 ease-out flex-1 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-5">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Batas Operasional</span>
+              <span className="text-xs font-medium text-slate-400 tabular-nums">{jamTeks.slice(0, 5)} WIB</span>
             </div>
-            <div className="text-right">
-              <span className="text-[10px] font-medium text-slate-400 uppercase block mb-0.5">
-                Batas Keluar
-              </span>
-              <span className="text-xs font-bold text-slate-700">
-                {batasPagi} WIB
-              </span>
+            <div className="text-center py-10 space-y-2">
+              <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mx-auto text-base font-semibold">✓</div>
+              <p className="text-sm font-semibold text-slate-800">Tugas Selesai</p>
+              <p className="text-xs text-slate-400">Seluruh operasional hari ini telah tuntas.</p>
             </div>
           </div>
+        </div>
+      );
+    }
 
-          {/* SESI SIANG */}
-          <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/60 flex items-center justify-between transition-colors">
+    return (
+      <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 ease-out flex-1 flex flex-col justify-between">
+        <div>
+          {/* Header Minimalis */}
+          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4">
             <div>
-              <p className="text-xs font-semibold text-slate-800 uppercase tracking-wide">
-                Sesi Siang
-              </p>
-              {isSiangTelat ? (
-                <span className="text-[11px] font-medium text-amber-600 mt-0.5 block">
-                  Lewat Batas
-                </span>
-              ) : (
-                <span className="text-[11px] font-medium text-emerald-600 mt-0.5 block">
-                  Tepat Waktu
-                </span>
-              )}
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Batas Operasional</span>
+              <span className="text-xs font-bold text-[#00206B] mt-0.5 block">{isSiang ? "Sesi Siang" : "Sesi Pagi"}</span>
             </div>
-            <div className="text-right">
-              <span className="text-[10px] font-medium text-slate-400 uppercase block mb-0.5">
-                Batas Keluar
-              </span>
-              <span className="text-xs font-bold text-slate-700">
-                {batasSiang} WIB
-              </span>
+            <span className="text-xs font-medium text-slate-500 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg tabular-nums">{jamTeks.slice(0, 5)} WIB</span>
+          </div>
+
+          {/* 3 Milestone Bersih, Elegan & Minimalis */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 border border-slate-100">
+              <span className="text-xs font-medium text-slate-600">Waktu Pengisian</span>
+              <span className="text-sm font-semibold text-slate-800 tabular-nums">{formWaktu !== "-" ? `${formWaktu} WIB` : "-"}</span>
+            </div>
+
+            <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 border border-slate-100">
+              <span className="text-xs font-medium text-slate-600">Batas Keluar</span>
+              <span className="text-sm font-semibold text-slate-800 tabular-nums">{keluarWaktu !== "-" ? `${keluarWaktu} WIB` : "-"}</span>
+            </div>
+
+            <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 border border-slate-100">
+              <span className="text-xs font-medium text-slate-600">Batas Kembali</span>
+              <span className="text-sm font-semibold text-slate-800 tabular-nums">{kembaliWaktu !== "-" ? `${kembaliWaktu} WIB` : "-"}</span>
             </div>
           </div>
         </div>
       </div>
-
-      <div className="pt-4 mt-6 border-t border-slate-100 text-center">
-        <p className="text-[11px] font-normal text-slate-400 m-0">
-          Toleransi waktu operasional tercatat otomatis
-        </p>
-      </div>
-    </div>
-  );
+    );
+  };
 
   // State: Shift Sedang Berlangsung
   if (tripStatus === "sedang_berlangsung") {
@@ -304,33 +272,41 @@ const Beranda = ({
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
           <div className="lg:col-span-2 flex flex-col">
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-7 shadow-sm flex-1 flex flex-col justify-between">
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-7 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 ease-out flex-1 flex flex-col justify-between">
               <div>
                 {/* Header: Operasional di atas, Keterangan di bawah */}
-                <div className="pb-4 border-b border-slate-100">
-                  <h3 className="text-xl font-bold text-slate-900 tracking-tight">
-                    {isShiftSiang ? "Operasional Siang" : "Operasional Pagi"}
-                  </h3>
-                  <p className="text-xs font-medium text-slate-400 mt-0.5">
-                    {isShiftSiang ? "Pengantaran Siswa" : "Penjemputan Siswa"}
-                  </p>
+                <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                      {isShiftSelesai ? "Operasional Selesai" : isJedaOperasional ? "Jeda Operasional" : isShiftSiang ? "Operasional Siang" : "Operasional Pagi"}
+                    </h3>
+                    <p className="text-xs font-medium text-slate-400 mt-0.5">
+                      {isShiftSelesai
+                        ? "Semua sesi harian telah diselesaikan."
+                        : isJedaOperasional
+                          ? `Sesi Pagi selesai. Sesi Siang dibuka pukul ${jamBukaSiang} WIB.`
+                          : isShiftSiang
+                            ? "Pengantaran Siswa"
+                            : "Penjemputan Siswa"}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="py-5">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                    Rincian Penugasan
-                  </p>
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Rincian Penugasan Armada</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
                       <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
                         <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                          />
                         </svg>
                         Trayek Penugasan
                       </div>
-                      <p className="text-sm font-bold text-[#00206B] mt-1 truncate">
-                        {displayTrayek}
-                      </p>
+                      <p className="text-sm font-bold text-[#00206B] mt-1 truncate">{displayTrayek}</p>
                     </div>
 
                     <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
@@ -340,9 +316,7 @@ const Beranda = ({
                         </svg>
                         Jenis Kendaraan
                       </div>
-                      <p className="text-sm font-semibold text-slate-800 mt-1 truncate">
-                        {displayJenis}
-                      </p>
+                      <p className="text-sm font-semibold text-slate-800 mt-1 truncate">{displayJenis}</p>
                     </div>
 
                     <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
@@ -352,21 +326,21 @@ const Beranda = ({
                         </svg>
                         Nomor Polisi
                       </div>
-                      <p className="text-sm font-semibold text-slate-800 mt-1 truncate">
-                        {displayNopol}
-                      </p>
+                      <p className="text-sm font-semibold text-slate-800 mt-1 truncate">{displayNopol}</p>
                     </div>
 
                     <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
                       <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
                         <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                          />
                         </svg>
                         Kapasitas Penumpang
                       </div>
-                      <p className="text-sm font-semibold text-slate-800 mt-1 truncate">
-                        {displayKapasitas}
-                      </p>
+                      <p className="text-sm font-semibold text-slate-800 mt-1 truncate">{displayKapasitas}</p>
                     </div>
                   </div>
                 </div>
@@ -375,6 +349,13 @@ const Beranda = ({
               <div className="pt-3">
                 <button
                   onClick={() => {
+                    const activeId = safeReport?.id || laporanDriver?.id;
+                    if (activeId) {
+                      localStorage.setItem("siclus_active_laporan_id", String(activeId));
+                    }
+                    if (!localStorage.getItem("siclus_draft_step")) {
+                      localStorage.setItem("siclus_draft_step", "1");
+                    }
                     if (typeof onQuickAction === "function") {
                       onQuickAction("laporan");
                     } else if (typeof onStartInspection === "function") {
@@ -383,7 +364,7 @@ const Beranda = ({
                       navigate("/driver/laporan");
                     }
                   }}
-                  className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-sm py-3.5 px-6 rounded-xl shadow-sm hover:shadow transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.99]"
+                  className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-sm py-3.5 px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer active:scale-95"
                 >
                   <span>Lanjutkan Laporan</span>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
@@ -394,9 +375,7 @@ const Beranda = ({
             </div>
           </div>
 
-          <aside className="lg:col-span-1 flex flex-col">
-            {renderCardJadwal()}
-          </aside>
+          <aside className="lg:col-span-1 flex flex-col">{renderCardJadwal()}</aside>
         </div>
       </div>
     );
@@ -407,9 +386,7 @@ const Beranda = ({
     <div className="space-y-6 text-left max-w-5xl mx-auto pb-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <header className="space-y-1">
-          <h2 className="text-3xl md:text-4xl font-black text-[#00206B] m-0 tracking-tight">
-            {driverName}
-          </h2>
+          <h2 className="text-3xl md:text-4xl font-black text-[#00206B] m-0 tracking-tight">{driverName}</h2>
           <p className="text-sm text-slate-400 font-normal">Selamat Datang Driver Dishub Kota Mojokerto</p>
           <p className="text-xs text-slate-400 font-bold mt-0.5">{currentDate}</p>
         </header>
@@ -428,7 +405,7 @@ const Beranda = ({
         <div className="lg:col-span-2 flex flex-col">
           {isShiftSelesai ? (
             /* Tampilan jika SELURUH tugas hari ini telah selesai */
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-8 shadow-sm flex-1 flex flex-col items-center justify-center text-center space-y-4">
+            <div className="bg-white border border-slate-100 rounded-3xl p-8 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 ease-out flex-1 flex flex-col items-center justify-center text-center space-y-4">
               <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center border border-emerald-200/70">
                 <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -461,23 +438,29 @@ const Beranda = ({
             </div>
           ) : (
             /* Tampilan Utama: Operasional Pagi atau Operasional Siang */
-            <div className="bg-white border border-slate-400/80 rounded-2xl p-6 sm:p-7 shadow-sm flex-1 flex flex-col justify-between">
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-7 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 ease-out flex-1 flex flex-col justify-between">
               <div>
-                {/* Header: Operasional di atas, Keterangan di bawah. Polos tanpa badge Siap Dimulai */}
-                <div className="pb-4 border-b border-slate-100">
-                  <h3 className="text-xl font-bold text-slate-900 tracking-tight">
-                    {isShiftSiang ? "Operasional Siang" : "Operasional Pagi"}
-                  </h3>
-                  <p className="text-xs font-medium text-slate-400 mt-0.5">
-                    {isShiftSiang ? "Pengantaran Siswa" : "Penjemputan Siswa"}
-                  </p>
+                {/* Header: Operasional di atas, Keterangan di bawah */}
+                <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                      {isShiftSelesai ? "Operasional Selesai" : isJedaOperasional ? "Jeda Operasional" : isShiftSiang ? "Operasional Siang" : "Operasional Pagi"}
+                    </h3>
+                    <p className="text-xs font-medium text-slate-400 mt-0.5">
+                      {isShiftSelesai
+                        ? "Semua sesi harian telah diselesaikan."
+                        : isJedaOperasional
+                          ? `Sesi Pagi selesai. Sesi Siang dibuka pukul ${jamBukaSiang} WIB.`
+                          : isShiftSiang
+                            ? "Pengantaran Siswa"
+                            : "Penjemputan Siswa"}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Spesifikasi Penugasan Armada */}
+                {/* Rincian Penugasan Armada */}
                 <div className="py-5">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                    Rincian Penugasan
-                  </p>
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Rincian Penugasan Armada</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
                       <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
@@ -490,7 +473,7 @@ const Beranda = ({
                         </svg>
                         Trayek Penugasan
                       </div>
-                      <p className={`text-sm font-bold mt-1 truncate ${displayTrayek !== "Belum Ditentukan" ? "text-[#00206B]" : "text-slate-400 font-normal"}`}>{displayTrayek}</p>
+                      <p className={`text-sm font-bold mt-1 truncate ${displayTrayek !== "-" ? "text-[#00206B]" : "text-slate-400 font-normal"}`}>{displayTrayek}</p>
                     </div>
 
                     <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
@@ -500,7 +483,7 @@ const Beranda = ({
                         </svg>
                         Jenis Kendaraan
                       </div>
-                      <p className={`text-sm mt-1 truncate ${displayJenis !== "Belum Ditentukan" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayJenis}</p>
+                      <p className={`text-sm mt-1 truncate ${displayJenis !== "-" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayJenis}</p>
                     </div>
 
                     <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
@@ -510,7 +493,7 @@ const Beranda = ({
                         </svg>
                         Nomor Polisi
                       </div>
-                      <p className={`text-sm mt-1 truncate ${displayNopol !== "Belum Ditentukan" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayNopol}</p>
+                      <p className={`text-sm mt-1 truncate ${displayNopol !== "-" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayNopol}</p>
                     </div>
 
                     <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
@@ -524,7 +507,7 @@ const Beranda = ({
                         </svg>
                         Kapasitas Penumpang
                       </div>
-                      <p className={`text-sm mt-1 truncate ${displayKapasitas !== "Belum Ditentukan" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayKapasitas}</p>
+                      <p className={`text-sm mt-1 truncate ${displayKapasitas !== "-" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayKapasitas}</p>
                     </div>
                   </div>
                 </div>
@@ -545,28 +528,57 @@ const Beranda = ({
                 )}
               </div>
 
-              {/* Action Button:
-                  - Biru jika siap dimulai (shift pagi sudah ditugaskan, ATAU shift siang sudah masuk waktu siang)
-                  - Abu-abu disabled jika belum ditugaskan ATAU masih dalam masa jeda (shift siang belum masuk jam siang)
-              */}
+              {/* Action Button dengan Proteksi Jeda & Selesai */}
               <div className="pt-3">
-                {canStartReport ? (
+                {isShiftSelesai ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-500 font-semibold text-sm py-3.5 px-6 rounded-xl cursor-default flex items-center justify-center gap-2"
+                  >
+                    <span>Operasional Selesai</span>
+                  </button>
+                ) : isJedaOperasional ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-500 font-medium text-sm py-3.5 px-6 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <span>Menunggu Sesi Siang ({jamBukaSiang} WIB)</span>
+                  </button>
+                ) : canStartReport ? (
                   <button
                     type="button"
                     onClick={handleMulaiLaporan}
                     disabled={isStartingReport}
-                    className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-sm py-3.5 px-6 rounded-xl shadow-sm hover:shadow transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-sm py-3.5 px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    <span>{isStartingReport ? "Memulai Laporan..." : "Mulai Laporan"}</span>
+                  </button>
+                ) : !hasPenugasan ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-400 font-medium text-sm py-3.5 px-6 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                    {isStartingReport ? "Memulai Laporan..." : "Mulai Laporan Perjalanan"}
+                    <span>Belum Ada Penugasan</span>
+                  </button>
+                ) : isJedaPagi ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-500 font-medium text-sm py-3.5 px-6 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <span>Menunggu Sesi Pagi ({jamBukaPagi} WIB)</span>
                   </button>
                 ) : (
                   <button
                     type="button"
                     disabled
-                    className="w-full bg-slate-100 border border-slate-200/80 text-slate-400 font-semibold text-sm py-3.5 px-6 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-400 font-medium text-sm py-3.5 px-6 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     <span>Belum Dimulai</span>
                   </button>
@@ -576,9 +588,7 @@ const Beranda = ({
           )}
         </div>
 
-        <aside className="lg:col-span-1 flex flex-col">
-          {renderCardJadwal()}
-        </aside>
+        <aside className="lg:col-span-1 flex flex-col">{renderCardJadwal()}</aside>
       </div>
     </div>
   );
