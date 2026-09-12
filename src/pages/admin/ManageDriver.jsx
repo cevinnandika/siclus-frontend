@@ -117,6 +117,94 @@ const ManageDriver = ({ onBack }) => {
 
   const [formPenugasan, setFormPenugasan] = useState(initialPenugasanForm);
 
+  // Helper Sanitasi Jam 00:00 - 23:59
+  const sanitizeTime = (t) => {
+    if (!t || typeof t !== "string") return "00:00";
+    const digits = t.replace(/\D/g, "");
+    if (digits.length === 0) return "00:00";
+    let hh = parseInt(digits.slice(0, 2) || "0", 10);
+    if (isNaN(hh) || hh < 0) hh = 0;
+    if (hh > 23) hh = 23;
+    let mm = digits.length > 2 ? parseInt(digits.slice(2, 4) || "0", 10) : 0;
+    if (isNaN(mm) || mm < 0) mm = 0;
+    if (mm > 59) mm = 59;
+    return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  };
+
+  const handleTimeChange = (field, inputVal) => {
+    if (!inputVal) {
+      setFormPenugasan((prev) => ({ ...prev, [field]: "" }));
+      return;
+    }
+
+    // Ambil hanya angka dan titik dua
+    let val = inputVal.replace(/[^\d:]/g, "");
+
+    const prevVal = formPenugasan[field] || "";
+    const isDeletingColon = prevVal.endsWith(":") && !val.endsWith(":") && val.length === 2;
+    const digitsOnly = val.replace(/\D/g, "");
+
+    // Jika paste teks panjang atau ketik lebih dari 2 digit tanpa titik dua
+    if (val.length > 5 || (!val.includes(":") && digitsOnly.length > 2)) {
+      const d4 = digitsOnly.slice(0, 4);
+      let hh = parseInt(d4.slice(0, 2), 10) || 0;
+      if (hh > 23) hh = 23;
+      let mm = d4.length > 2 ? parseInt(d4.slice(2, 4), 10) || 0 : 0;
+      if (mm > 59) mm = 59;
+      const formatted = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+      setFormPenugasan((prev) => ({ ...prev, [field]: formatted }));
+      return;
+    }
+
+    // Format dengan titik dua (HH:mm)
+    if (val.includes(":")) {
+      const parts = val.split(":");
+      let hhStr = parts[0].slice(0, 2);
+      if (hhStr.length === 2 && parseInt(hhStr, 10) > 23) hhStr = "23";
+      let mmStr = parts[1] ? parts[1].slice(0, 2) : "";
+      if (mmStr.length === 2 && parseInt(mmStr, 10) > 59) mmStr = "59";
+      setFormPenugasan((prev) => ({ ...prev, [field]: `${hhStr}:${mmStr}` }));
+      return;
+    }
+
+    // Tepat 2 digit jam
+    if (digitsOnly.length === 2) {
+      if (isDeletingColon) {
+        setFormPenugasan((prev) => ({ ...prev, [field]: digitsOnly.slice(0, 1) }));
+        return;
+      }
+      let hh = parseInt(digitsOnly, 10);
+      if (hh > 23) {
+        setFormPenugasan((prev) => ({ ...prev, [field]: "23:" }));
+      } else {
+        setFormPenugasan((prev) => ({ ...prev, [field]: `${digitsOnly}:` }));
+      }
+      return;
+    }
+
+    setFormPenugasan((prev) => ({ ...prev, [field]: digitsOnly.slice(0, 2) }));
+  };
+
+  const handleTimeBlur = (field) => {
+    const val = formPenugasan[field];
+    setFormPenugasan((prev) => ({ ...prev, [field]: sanitizeTime(val) }));
+  };
+
+  const handleTimePaste = (field, e) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData ? e.clipboardData.getData("text") : "";
+    const digitsOnly = pastedText.replace(/\D/g, "").slice(0, 4);
+    if (digitsOnly.length === 0) return;
+
+    let hh = parseInt(digitsOnly.slice(0, 2), 10) || 0;
+    if (hh > 23) hh = 23;
+    let mm = digitsOnly.length > 2 ? parseInt(digitsOnly.slice(2, 4), 10) || 0 : 0;
+    if (mm > 59) mm = 59;
+
+    const formatted = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+    setFormPenugasan((prev) => ({ ...prev, [field]: formatted }));
+  };
+
   const fetchPenugasan = async () => {
     setIsLoadingPenugasan(true);
     try {
@@ -202,14 +290,14 @@ const ManageDriver = ({ onBack }) => {
         kapasitas_penumpang: parseInt(formPenugasan.kapasitas_penumpang, 10) || 0,
         trayek: formPenugasan.trayek,
         jadwal_pagi: {
-          jam_formulir_pengisian: formPenugasan.jam_pengisian_pagi || "00:00",
-          batas_keluar_dishub: formPenugasan.batas_keluar_pagi || "00:00",
-          batas_kembali_dishub: formPenugasan.batas_kembali_pagi || "00:00",
+          jam_formulir_pengisian: sanitizeTime(formPenugasan.jam_pengisian_pagi),
+          batas_keluar_dishub: sanitizeTime(formPenugasan.batas_keluar_pagi),
+          batas_kembali_dishub: sanitizeTime(formPenugasan.batas_kembali_pagi),
         },
         jadwal_siang: {
-          jam_formulir_pengisian: formPenugasan.jam_pengisian_siang || "00:00",
-          batas_keluar_dishub: formPenugasan.batas_keluar_siang || "00:00",
-          batas_kembali_dishub: formPenugasan.batas_kembali_siang || "00:00",
+          jam_formulir_pengisian: sanitizeTime(formPenugasan.jam_pengisian_siang),
+          batas_keluar_dishub: sanitizeTime(formPenugasan.batas_keluar_siang),
+          batas_kembali_dishub: sanitizeTime(formPenugasan.batas_kembali_siang),
         },
       };
 
@@ -565,7 +653,7 @@ const ManageDriver = ({ onBack }) => {
             activeTab === "supir" ? "bg-[#00206B] text-white shadow-xs" : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50"
           }`}
         >
-          <span>Daftar Driver</span>
+          <span>Daftar Akun Driver</span>
           <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${activeTab === "supir" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600 border border-slate-200"}`}>
             {(drivers || []).length}
           </span>
@@ -589,7 +677,7 @@ const ManageDriver = ({ onBack }) => {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              TAMBAH DRIVER BARU
+              TAMBAH DRIVER
             </button>
           </div>
 
@@ -702,7 +790,7 @@ const ManageDriver = ({ onBack }) => {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Tugaskan Armada
+              Tugaskan Driver
             </button>
           </div>
 
@@ -768,12 +856,12 @@ const ManageDriver = ({ onBack }) => {
                                 className="bg-white border border-slate-200 hover:border-[#00206B] text-slate-600 hover:text-[#00206B] px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 015.25 6H10"
-                                  />
-                                </svg>
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                                />
+                              </svg>
                                 Edit
                               </button>
                               <button
@@ -1203,8 +1291,11 @@ const ManageDriver = ({ onBack }) => {
                     <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Buka Formulir</label>
                     <input
                       type="text"
+                      maxLength={5}
                       value={formPenugasan.jam_pengisian_pagi}
-                      onChange={(e) => setFormPenugasan({ ...formPenugasan, jam_pengisian_pagi: e.target.value })}
+                      onChange={(e) => handleTimeChange("jam_pengisian_pagi", e.target.value)}
+                      onBlur={() => handleTimeBlur("jam_pengisian_pagi")}
+                      onPaste={(e) => handleTimePaste("jam_pengisian_pagi", e)}
                       placeholder="00:00"
                       className="w-full bg-white border border-slate-200 text-xs font-bold text-[#00206B] rounded-xl px-3 py-2 text-center outline-none focus:border-[#00206B]"
                     />
@@ -1213,8 +1304,11 @@ const ManageDriver = ({ onBack }) => {
                     <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Batas Keluar</label>
                     <input
                       type="text"
+                      maxLength={5}
                       value={formPenugasan.batas_keluar_pagi}
-                      onChange={(e) => setFormPenugasan({ ...formPenugasan, batas_keluar_pagi: e.target.value })}
+                      onChange={(e) => handleTimeChange("batas_keluar_pagi", e.target.value)}
+                      onBlur={() => handleTimeBlur("batas_keluar_pagi")}
+                      onPaste={(e) => handleTimePaste("batas_keluar_pagi", e)}
                       placeholder="00:00"
                       className="w-full bg-white border border-slate-200 text-xs font-bold text-[#00206B] rounded-xl px-3 py-2 text-center outline-none focus:border-[#00206B]"
                     />
@@ -1223,8 +1317,11 @@ const ManageDriver = ({ onBack }) => {
                     <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Batas Kembali</label>
                     <input
                       type="text"
+                      maxLength={5}
                       value={formPenugasan.batas_kembali_pagi}
-                      onChange={(e) => setFormPenugasan({ ...formPenugasan, batas_kembali_pagi: e.target.value })}
+                      onChange={(e) => handleTimeChange("batas_kembali_pagi", e.target.value)}
+                      onBlur={() => handleTimeBlur("batas_kembali_pagi")}
+                      onPaste={(e) => handleTimePaste("batas_kembali_pagi", e)}
                       placeholder="00:00"
                       className="w-full bg-white border border-slate-200 text-xs font-bold text-[#00206B] rounded-xl px-3 py-2 text-center outline-none focus:border-[#00206B]"
                     />
@@ -1242,9 +1339,12 @@ const ManageDriver = ({ onBack }) => {
                     <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Buka Formulir</label>
                     <input
                       type="text"
+                      maxLength={5}
                       value={formPenugasan.jam_pengisian_siang}
-                      onChange={(e) => setFormPenugasan({ ...formPenugasan, jam_pengisian_siang: e.target.value })}
-                      placeholder=""
+                      onChange={(e) => handleTimeChange("jam_pengisian_siang", e.target.value)}
+                      onBlur={() => handleTimeBlur("jam_pengisian_siang")}
+                      onPaste={(e) => handleTimePaste("jam_pengisian_siang", e)}
+                      placeholder="00:00"
                       className="w-full bg-white border border-slate-200 text-xs font-bold text-[#00206B] rounded-xl px-3 py-2 text-center outline-none focus:border-[#00206B]"
                     />
                   </div>
@@ -1252,8 +1352,11 @@ const ManageDriver = ({ onBack }) => {
                     <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Batas Keluar</label>
                     <input
                       type="text"
+                      maxLength={5}
                       value={formPenugasan.batas_keluar_siang}
-                      onChange={(e) => setFormPenugasan({ ...formPenugasan, batas_keluar_siang: e.target.value })}
+                      onChange={(e) => handleTimeChange("batas_keluar_siang", e.target.value)}
+                      onBlur={() => handleTimeBlur("batas_keluar_siang")}
+                      onPaste={(e) => handleTimePaste("batas_keluar_siang", e)}
                       placeholder="00:00"
                       className="w-full bg-white border border-slate-200 text-xs font-bold text-[#00206B] rounded-xl px-3 py-2 text-center outline-none focus:border-[#00206B]"
                     />
@@ -1262,8 +1365,11 @@ const ManageDriver = ({ onBack }) => {
                     <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Batas Kembali</label>
                     <input
                       type="text"
+                      maxLength={5}
                       value={formPenugasan.batas_kembali_siang}
-                      onChange={(e) => setFormPenugasan({ ...formPenugasan, batas_kembali_siang: e.target.value })}
+                      onChange={(e) => handleTimeChange("batas_kembali_siang", e.target.value)}
+                      onBlur={() => handleTimeBlur("batas_kembali_siang")}
+                      onPaste={(e) => handleTimePaste("batas_kembali_siang", e)}
                       placeholder="00:00"
                       className="w-full bg-white border border-slate-200 text-xs font-bold text-[#00206B] rounded-xl px-3 py-2 text-center outline-none focus:border-[#00206B]"
                     />

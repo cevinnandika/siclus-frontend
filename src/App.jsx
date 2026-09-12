@@ -54,14 +54,15 @@ function App() {
   const [tripStatus, setTripStatus] = useState("belum_mulai");
   const [driverReports, setDriverReports] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
-  const [currentShift, setCurrentShift] = useState(() => localStorage.getItem("siclus_shift") || "pagi");
-  const [isLaporanLocked, setIsLaporanLocked] = useState(() => localStorage.getItem("siclus_locked") === "true");
+  const [currentShift, setCurrentShift] = useState("pagi");
+  const [isLaporanLocked, setIsLaporanLocked] = useState(false);
   const [shiftRules, setShiftRules] = useState({ pagi: 5, siang: 12 });
 
   useEffect(() => {
-    localStorage.setItem("siclus_shift", currentShift);
-    localStorage.setItem("siclus_locked", isLaporanLocked);
-  }, [currentShift, isLaporanLocked]);
+    // Bersihkan gembok legacy agar driver tidak terkunci di halaman selesai
+    localStorage.removeItem("siclus_shift");
+    localStorage.removeItem("siclus_locked");
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("siclus_token");
@@ -238,14 +239,6 @@ function App() {
                           user={user}
                           currentShift={currentShift}
                           onFinishShift={() => {
-                            if (currentShift === "pagi") {
-                              setCurrentShift("siang");
-                              setIsLaporanLocked(true);
-                            } else {
-                              // Jika shift siang beres, gembok laporan sampai besok!
-                              setCurrentShift("selesai");
-                              setIsLaporanLocked(true);
-                            }
                             setTripStatus("belum_mulai");
                             navigate("/driver/beranda");
                           }}

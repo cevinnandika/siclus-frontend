@@ -88,9 +88,9 @@ const LiveCamera = ({ onCapture, onCancel }) => {
   );
 };
 
-const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift }) => {
+const LaporanDriver = ({ user: propUser, onFinishShift }) => {
   const navigate = useNavigate();
-  const [activeShift, setActiveShift] = useState(() => currentShift || "pagi");
+  const [activeShift, setActiveShift] = useState("pagi");
   const [isAllShiftDone, setIsAllShiftDone] = useState(false);
 
   // 1. DATA USER: Tarik dari prop atau fallback ke localStorage / API
@@ -125,8 +125,19 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
           const resPenugasan = await apiService.getPenugasanHariIni();
           if (!isMounted) return;
 
-          if (resPenugasan && resPenugasan.data) {
-            dataPenugasan = resPenugasan.data;
+          const penugasanList = resPenugasan?.penugasan_list || (resPenugasan?.data ? [resPenugasan.data] : []);
+          const activeId = localStorage.getItem("siclus_active_penugasan_id");
+          let currentTask = null;
+          if (activeId) {
+            currentTask = penugasanList.find((p) => String(p.id) === String(activeId));
+          }
+          if (!currentTask && penugasanList.length > 0) {
+            currentTask = penugasanList[0];
+          }
+
+          if (currentTask) {
+            dataPenugasan = currentTask;
+            localStorage.setItem("siclus_active_penugasan_id", String(currentTask.id));
           } else {
              // Jika tidak ada penugasan, cek apakah ada draft aktif yang terputus
              const hadDraft = Boolean(
@@ -171,9 +182,14 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
           });
         }
 
-        // Sinkronisasi Laporan Hari Ini dari Backend
+        // Sinkronisasi Laporan Hari Ini dari Backend (spesifik untuk penugasan terpilih)
         try {
-          const resLaporan = await apiService.getLaporanHariIni();
+          const activeLapId = localStorage.getItem("siclus_active_laporan_id");
+          const resLaporan = await apiService.getLaporanHariIni({
+            trayek: dataPenugasan.trayek || "",
+            bus: dataPenugasan.nopol_kendaraan || "",
+            laporan_id: activeLapId || undefined,
+          });
           const reportData = resLaporan?.data || resLaporan;
           if (reportData && reportData.id) {
             setLaporanId(reportData.id);
@@ -193,11 +209,12 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
               setActiveShift("selesai");
               setActiveCP(4);
             } else {
-              const currentEffectiveShift = hasFinishedPagi ? "siang" : (currentShift || "pagi");
-              setActiveShift(currentEffectiveShift);
+              setIsAllShiftDone(false);
+              const effectiveShift = hasFinishedPagi ? "siang" : "pagi";
+              setActiveShift(effectiveShift);
 
               const currentShiftSession = sessions.find(
-                (s) => (s?.tipe_sesi || "").toLowerCase() === currentEffectiveShift.toLowerCase()
+                (s) => (s?.tipe_sesi || "").toLowerCase() === effectiveShift.toLowerCase()
               );
 
               if (currentShiftSession) {
@@ -515,7 +532,7 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
     </div>
   );
 
-  if (isAllShiftDone || activeShift === "selesai") {
+  if (isAllShiftDone) {
     return (
       <div className="space-y-4 max-w-xl mx-auto py-12 px-4 font-sans text-center animate-[fadeIn_0.3s]">
         <div className="bg-white border border-slate-100 rounded-3xl p-8 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] space-y-6">
@@ -525,31 +542,36 @@ const LaporanDriver = ({ user: propUser, currentShift = "pagi", onFinishShift })
             </svg>
           </div>
           <div className="space-y-1.5">
-            <h2 className="text-xl font-bold text-slate-900 m-0 tracking-tight">Operasional Hari Ini Selesai</h2>
+            <h2 className="text-xl font-bold text-slate-900 m-0 tracking-tight">Operasional Selesai</h2>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Seluruh rangkaian laporan operasional (Sesi Pagi & Sesi Siang) telah berhasil tercatat di sistem Dishub.
+              Laporan operasional untuk rute {user?.trayek || "ini"} telah berhasil tercatat di sistem Dishub.
             </p>
           </div>
 
           <div className="bg-slate-50/70 border border-slate-100 rounded-xl p-4 text-left space-y-2.5 max-w-sm mx-auto">
             <div className="flex items-center justify-between text-xs">
               <span className="font-medium text-slate-600">Sesi Pagi</span>
-              <span className="text-[10px] font-semibold text-slate-700 bg-white border border-slate-200 px-2.5 py-0.5 rounded-md">
-                Terkirim
+              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md">
+                Selesai
               </span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="font-medium text-slate-600">Sesi Siang</span>
-              <span className="text-[10px] font-semibold text-slate-700 bg-white border border-slate-200 px-2.5 py-0.5 rounded-md">
-                Terkirim
+              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md">
+                Selesai
               </span>
             </div>
           </div>
 
           <button
             type="button"
-            onClick={() => navigate("/driver/beranda")}
-            className="w-full max-w-sm mx-auto bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-xs py-3 px-6 rounded-xl shadow-xs transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+            onClick={() => {
+              localStorage.removeItem("siclus_draft_step");
+              localStorage.removeItem("siclus_draft_form");
+              localStorage.removeItem("siclus_active_laporan_id");
+              navigate("/driver/beranda");
+            }}
+            className="w-full max-w-sm mx-auto bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-xs py-3.5 px-6 rounded-xl shadow-xs transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
           >
             <span>Kembali ke Beranda</span>
           </button>
