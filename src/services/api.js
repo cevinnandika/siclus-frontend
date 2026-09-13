@@ -72,8 +72,8 @@ export const apiService = {
   },
   
   // -- Laporan Operasional --
-  getLaporanHariIni: async () => {
-    const response = await apiClient.get("/laporan/hari-ini");
+  getLaporanHariIni: async (params) => {
+    const response = await apiClient.get("/laporan/hari-ini", { params });
     return response.data;
   },
   mulaiLaporan: async (data) => {

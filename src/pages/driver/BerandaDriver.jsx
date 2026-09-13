@@ -16,51 +16,58 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
   const [penugasan, setPenugasan] = useState(null);
   const [laporanDriver, setLaporanDriver] = useState(null);
   const [isStartingReport, setIsStartingReport] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Sinkronisasi data penugasan, jadwal, dan laporan operasional
+  const fetchAllData = async () => {
+    setIsRefreshing(true);
+    try {
+      // 1. Ambil Penugasan Aktif (otomatis memilih penugasan yang belum tuntas)
+      const resPenugasan = await apiService.getPenugasanHariIni();
+      const currentTask = resPenugasan?.data || null;
+      setPenugasan(currentTask);
+
+      if (currentTask?.id) {
+        localStorage.setItem("siclus_active_penugasan_id", String(currentTask.id));
+      }
+
+      // 2. Ambil Jadwal Operasional untuk Penugasan Aktif
+      const resJadwal = await apiService.getJadwalDriver();
+      const rawList = Array.isArray(resJadwal) ? resJadwal : Array.isArray(resJadwal?.data) ? resJadwal.data : [];
+      if (rawList.length > 0) {
+        const pagi = rawList.find((j) => (j?.tipe_sesi || "").toUpperCase() === "PAGI") || null;
+        const siang = rawList.find((j) => (j?.tipe_sesi || "").toUpperCase() === "SIANG") || null;
+        setJadwalSesi({ pagi, siang });
+      }
+
+      // 3. Ambil Laporan untuk Penugasan Aktif
+      if (currentTask) {
+        const resLaporan = await apiService.getLaporanHariIni({
+          trayek: currentTask.trayek,
+          bus: currentTask.nopol_kendaraan,
+        });
+        const lapData = resLaporan?.data || null;
+        setLaporanDriver(lapData);
+        if (lapData?.id) {
+          localStorage.setItem("siclus_active_laporan_id", String(lapData.id));
+        } else {
+          localStorage.removeItem("siclus_active_laporan_id");
+        }
+      } else {
+        setLaporanDriver(null);
+        localStorage.removeItem("siclus_active_laporan_id");
+      }
+    } catch (error) {
+      console.error("Gagal sinkronisasi data beranda driver:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Ticking Clock & Fetch Data
   useEffect(() => {
     const timer = setInterval(() => setJamSekarang(new Date()), 1000);
-
-    const fetchJadwal = async () => {
-      try {
-        const res = await apiService.getJadwalDriver();
-        const rawList = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
-        if (rawList.length > 0) {
-          const pagi = rawList.find((j) => (j?.tipe_sesi || "").toUpperCase() === "PAGI") || null;
-          const siang = rawList.find((j) => (j?.tipe_sesi || "").toUpperCase() === "SIANG") || null;
-          setJadwalSesi({ pagi, siang });
-        }
-      } catch (error) {
-        console.error("Gagal menarik jadwal:", error);
-      }
-    };
-
-    const fetchPenugasan = async () => {
-      try {
-        const res = await apiService.getPenugasanHariIni();
-        if (res && res.data) {
-          setPenugasan(res.data);
-        }
-      } catch (error) {
-        console.log("Belum ada penugasan hari ini.");
-      }
-    };
-
-    const fetchLaporan = async () => {
-      try {
-        const res = await apiService.getLaporanHariIni();
-        if (res) {
-          setLaporanDriver(res.data || res);
-        }
-      } catch (error) {
-        console.log("Belum ada laporan hari ini.");
-      }
-    };
-
-    fetchJadwal();
-    fetchPenugasan();
-    fetchLaporan();
-
+    fetchAllData();
     return () => clearInterval(timer);
   }, []);
 
@@ -150,6 +157,12 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
 
       if (dataLaporan) {
         setLaporanDriver(dataLaporan);
+        if (dataLaporan.id) {
+          localStorage.setItem("siclus_active_laporan_id", String(dataLaporan.id));
+        }
+        if (penugasan?.id) {
+          localStorage.setItem("siclus_active_penugasan_id", String(penugasan.id));
+        }
       }
 
       if (typeof onQuickAction === "function") {
@@ -246,13 +259,15 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
             <p className="text-xs text-slate-400 font-medium">{currentDate}</p>
           </header>
           <button
-            onClick={() => window.location.reload()}
-            className="self-start sm:self-auto inline-flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition-colors cursor-pointer active:scale-95"
+            type="button"
+            onClick={fetchAllData}
+            disabled={isRefreshing}
+            className="self-start sm:self-auto inline-flex items-center gap-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition-colors cursor-pointer active:scale-95 disabled:opacity-70"
           >
-            <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className={`w-3.5 h-3.5 text-slate-500 ${isRefreshing ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            Segarkan Data
+            {isRefreshing ? "Menyinkronkan..." : "Segarkan Data"}
           </button>
         </div>
 

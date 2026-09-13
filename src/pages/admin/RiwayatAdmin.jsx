@@ -110,8 +110,21 @@ const RiwayatAdmin = () => {
                 {/* Header Card: Nama Supir, Trayek, dan Status */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3 mb-2">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00206B] to-blue-500 text-white flex items-center justify-center font-black text-sm shadow-sm flex-shrink-0">
-                      {(namaSupir || "?").charAt(0).toUpperCase()}
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-[#00206B] to-blue-500 text-white flex items-center justify-center font-black text-sm shadow-sm flex-shrink-0">
+                      {laporan?.pengemudi?.foto_profil || laporan?.users?.foto_profil || laporan?.foto_profil ? (
+                        <img
+                          src={laporan?.pengemudi?.foto_profil || laporan?.users?.foto_profil || laporan?.foto_profil}
+                          alt={namaSupir}
+                          loading="lazy"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                            e.currentTarget.parentElement.innerText = (namaSupir || "?").charAt(0).toUpperCase();
+                          }}
+                        />
+                      ) : (
+                        (namaSupir || "?").charAt(0).toUpperCase()
+                      )}
                     </div>
                     <div>
                       <h4 className="font-bold text-[#00206B] text-sm md:text-base uppercase m-0 leading-tight">

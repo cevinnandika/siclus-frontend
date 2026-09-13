@@ -131,8 +131,8 @@ const LaporanDriver = ({ user: propUser, onFinishShift }) => {
           if (activeId) {
             currentTask = penugasanList.find((p) => String(p.id) === String(activeId));
           }
-          if (!currentTask && penugasanList.length > 0) {
-            currentTask = penugasanList[0];
+          if (!currentTask) {
+            currentTask = resPenugasan?.data || (penugasanList.length > 0 ? penugasanList[0] : null);
           }
 
           if (currentTask) {
@@ -569,6 +569,7 @@ const LaporanDriver = ({ user: propUser, onFinishShift }) => {
               localStorage.removeItem("siclus_draft_step");
               localStorage.removeItem("siclus_draft_form");
               localStorage.removeItem("siclus_active_laporan_id");
+              localStorage.removeItem("siclus_active_penugasan_id");
               navigate("/driver/beranda");
             }}
             className="w-full max-w-sm mx-auto bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-xs py-3.5 px-6 rounded-xl shadow-xs transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
