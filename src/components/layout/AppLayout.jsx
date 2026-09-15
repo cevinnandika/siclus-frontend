@@ -16,7 +16,6 @@ const AppLayout = ({ children, title = "SICLUS", onBack = null, activeMenu = "be
         </>
       ),
     },
-    },
     {
       id: "rekap",
       label: "Rekap Driver",

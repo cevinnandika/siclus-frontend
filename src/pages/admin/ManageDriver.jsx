@@ -243,19 +243,6 @@ const ManageDriver = () => {
     setEditPenugasanId(p.id);
     setFormPenugasan({
       id_supir: p.id_supir || "",
-<<<<<<< HEAD
-      tanggal: p.tanggal || getTodayDateStr(),
-      nopol_kendaraan: (p.nopol_kendaraan || "").toUpperCase(),
-      jenis_kendaraan: (p.jenis_kendaraan || "").toUpperCase(),
-      kapasitas_penumpang: p.kapasitas_penumpang ? Math.min(60, p.kapasitas_penumpang) : "",
-      trayek: (p.trayek || "").toUpperCase(),
-      jam_pengisian_pagi: p.jadwal_pagi?.jam_formulir_pengisian || "06:00",
-      batas_keluar_pagi: p.jadwal_pagi?.batas_keluar_dishub || "06:30",
-      batas_kembali_pagi: p.jadwal_pagi?.batas_tiba_start || p.jadwal_pagi?.batas_kembali_dishub || "08:00",
-      jam_pengisian_siang: p.jadwal_siang?.jam_formulir_pengisian || "13:00",
-      batas_keluar_siang: p.jadwal_siang?.batas_keluar_dishub || "13:30",
-      batas_kembali_siang: p.jadwal_siang?.batas_tiba_start || p.jadwal_siang?.batas_kembali_dishub || "14:30",
-=======
       tanggal: p.tanggal || new Date().toISOString().split("T")[0],
       nopol_kendaraan: p.nopol_kendaraan || "",
       jenis_kendaraan: p.jenis_kendaraan || "",
@@ -267,7 +254,6 @@ const ManageDriver = () => {
       jam_pengisian_siang: p.jadwal_siang?.jam_formulir_pengisian ? String(p.jadwal_siang.jam_formulir_pengisian).slice(0, 5) : "13:00",
       batas_keluar_siang: p.jadwal_siang?.batas_keluar_dishub ? String(p.jadwal_siang.batas_keluar_dishub).slice(0, 5) : "13:30",
       batas_kembali_siang: p.jadwal_siang?.batas_tiba_start ? String(p.jadwal_siang.batas_tiba_start).slice(0, 5) : (p.jadwal_siang?.batas_kembali_dishub ? String(p.jadwal_siang.batas_kembali_dishub).slice(0, 5) : "14:30"),
->>>>>>> 2007b1c (feat: perbaikan UI ManageDriver dan penambahan komponen KelolaPenugasan)
     });
     setShowPenugasanModal(true);
   };
@@ -486,7 +472,6 @@ const ManageDriver = () => {
         onConfirm={handleConfirmDeleteDriver}
       />
 
-<<<<<<< HEAD
       {/* Modal: Delete Penugasan Confirmation */}
       <DeleteConfirmModal
         isOpen={Boolean(penugasanToDelete)}
@@ -508,7 +493,6 @@ const ManageDriver = () => {
         onClose={() => setPenugasanToDelete(null)}
         onConfirm={handleConfirmDeletePenugasan}
       />
-=======
       {/* ========================================================================= */}
       {/* MODAL: TAMBAH SUPIR BARU                                                 */}
       {/* ========================================================================= */}
