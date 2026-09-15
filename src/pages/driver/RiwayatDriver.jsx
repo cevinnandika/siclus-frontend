@@ -86,8 +86,9 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center p-20">
-        <span className="text-xs font-medium text-slate-400 tracking-wider animate-pulse">Memuat riwayat perjalanan...</span>
+      <div className="text-center py-20">
+        <div className="w-8 h-8 border-2 border-slate-200 border-t-[#00206B] rounded-full animate-spin mx-auto"></div>
+        <p className="text-xs font-medium text-slate-400 mt-4">Memuat riwayat perjalanan...</p>
       </div>
     );
   }

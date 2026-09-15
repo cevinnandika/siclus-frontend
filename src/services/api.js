@@ -80,10 +80,6 @@ export const apiService = {
     const response = await apiClient.post("/laporan/mulai", data);
     return response.data;
   },
-  mulaiLaporanHarian: async (data) => {
-    const response = await apiClient.post("/laporan/mulai", data);
-    return response.data;
-  },
   submitInspeksi: async (laporanId, data) => {
     const response = await apiClient.post(`/laporan/inspeksi?laporan_id=${laporanId}`, data);
     return response.data;
@@ -136,17 +132,6 @@ export const apiService = {
   getDashboardAdmin: async () => (await apiClient.get("/admin/dashboard")).data,
   getRekapAdmin: async () => (await apiClient.get("/admin/rekap")).data,
   getRiwayatHarianAdmin: async () => (await apiClient.get("/admin/riwayat-harian")).data,
-  getPantauanHarian: async () => (await apiClient.get("/admin/riwayat-harian")).data,
-  exportExcelAdmin: async () => {
-    const res = await apiClient.get("/admin/export-excel", { responseType: 'blob' });
-    const url = window.URL.createObjectURL(new Blob([res.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Rekap_Operasional_${new Date().toISOString().split('T')[0]}.xlsx`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  },
   getUsersAdmin: async () => (await apiClient.get("/admin/users")).data,
   createUserAdmin: async (data) => (await apiClient.post("/admin/users", data)).data,
   updateUserAdmin: async (id, data) => (await apiClient.put(`/admin/users/${id}`, data)).data,

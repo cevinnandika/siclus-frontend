@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiService } from "../../services/api";
 
-const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mulai", onStartInspection, currentShift, isLaporanLocked, shiftRules, onStartSiang, laporanHariIni, laporan }) => {
+const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStartInspection, currentShift, laporanHariIni, laporan }) => {
   const navigate = useNavigate();
   const currentDate = new Date().toLocaleDateString("id-ID", {
     weekday: "long",
@@ -87,11 +87,6 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
   const kembaliSiang =
     jadwalSesi?.siang?.batas_kembali_dishub || jadwalSesi?.siang?.batas_tiba_start ? String(jadwalSesi.siang.batas_kembali_dishub || jadwalSesi.siang.batas_tiba_start).slice(0, 5) : "-";
 
-  const isPagiTelat = jamTeks.slice(0, 5) > batasPagi;
-  const isSiangTelat = jamTeks.slice(0, 5) > batasSiang;
-
-  const currentHour = jamSekarang instanceof Date && !isNaN(jamSekarang.getTime()) ? jamSekarang.getHours() : new Date().getHours();
-
   // Jam Buka Operasional Siang mengikuti jam buka formulir siang
   const jamBukaSiang = formSiang !== "-" ? formSiang : "13:00";
   const jamSekarangHM = jamTeks.slice(0, 5);
@@ -152,7 +147,7 @@ const Beranda = ({ activeUser, onQuickAction, onLogout, tripStatus = "belum_mula
         bus: displayNopol,
       };
 
-      const res = await apiService.mulaiLaporanHarian(payload);
+      const res = await apiService.mulaiLaporan(payload);
       const dataLaporan = res?.data || res;
 
       if (dataLaporan) {

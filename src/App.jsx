@@ -52,9 +52,9 @@ function App() {
   const [isInitializing, setIsInitializing] = useState(true);
 
   const [tripStatus, setTripStatus] = useState("belum_mulai");
-  const [driverReports, setDriverReports] = useState([]);
+  const [driverReports] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
-  const [currentShift, setCurrentShift] = useState("pagi");
+  const [currentShift] = useState("pagi");
   const [isLaporanLocked, setIsLaporanLocked] = useState(false);
   const [shiftRules, setShiftRules] = useState({ pagi: 5, siang: 12 });
 
@@ -137,45 +137,6 @@ function App() {
     navigate(`${baseRoute}/${targetRoute}`);
   };
 
-  const renderLockedScreen = () => {
-    // Tampilan khusus jika sudah kelar semua shift hari ini
-    if (currentShift === "selesai") {
-      return (
-        <div className="flex flex-col items-center justify-center p-8 mt-16 text-center space-y-5 animate-[fadeIn_0.3s]">
-          <div className="w-24 h-24 bg-[#E6F7ED] text-[#137333] rounded-full flex items-center justify-center border-4 border-[#BCECD2] shadow-sm">
-            <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-          </div>
-          <h2 className="text-2xl font-black text-[#00206B] uppercase m-0">TUGAS SELESAI</h2>
-          <div className="bg-white border-2 border-slate-200 w-full max-w-sm p-4 rounded-2xl shadow-sm">
-            <p className="text-xs font-bold text-slate-500 mb-1">Anda telah menyelesaikan semua perjalanan hari ini.</p>
-            <p className="text-sm font-black text-[#00206B]">Laporan akan dibuka kembali besok pagi.</p>
-          </div>
-          <button onClick={() => navigate("/driver/beranda")} className="mt-2 w-full max-w-xs bg-[#00206B] text-white py-4 rounded-xl font-extrabold text-sm shadow-md">
-            Kembali ke Beranda
-          </button>
-        </div>
-      );
-    }
-
-    // Tampilan jeda antara shift Pagi ke Siang (Existing logic)
-    const nextShiftName = currentShift === "siang" ? "Siang" : "Pagi (Besok)";
-    const nextShiftTime = currentShift === "siang" ? shiftRules.siang : shiftRules.pagi;
-    return (
-      <div className="flex flex-col items-center justify-center p-8 mt-16 text-center space-y-5 animate-[fadeIn_0.3s]">
-        <div className="w-24 h-24 bg-[#FCE8E6] text-[#C5221F] rounded-full flex items-center justify-center border-4 border-[#FAD2CF] shadow-sm">🔒</div>
-        <h2 className="text-2xl font-black text-[#00206B] uppercase m-0">Laporan Dikunci</h2>
-        <div className="bg-white border-2 border-slate-200 w-full max-w-sm p-4 rounded-2xl shadow-sm">
-          <p className="text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Jadwal Pengisian Selanjutnya:</p>
-          <p className="text-xl font-black text-[#C5221F]">
-            Shift {nextShiftName} - {nextShiftTime}:00 WIB
-          </p>
-        </div>
-        <button onClick={() => navigate("/driver/beranda")} className="mt-2 w-full max-w-xs bg-[#00206B] text-white py-4 rounded-xl font-extrabold text-sm shadow-md">
-          Kembali ke Beranda
-        </button>
-      </div>
-    );
-  };
 
   if (isInitializing) return <div className="min-h-screen bg-[#131314] text-white flex items-center justify-center">Memuat Sistem...</div>;
 
