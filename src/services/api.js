@@ -39,7 +39,15 @@ export const apiService = {
   // AUTHENTIKASI & USER
   // ==========================================
   login: async (email, password) => {
-    const response = await apiClient.post("/auth/login", { email, password });
+    const formData = new URLSearchPrams();
+    formData.append("username", email);
+    formData.append("password", password);
+
+    const response = await apiClient.post("/auth/login", formData, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    });
     return response.data;
   },
 
@@ -70,7 +78,7 @@ export const apiService = {
     });
     return response.data;
   },
-  
+
   // -- Laporan Operasional --
   getLaporanHariIni: async (params) => {
     const response = await apiClient.get("/laporan/hari-ini", { params });
