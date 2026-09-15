@@ -80,7 +80,7 @@ const Login = ({ onLoginSuccess }) => {
       >
         {/* {logo siclus and text png} */}
         <div className="flex flex-col items-center justify-center mb-1">
-          <img src="/src/assets/siclus.png" alt="Logo SICLUS" className="w-70 md:w-70 h-auto object-contain drop-shadow-sm transition-transform duration-200 hover:scale-105" />
+          <img src="../src/assets/siclus.png" alt="Logo SICLUS" className="w-70 md:w-70 h-auto object-contain drop-shadow-sm transition-transform duration-200 hover:scale-105" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
