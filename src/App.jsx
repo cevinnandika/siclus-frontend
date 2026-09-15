@@ -12,7 +12,7 @@ import Login from "./pages/auth/Login";
 
 // Pages - Admin
 import BerandaAdmin from "./pages/admin/BerandaAdmin";
-
+import RiwayatAdmin from "./pages/admin/RiwayatAdmin";
 import ManageDriver from "./pages/admin/ManageDriver";
 import RekapAdmin from "./pages/admin/RekapDriver";
 import ProfilAdmin from "./pages/admin/ProfilAdmin";
@@ -234,7 +234,7 @@ function App() {
                 <ProtectedRoute user={user} allowedRole="admin">
                   <Routes>
                     <Route path="dashboard" element={<BerandaAdmin user={user} />} />
-
+                    <Route path="riwayat" element={<RiwayatAdmin user={user} />} />
                     <Route path="rekap" element={<RekapAdmin user={user} />} />
                     <Route path="kelola" element={<ManageDriver onBack={() => navigate("/admin/dashboard")} />} />
                     <Route path="akun" element={<ProfilAdmin user={user} onLogout={handleLogout} onUpdateUser={setUser} />} />

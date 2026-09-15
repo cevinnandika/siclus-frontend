@@ -1,9 +1,8 @@
 import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, NavLink } from 'react-router-dom';
 
 const BottomNav = ({ user = null }) => {
   const location = useLocation();
-  const navigate = useNavigate();
   const currentPath = location.pathname.split("/").pop(); // Ambil path terakhir
 
   const adminNavItems = [
@@ -99,33 +98,38 @@ const BottomNav = ({ user = null }) => {
     },
   ];
 
-  const navItems = user?.role?.toLowerCase() === 'admin' ? adminNavItems : driverNavItems;
-  const baseRoute = user?.role?.toLowerCase() === 'admin' ? '/admin' : '/driver';
-
-  const handleNavClick = (menuId) => {
-    navigate(`${baseRoute}/${menuId}`);
-  };
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
+  const navItems = isAdmin ? adminNavItems : driverNavItems;
+  const baseRoute = isAdmin ? '/admin' : '/driver';
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 shadow-lg pb-safe">
-      <div className="flex items-center justify-around px-2 py-3">
+      <div className="flex items-center justify-around px-2 py-2">
         {navItems.map((item) => {
           // Cek apakah item aktif berdasarkan path URL saat ini
           const isReportTabActive = item.id === 'laporan' && currentPath === 'laporan';
           const isRiwayatTabActive = item.id === 'riwayat' && (currentPath === 'riwayat' || currentPath === 'detail-laporan');
-          const isActive = currentPath === item.id || isReportTabActive || isRiwayatTabActive;
+          const isItemActive = currentPath === item.id || isReportTabActive || isRiwayatTabActive;
 
           return (
-            <button 
-              key={item.id} 
-              onClick={() => handleNavClick(item.id)} 
-              className={`flex flex-col items-center justify-center flex-1 py-2.5 rounded-2xl transition-all duration-200 ${isActive ? 'bg-[#66FFAA]/40 text-[#006633] shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
+            <NavLink
+              key={item.id}
+              to={`${baseRoute}/${item.id}`}
+              className={({ isActive }) => {
+                const active = isActive || isItemActive;
+                if (isAdmin) {
+                  return `flex flex-col items-center justify-center w-full py-1.5 transition-all duration-200 ${
+                    active ? 'text-[#00206B] font-bold' : 'text-slate-400'
+                  }`;
+                }
+                return `flex flex-col items-center justify-center flex-1 py-2.5 rounded-2xl transition-all duration-200 ${
+                  active ? 'bg-[#66FFAA]/40 text-[#006633] font-extrabold shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                }`;
+              }}
             >
-              <div className={`mb-1 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`}>
-                {item.icon}
-              </div>
-              <span className={`text-[11px] font-bold whitespace-nowrap ${isActive ? 'font-extrabold' : 'font-medium'}`}>{item.label}</span>
-            </button>
+              {item.icon}
+              <span className="text-[10px]">{item.label}</span>
+            </NavLink>
           );
         })}
       </div>
