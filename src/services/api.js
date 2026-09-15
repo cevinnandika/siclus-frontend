@@ -39,7 +39,7 @@ export const apiService = {
   // AUTHENTIKASI & USER
   // ==========================================
   login: async (email, password) => {
-    const formData = new URLSearchPrams();
+    const formData = new URLSearchParams();
     formData.append("username", email);
     formData.append("password", password);
 
