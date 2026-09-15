@@ -39,15 +39,12 @@ export const apiService = {
   // AUTHENTIKASI & USER
   // ==========================================
   login: async (email, password) => {
-    const formData = new URLSearchParams();
-    formData.append("username", email);
-    formData.append("password", password);
+    const payload = {
+      email: email,
+      password: password
+    };
 
-    const response = await apiClient.post("/auth/login", formData, {
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    });
+    const response = await apiClient.post("/auth/login", payload);
     return response.data;
   },
 
