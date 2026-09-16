@@ -248,10 +248,10 @@ const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStar
       <div className="space-y-6 text-left max-w-5xl mx-auto pb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <header className="space-y-1">
-            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 m-0 tracking-tight">
-              Selamat bertugas, <span className="text-[#00206B]">{driverName}</span>
+            <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] m-0 tracking-tight">
+              Selamat bertugas, {driverName}
             </h2>
-            <p className="text-xs text-slate-400 font-medium">{currentDate}</p>
+            <p className="text-xs text-slate-500 font-normal mt-1">{currentDate}</p>
           </header>
           <button
             type="button"
@@ -289,7 +289,7 @@ const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStar
                 </div>
 
                 <div className="py-5">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Rincian Penugasan Armada</p>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Rincian Penugasan Kendaraan</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
                       <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
@@ -375,9 +375,9 @@ const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStar
     <div className="space-y-6 text-left max-w-5xl mx-auto pb-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <header className="space-y-1">
-          <h2 className="text-3xl md:text-4xl font-black text-[#00206B] m-0 tracking-tight">{driverName}</h2>
-          <p className="text-sm text-slate-400 font-normal">Selamat Datang Driver Dishub Kota Mojokerto</p>
-          <p className="text-xs text-slate-400 font-bold mt-0.5">{currentDate}</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] m-0 tracking-tight">{driverName}</h2>
+          <p className="text-xs text-slate-500 font-normal mt-1">Selamat Datang Driver Dishub Kota Mojokerto</p>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">{currentDate}</p>
         </header>
         <button
           onClick={() => window.location.reload()}
@@ -415,7 +415,7 @@ const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStar
 
                 {/* Rincian Penugasan Armada */}
                 <div className="py-5">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Rincian Penugasan Armada</p>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Rincian Penugasan Kendaraan</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
                       <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">

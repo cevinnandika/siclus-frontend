@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { apiService } from "../../services/api";
 import UserDriverTable from "./manage-driver/components/UserDriverTable";
 import UserDriverModal from "./manage-driver/components/UserDriverModal";
@@ -268,6 +268,11 @@ const ManageDriver = () => {
       showToast("Pilih tanggal penugasan terlebih dahulu!", "error");
       return;
     }
+    const platRegex = /^[A-Z]{1,2}\s[0-9]{1,4}(\s[A-Z]{1,3})?$/;
+    if (!formPenugasan.nopol_kendaraan || !platRegex.test(formPenugasan.nopol_kendaraan.trim())) {
+      showToast("Format plat nomor belum sesuai! Contoh: W 7689 NBH atau B 1234 CD", "error");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -292,10 +297,10 @@ const ManageDriver = () => {
 
       if (isEditPenugasanMode && editPenugasanId) {
         await apiService.updatePenugasanHarian(editPenugasanId, payload);
-        showToast("Penugasan armada & jadwal cut-off berhasil diperbarui!");
+        showToast("Penugasan kendaraan & jadwal cut-off berhasil diperbarui!");
       } else {
         await apiService.createPenugasanHarian(payload);
-        showToast("Penugasan armada & jadwal cut-off berhasil disimpan!");
+        showToast("Penugasan kendaraan & jadwal cut-off berhasil disimpan!");
       }
 
       setShowPenugasanModal(false);
@@ -316,7 +321,7 @@ const ManageDriver = () => {
     setIsSubmitting(true);
     try {
       await apiService.deletePenugasanHarian(penugasanToDelete.id);
-      showToast("Penugasan armada berhasil dihapus!");
+      showToast("Penugasan kendaraan berhasil dihapus!");
       setPenugasanToDelete(null);
       fetchPenugasan();
     } catch (err) {
@@ -358,8 +363,8 @@ const ManageDriver = () => {
 
       {/* Page Header */}
       <div>
-        <h2 className="text-2xl md:text-3xl font-black text-[#00206B] tracking-tight m-0">Kelola Driver</h2>
-        <p className="text-xs text-slate-400 font-semibold mt-1">
+        <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] tracking-tight m-0">Kelola Driver</h2>
+        <p className="text-xs text-slate-500 font-normal mt-1">
           Manajemen master akun driver dan konfigurasi toleransi waktu cut-off operasional
         </p>
       </div>
@@ -369,7 +374,7 @@ const ManageDriver = () => {
         <button
           type="button"
           onClick={() => setActiveTab("penugasan")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer ${
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center gap-2 cursor-pointer ${
             activeTab === "penugasan"
               ? "bg-[#00206B] text-white shadow-xs"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
@@ -413,6 +418,7 @@ const ManageDriver = () => {
       {activeTab === "supir" ? (
         <UserDriverTable
           drivers={drivers}
+          penugasanList={penugasanList}
           isLoading={isLoadingDrivers}
           onAddDriver={handleOpenAddDriver}
           onEditDriver={handleOpenEditDriver}
@@ -459,7 +465,7 @@ const ManageDriver = () => {
           driverToDelete ? (
             <>
               Apakah Anda yakin ingin menghapus akun driver{" "}
-              <span className="font-black text-rose-600">
+              <span className="font-bold text-rose-600">
                 {driverToDelete.nama_lengkap || driverToDelete.nama || driverToDelete.name}
               </span>
               ? Tindakan ini tidak dapat dibatalkan.
@@ -475,15 +481,15 @@ const ManageDriver = () => {
       {/* Modal: Delete Penugasan Confirmation */}
       <DeleteConfirmModal
         isOpen={Boolean(penugasanToDelete)}
-        title="Hapus Penugasan Armada?"
+        title="Hapus Penugasan Kendaraan?"
         description={
           penugasanToDelete ? (
             <>
               Apakah Anda yakin ingin membatalkan & menghapus penugasan untuk{" "}
-              <span className="font-black text-rose-600">
+              <span className="font-semibold text-rose-600">
                 {penugasanToDelete.users?.nama || penugasanToDelete.id_supir}
               </span>{" "}
-              pada tanggal <span className="font-black text-slate-700">{penugasanToDelete.tanggal}</span>? Tindakan ini
+              pada tanggal <span className="font-semibold text-slate-700">{penugasanToDelete.tanggal}</span>? Tindakan ini
               tidak dapat dibatalkan.
             </>
           ) : null

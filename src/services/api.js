@@ -136,7 +136,7 @@ export const apiService = {
   },
   getDashboardAdmin: async () => (await apiClient.get("/admin/dashboard")).data,
   getRekapAdmin: async () => (await apiClient.get("/admin/rekap")).data,
-  getRiwayatHarianAdmin: async () => (await apiClient.get("/admin/riwayat-harian")).data,
+  getOperasionalHariIniAdmin: async () => (await apiClient.get("/admin/operasional-hari-ini")).data,
   getUsersAdmin: async () => (await apiClient.get("/admin/users")).data,
   createUserAdmin: async (data) => (await apiClient.post("/admin/users", data)).data,
   updateUserAdmin: async (id, data) => (await apiClient.put(`/admin/users/${id}`, data)).data,

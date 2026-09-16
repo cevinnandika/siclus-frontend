@@ -119,16 +119,16 @@ const BottomNav = ({ user = null }) => {
                 const active = isActive || isItemActive;
                 if (isAdmin) {
                   return `flex flex-col items-center justify-center w-full py-1.5 transition-all duration-200 ${
-                    active ? 'text-[#00206B] font-bold' : 'text-slate-400'
+                    active ? 'text-[#00206B] font-semibold' : 'text-slate-400 font-medium'
                   }`;
                 }
-                return `flex flex-col items-center justify-center flex-1 py-2.5 rounded-2xl transition-all duration-200 ${
-                  active ? 'bg-[#66FFAA]/40 text-[#006633] font-extrabold shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                return `flex flex-col items-center justify-center flex-1 py-2 rounded-2xl transition-all duration-200 ${
+                  active ? 'bg-emerald-50 text-emerald-800 font-semibold shadow-xs' : 'text-slate-500 font-medium hover:text-slate-800 hover:bg-slate-50'
                 }`;
               }}
             >
               {item.icon}
-              <span className="text-[10px]">{item.label}</span>
+              <span className="text-[11px] font-medium mt-0.5 tracking-tight">{item.label}</span>
             </NavLink>
           );
         })}

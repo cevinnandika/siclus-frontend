@@ -18,8 +18,8 @@ const RekapTable = ({
       {/* Header & Integrated Toolbar */}
       <div className="space-y-4 text-left">
         <div>
-          <h2 className="text-2xl md:text-3xl font-black text-[#00206B] tracking-tight m-0">Rekapitulasi Kinerja</h2>
-          <p className="text-xs text-slate-400 font-semibold mt-1">
+          <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] tracking-tight m-0">Rekapitulasi Kinerja</h2>
+          <p className="text-xs text-slate-500 font-normal mt-1">
             Pantau akumulasi performa, trip harian, dan kedisiplinan seluruh driver.
           </p>
         </div>
@@ -71,7 +71,7 @@ const RekapTable = ({
               type="button"
               onClick={onExportAll}
               disabled={groupedData.length === 0}
-              className={`h-10 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs shrink-0 ${
+              className={`h-10 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-xs shrink-0 ${
                 groupedData.length === 0
                   ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                   : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border border-emerald-700/80 shadow-xs cursor-pointer active:scale-95"
@@ -108,10 +108,10 @@ const RekapTable = ({
             <p className="text-xs text-slate-400">Silakan pilih rentang waktu lainnya pada filter di atas.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto w-full">
+          <div className="overflow-x-auto w-full max-h-[calc(100vh-280px)] min-h-[320px] overflow-y-auto custom-scrollbar">
             <table className="w-full text-left border-collapse min-w-[850px]">
-              <thead>
-                <tr className="border-b border-slate-200/80 bg-gradient-to-r from-slate-50 via-sky-50/40 to-slate-50 text-[11px] font-extrabold text-slate-500 tracking-wider uppercase">
+              <thead className="sticky top-0 z-10 bg-slate-50 shadow-xs">
+                <tr className="border-b border-slate-200/80 bg-gradient-to-r from-slate-50 via-sky-50/40 to-slate-50 text-xs font-semibold text-slate-500 tracking-wider uppercase">
                   <th className="py-4 px-6">Driver</th>
                   <th className="py-4 px-6 text-center">Total Laporan</th>
                   <th className="py-4 px-6 text-center">Total Penumpang</th>
@@ -130,7 +130,7 @@ const RekapTable = ({
                   >
                     <td className="py-4.5 px-6">
                       <div className="flex items-center gap-3.5">
-                        <div className="w-11 h-11 rounded-2xl overflow-hidden bg-gradient-to-br from-sky-100/90 to-blue-50 border border-sky-200/70 text-[#00206B] flex items-center justify-center font-black text-sm shadow-2xs flex-shrink-0 group-hover:border-[#00206B] transition-all duration-200">
+                        <div className="w-11 h-11 rounded-2xl overflow-hidden bg-gradient-to-br from-sky-100/90 to-blue-50 border border-sky-200/70 text-[#00206B] flex items-center justify-center font-bold text-sm shadow-2xs flex-shrink-0 group-hover:border-[#00206B] transition-all duration-200">
                           {supir.foto_profil ? (
                             <img
                               src={supir.foto_profil}
@@ -147,10 +147,10 @@ const RekapTable = ({
                           )}
                         </div>
                         <div>
-                          <span className="text-sm font-extrabold text-slate-800 block group-hover:text-[#00206B] transition-colors">
+                          <span className="text-sm font-semibold text-slate-800 block group-hover:text-[#00206B] transition-colors">
                             {supir.nama_supir}
                           </span>
-                          <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-[10px] text-slate-500 font-bold tracking-wider mt-0.5">
+                          <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-[10px] text-slate-500 font-semibold tracking-wider mt-0.5">
                             {supir.id_supir}
                           </span>
                         </div>
@@ -158,8 +158,8 @@ const RekapTable = ({
                     </td>
 
                     <td className="py-4.5 px-6 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 text-slate-700 border border-slate-200/60 font-bold text-xs shadow-2xs">
-                        <span className="font-black text-slate-900 text-sm">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 text-slate-700 border border-slate-200/60 font-semibold text-xs shadow-2xs">
+                        <span className="font-bold text-slate-900 text-sm">
                           {supir.list_laporan?.length || supir.total_hari_jalan || 0}
                         </span>
                         <span className="text-[11px] text-slate-500 font-medium">Laporan</span>
@@ -167,7 +167,7 @@ const RekapTable = ({
                     </td>
 
                     <td className="py-4.5 px-6 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-sky-50 text-sky-800 border border-sky-200/80 font-bold text-xs shadow-2xs">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-sky-50 text-sky-800 border border-sky-200/80 font-semibold text-xs shadow-2xs">
                         <svg className="w-3.5 h-3.5 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path
                             strokeLinecap="round"
@@ -175,13 +175,13 @@ const RekapTable = ({
                             d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
                           />
                         </svg>
-                        <span className="font-black text-sky-950 text-sm">{supir.total_penumpang}</span>
+                        <span className="font-bold text-sky-950 text-sm">{supir.total_penumpang}</span>
                         <span className="text-[11px] text-sky-700/80 font-medium">Siswa</span>
                       </span>
                     </td>
 
                     <td className="py-4.5 px-6 text-center">
-                      <span className="inline-flex items-center gap-1.5 text-emerald-800 bg-emerald-50 border border-emerald-200/80 font-bold text-xs px-3 py-1 rounded-xl shadow-2xs">
+                      <span className="inline-flex items-center gap-1.5 text-emerald-800 bg-emerald-50 border border-emerald-200/80 font-semibold text-xs px-3 py-1 rounded-xl shadow-2xs">
                         <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -191,7 +191,7 @@ const RekapTable = ({
 
                     <td className="py-4.5 px-6 text-center">
                       {supir.total_telat > 0 ? (
-                        <span className="inline-flex items-center gap-1.5 text-rose-800 bg-rose-50 border border-rose-200/80 font-bold text-xs px-3 py-1 rounded-xl shadow-2xs">
+                        <span className="inline-flex items-center gap-1.5 text-rose-800 bg-rose-50 border border-rose-200/80 font-semibold text-xs px-3 py-1 rounded-xl shadow-2xs">
                           <svg className="w-3.5 h-3.5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                           </svg>
@@ -211,7 +211,7 @@ const RekapTable = ({
                           e.stopPropagation();
                           onSelectDriver(supir.id_supir);
                         }}
-                        className="inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-sky-50 to-blue-50 hover:from-[#00206B] hover:to-[#0A328C] border border-sky-200/80 hover:border-[#00206B] text-[#00206B] hover:text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-sm active:scale-95 group/btn"
+                        className="inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-sky-50 to-blue-50 hover:from-[#00206B] hover:to-[#0A328C] border border-sky-200/80 hover:border-[#00206B] text-[#00206B] hover:text-white px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-sm active:scale-95 group/btn"
                       >
                         <span>Lihat Log</span>
                         <svg

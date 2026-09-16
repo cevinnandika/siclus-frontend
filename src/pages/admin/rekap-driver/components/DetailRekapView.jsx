@@ -24,7 +24,7 @@ const DetailRekapView = ({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-[#00206B] bg-white hover:bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl transition-all shadow-2xs cursor-pointer group"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#00206B] bg-white hover:bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl transition-all shadow-2xs cursor-pointer group"
         >
           <svg
             className="w-4 h-4 text-slate-400 group-hover:text-[#00206B] group-hover:-translate-x-0.5 transition-all"
@@ -44,7 +44,7 @@ const DetailRekapView = ({
         {/* Header: Driver Info & Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl overflow-hidden bg-gradient-to-br from-sky-100/90 to-blue-50 border border-sky-200/70 text-[#00206B] flex items-center justify-center font-black text-xl shadow-2xs flex-shrink-0">
+            <div className="w-14 h-14 rounded-2xl overflow-hidden bg-gradient-to-br from-sky-100/90 to-blue-50 border border-sky-200/70 text-[#00206B] flex items-center justify-center font-bold text-xl shadow-2xs flex-shrink-0">
               {selectedDriver.foto_profil ? (
                 <img
                   src={selectedDriver.foto_profil}
@@ -61,11 +61,11 @@ const DetailRekapView = ({
               )}
             </div>
             <div>
-              <span className="text-[10px] font-extrabold uppercase text-[#00206B] tracking-wider block">
+              <span className="text-xs font-semibold uppercase text-slate-500 tracking-wider block">
                 DETAIL OPERASIONAL
               </span>
-              <h2 className="text-2xl font-black text-[#00206B] m-0 tracking-tight">{selectedDriver.nama_supir}</h2>
-              <span className="inline-block px-2.5 py-0.5 rounded-md bg-slate-100 text-[10px] text-slate-500 font-bold tracking-wider mt-1">
+              <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] m-0 tracking-tight">{selectedDriver.nama_supir}</h2>
+              <span className="inline-block px-2.5 py-0.5 rounded-md bg-slate-100 text-[10px] text-slate-500 font-semibold tracking-wider mt-1">
                 ID : {selectedDriver.id_supir}
               </span>
             </div>
@@ -83,7 +83,7 @@ const DetailRekapView = ({
               type="button"
               onClick={onExportExcel}
               title="Download Data Excel Driver Ini"
-              className="h-10 flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border border-emerald-700/80 px-4 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+              className="h-10 flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border border-emerald-700/80 px-4 rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -98,9 +98,9 @@ const DetailRekapView = ({
           {/* Card 1: Total Laporan */}
           <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between group">
             <div className="space-y-1">
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Total Laporan</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total Laporan</span>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-black text-slate-800 tracking-tight">
+                <span className="text-2xl font-bold text-slate-800 tracking-tight">
                   {selectedDriver?.list_laporan?.length || selectedDriver?.total_hari_jalan || 0}
                 </span>
                 <span className="text-xs font-semibold text-slate-400">Laporan</span>
@@ -116,10 +116,10 @@ const DetailRekapView = ({
           {/* Card 2: Total Penumpang */}
           <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between group">
             <div className="space-y-1">
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Total Penumpang</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total Penumpang</span>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-black text-sky-950 tracking-tight">{selectedDriver?.total_penumpang || 0}</span>
-                <span className="text-xs font-bold text-sky-700">Siswa</span>
+                <span className="text-2xl font-bold text-sky-950 tracking-tight">{selectedDriver?.total_penumpang || 0}</span>
+                <span className="text-xs font-semibold text-sky-700">Siswa</span>
               </div>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center border border-sky-200/70 transition-colors flex-shrink-0">
@@ -132,10 +132,10 @@ const DetailRekapView = ({
           {/* Card 3: Tepat Waktu */}
           <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between group">
             <div className="space-y-1">
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Tepat Waktu</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Tepat Waktu</span>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-black text-emerald-950 tracking-tight">{selectedDriver?.total_tepat || 0}</span>
-                <span className="text-xs font-bold text-emerald-700">Tepat</span>
+                <span className="text-2xl font-bold text-emerald-950 tracking-tight">{selectedDriver?.total_tepat || 0}</span>
+                <span className="text-xs font-semibold text-emerald-700">Tepat</span>
               </div>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center border border-emerald-200/70 transition-colors flex-shrink-0">
@@ -148,9 +148,9 @@ const DetailRekapView = ({
           {/* Card 4: Terlambat */}
           <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between group">
             <div className="space-y-1">
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Terlambat</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Terlambat</span>
               <div className="flex items-baseline gap-1.5">
-                <span className={`text-2xl font-black tracking-tight ${selectedDriver?.total_telat > 0 ? "text-rose-950" : "text-slate-800"}`}>
+                <span className={`text-2xl font-bold tracking-tight ${selectedDriver?.total_telat > 0 ? "text-rose-950" : "text-slate-800"}`}>
                   {selectedDriver?.total_telat || 0}
                 </span>
                 <span className={`text-xs font-semibold ${selectedDriver?.total_telat > 0 ? "text-rose-600" : "text-slate-400"}`}>
@@ -175,15 +175,15 @@ const DetailRekapView = ({
         {/* Tabel Riwayat Laporan Operasional */}
         <div className="space-y-3 pt-2 w-full">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-xs font-black text-[#00206B] uppercase tracking-wider flex items-center gap-2 m-0">
+            <h3 className="text-xs font-bold text-[#00206B] uppercase tracking-wider flex items-center gap-2 m-0">
               <span>📅</span> RIWAYAT TANGGAL LAPORAN OPERASIONAL
             </h3>
           </div>
 
-          <div className="overflow-x-auto w-full border border-slate-200/90 rounded-2xl shadow-2xs">
+          <div className="overflow-x-auto w-full max-h-[calc(100vh-380px)] min-h-[300px] overflow-y-auto border border-slate-200/90 rounded-2xl shadow-2xs custom-scrollbar">
             <table className="w-full text-left border-collapse min-w-[1200px]">
-              <thead>
-                <tr className="border-b border-slate-200/80 bg-gradient-to-r from-slate-50 via-sky-50/40 to-slate-50 text-[10px] font-extrabold text-slate-500 tracking-wider uppercase">
+              <thead className="sticky top-0 z-10 bg-slate-50 shadow-xs">
+                <tr className="border-b border-slate-200/80 bg-gradient-to-r from-slate-50 via-sky-50/40 to-slate-50 text-xs font-semibold text-slate-500 tracking-wider uppercase">
                   <th className="py-3 px-4 whitespace-nowrap">Tanggal</th>
                   <th className="py-3 px-4 text-center whitespace-nowrap">Sesi</th>
                   <th className="py-3 px-4 text-center whitespace-nowrap">Trayek</th>
@@ -241,12 +241,12 @@ const DetailRekapView = ({
                               {row.isFirstSessionOfDay ? (
                                 <div className="flex items-center gap-2">
                                   <span className="w-2 h-2 rounded-full bg-[#00206B] flex-shrink-0 shadow-2xs ml-0.5" />
-                                  <span className="font-extrabold text-[#00206B] text-xs tracking-tight">{row.tanggal}</span>
+                                  <span className="font-bold text-[#00206B] text-xs tracking-tight">{row.tanggal}</span>
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-1.5 pl-2" title={`Tanggal: ${row.tanggal} (${row.sesiName})`}>
-                                  <span className="text-slate-300 font-bold text-xs">└─</span>
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/70">
+                                  <span className="text-slate-300 font-semibold text-xs">└─</span>
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/70">
                                     Sesi Lanjutan
                                   </span>
                                 </div>
@@ -254,7 +254,7 @@ const DetailRekapView = ({
                             </td>
                             <td className="py-3.5 px-4 text-center whitespace-nowrap">
                               <span
-                                className={`inline-block px-2.5 py-1 rounded-lg text-xs font-bold border ${
+                                className={`inline-block px-2.5 py-1 rounded-lg text-xs font-semibold border ${
                                   row.sesiName.toLowerCase().includes("pagi")
                                     ? "bg-amber-50 text-amber-800 border-amber-200/70"
                                     : "bg-blue-50 text-blue-800 border-blue-200/70"
@@ -264,17 +264,17 @@ const DetailRekapView = ({
                               </span>
                             </td>
                             <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                              <span className="inline-block px-2.5 py-1 rounded-lg bg-sky-50 text-[#00206B] font-bold text-xs border border-sky-200/70">
+                              <span className="inline-block px-2.5 py-1 rounded-lg bg-sky-50 text-[#00206B] font-semibold text-xs border border-sky-200/70">
                                 {row.trayek}
                               </span>
                             </td>
                             <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                              <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs">
+                              <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold text-xs">
                                 {row.nopol}
                               </span>
                             </td>
                             <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 font-bold text-xs border border-emerald-200/70">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 font-semibold text-xs border border-emerald-200/70">
                                 {row.siswaDisplay}
                               </span>
                             </td>
@@ -283,7 +283,7 @@ const DetailRekapView = ({
                             </td>
                             <td className="py-3.5 px-4 text-center whitespace-nowrap">
                               <span
-                                className={`inline-block px-2.5 py-1 rounded-lg font-extrabold text-xs border ${
+                                className={`inline-block px-2.5 py-1 rounded-lg font-semibold text-xs border ${
                                   row.loadFactorNum >= 70
                                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                     : row.loadFactorNum >= 40
@@ -303,12 +303,12 @@ const DetailRekapView = ({
                             <td className="py-3.5 px-4 text-center text-xs font-semibold text-slate-500 whitespace-nowrap">
                               {row.cp4}
                             </td>
-                            <td className="py-3.5 px-4 text-center text-xs font-black text-[#00206B] whitespace-nowrap">
+                            <td className="py-3.5 px-4 text-center text-xs font-bold text-[#00206B] whitespace-nowrap">
                               {row.jarakTempuh}
                             </td>
                             <td className="py-3.5 px-4 text-center whitespace-nowrap">
                               <span
-                                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border inline-block ${
+                                className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border inline-block ${
                                   row.status === "TERLAMBAT"
                                     ? "bg-rose-50 text-rose-700 border-rose-200/80"
                                     : "bg-emerald-50 text-emerald-700 border-emerald-200/80"
@@ -321,7 +321,7 @@ const DetailRekapView = ({
                               <button
                                 type="button"
                                 onClick={() => setExpandedReportId(isExpanded ? null : row.uniqueKey)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl cursor-pointer transition-all border shadow-2xs whitespace-nowrap flex items-center gap-1 mx-auto active:scale-95 ${
+                                className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-xl cursor-pointer transition-all border shadow-2xs whitespace-nowrap flex items-center gap-1 mx-auto active:scale-95 ${
                                   isExpanded
                                     ? "bg-[#00206B] text-white border-[#00206B]"
                                     : "bg-gradient-to-r from-sky-50 to-blue-50 hover:from-[#00206B] hover:to-[#0A328C] text-[#00206B] hover:text-white border-sky-200/80 hover:border-[#00206B]"
@@ -344,17 +344,17 @@ const DetailRekapView = ({
                                 <div className="space-y-4">
                                   <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-[10px] font-black uppercase text-[#00206B] tracking-wider bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-xs">
+                                      <span className="text-[10px] font-bold uppercase text-[#00206B] tracking-wider bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-xs">
                                         RINCIAN CHECKPOINT & BUKTI SESI {row.sesiName.toUpperCase()}
                                       </span>
-                                      <span className="text-xs font-bold text-slate-700">
+                                      <span className="text-xs font-semibold text-slate-700">
                                         {row.tanggal} {row.isFirstSessionOfDay ? "(Sesi 1)" : `(Sesi ${row.sessionOrderInDay})`} • Trayek {row.trayek} • Nopol {row.nopol}
                                       </span>
                                     </div>
                                     <button
                                       type="button"
                                       onClick={() => setExpandedReportId(null)}
-                                      className="text-xs font-bold text-slate-400 hover:text-slate-700 px-2.5 py-1 rounded-md hover:bg-slate-200/60 transition-colors cursor-pointer"
+                                      className="text-xs font-semibold text-slate-400 hover:text-slate-700 px-2.5 py-1 rounded-md hover:bg-slate-200/60 transition-colors cursor-pointer"
                                     >
                                       Tutup Rincian ✕
                                     </button>
@@ -364,48 +364,48 @@ const DetailRekapView = ({
                                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                     <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
                                       <div className="flex items-center justify-between">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                                        <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">
                                           CP1 • Keluar Garasi Dishub
                                         </span>
-                                        <span className="text-[10px] font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded">
+                                        <span className="text-[10px] font-semibold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded">
                                           Awal
                                         </span>
                                       </div>
-                                      <div className="text-sm font-black text-slate-800">{formatTime(row.jamCP1)} WIB</div>
-                                      <div className="text-xs font-bold text-slate-500">Odometer: {row.cp1} KM</div>
+                                      <div className="text-sm font-bold text-slate-800">{formatTime(row.jamCP1)} WIB</div>
+                                      <div className="text-xs font-medium text-slate-500">Odometer: {row.cp1} KM</div>
                                     </div>
 
                                     <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
                                       <div className="flex items-center justify-between">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                                        <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">
                                           CP2 • Tiba Rute Sekolah
                                         </span>
-                                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                        <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
                                           👥 {row.siswa} Siswa
                                         </span>
                                       </div>
-                                      <div className="text-sm font-black text-slate-800">{formatTime(row.jamCP3)} WIB</div>
-                                      <div className="text-xs font-bold text-slate-500">Odometer: {row.cp3} KM</div>
+                                      <div className="text-sm font-bold text-slate-800">{formatTime(row.jamCP3)} WIB</div>
+                                      <div className="text-xs font-medium text-slate-500">Odometer: {row.cp3} KM</div>
                                     </div>
 
                                     <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
                                       <div className="flex items-center justify-between">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                                        <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">
                                           CP3 • Kembali Garasi Dishub
                                         </span>
-                                        <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
+                                        <span className="text-[10px] font-semibold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
                                           🏁 {row.jarakTempuh}
                                         </span>
                                       </div>
-                                      <div className="text-sm font-black text-slate-800">{formatTime(row.jamCP4)} WIB</div>
-                                      <div className="text-xs font-bold text-slate-500">Odometer: {row.cp4} KM</div>
+                                      <div className="text-sm font-bold text-slate-800">{formatTime(row.jamCP4)} WIB</div>
+                                      <div className="text-xs font-medium text-slate-500">Odometer: {row.cp4} KM</div>
                                     </div>
                                   </div>
 
                                   {/* Foto Bukti Checkpoint */}
                                   {(row.fotoCP1 || row.fotoCP4) && (
                                     <div className="space-y-2 pt-1">
-                                      <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider block">
+                                      <span className="text-xs font-semibold uppercase text-slate-500 tracking-wider block">
                                         Foto Bukti Checkpoint
                                       </span>
                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -420,7 +420,7 @@ const DetailRekapView = ({
                                               className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                                             />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-90 group-hover:opacity-100 transition-opacity" />
-                                            <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
+                                            <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-semibold px-2 py-0.5 rounded-md backdrop-blur-xs">
                                               📸 Foto CP1 (Keluar Garasi) 🔍
                                             </span>
                                           </div>
@@ -436,7 +436,7 @@ const DetailRekapView = ({
                                               className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                                             />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-90 group-hover:opacity-100 transition-opacity" />
-                                            <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs">
+                                            <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-semibold px-2 py-0.5 rounded-md backdrop-blur-xs">
                                               📸 Foto CP3 (Kembali Garasi) 🔍
                                             </span>
                                           </div>
@@ -454,7 +454,7 @@ const DetailRekapView = ({
                   })()
                 ) : (
                   <tr>
-                    <td colSpan="13" className="py-8 text-center text-xs font-bold text-slate-400">
+                    <td colSpan="13" className="py-8 text-center text-xs font-semibold text-slate-400">
                       Belum ada riwayat operasi yang tersimpan
                     </td>
                   </tr>
@@ -469,7 +469,7 @@ const DetailRekapView = ({
           <button
             type="button"
             onClick={onBack}
-            className="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase cursor-pointer transition-colors shadow-xs"
+            className="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs uppercase cursor-pointer transition-colors shadow-xs"
           >
             Tutup
           </button>

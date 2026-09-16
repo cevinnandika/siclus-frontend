@@ -112,10 +112,10 @@ const UserDriverModal = ({
       <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-100 space-y-5 my-8">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div>
-            <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest block">
+            <span className="text-xs font-semibold uppercase text-slate-500 tracking-wider block">
               {isEdit ? "Perbarui Driver" : "Registrasi Driver"}
             </span>
-            <h3 className="text-xl font-extrabold text-[#00206B] m-0">
+            <h3 className="text-xl font-bold text-[#00206B] m-0">
               {isEdit ? "Edit Data Driver" : "Tambah Driver Baru"}
             </h3>
           </div>
@@ -130,14 +130,14 @@ const UserDriverModal = ({
 
         <form onSubmit={handleSubmitForm} className="space-y-4">
           <div>
-            <span className="text-[10px] font-bold text-[#00206B] uppercase tracking-widest">Data Akun Login</span>
+            <span className="text-xs font-semibold text-[#00206B] uppercase tracking-wider">Data Akun Login</span>
             <div className="w-full h-[1px] bg-slate-200 mt-1 mb-3"></div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* ID Driver */}
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                 ID Driver
               </label>
               <input
@@ -148,7 +148,7 @@ const UserDriverModal = ({
                 value={formData.id_driver}
                 onChange={handleIdDriverChange}
                 placeholder="DRV-..."
-                className={`w-full border text-sm font-bold text-[#00206B] rounded-xl px-4 py-2.5 outline-none transition-colors ${
+                className={`w-full border text-sm font-semibold text-[#00206B] rounded-xl px-4 py-2.5 outline-none transition-colors ${
                   isEdit
                     ? "bg-slate-100 border-slate-200 opacity-70 cursor-not-allowed"
                     : duplicateAddId
@@ -157,7 +157,7 @@ const UserDriverModal = ({
                 }`}
               />
               {duplicateAddId && (
-                <p className="text-[10px] font-bold text-rose-500 mt-1 flex items-center gap-1">
+                <p className="text-[10px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
                   <span>⚠️ ID sudah terdaftar</span>
                 </p>
               )}
@@ -165,7 +165,7 @@ const UserDriverModal = ({
 
             {/* Nama Lengkap */}
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                 Nama Lengkap
               </label>
               <input
@@ -175,14 +175,14 @@ const UserDriverModal = ({
                 value={formData.nama_lengkap}
                 onChange={handleChange}
                 placeholder=""
-                className={`w-full bg-white border text-sm font-bold text-[#00206B] rounded-xl px-4 py-2.5 outline-none transition-colors ${
+                className={`w-full bg-white border text-sm font-semibold text-[#00206B] rounded-xl px-4 py-2.5 outline-none transition-colors ${
                   (isEdit ? duplicateEditName : duplicateAddName)
                     ? "border-rose-400 bg-rose-50/20 focus:border-rose-500"
                     : "border-slate-200 focus:border-[#00206B]"
                 }`}
               />
               {(isEdit ? duplicateEditName : duplicateAddName) && (
-                <p className="text-[10px] font-bold text-rose-500 mt-1 flex items-center gap-1">
+                <p className="text-[10px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
                   <span>⚠️ Nama sudah terdaftar</span>
                 </p>
               )}
@@ -190,7 +190,7 @@ const UserDriverModal = ({
 
             {/* Email */}
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                 Email Akun
               </label>
               <input
@@ -200,14 +200,14 @@ const UserDriverModal = ({
                 value={formData.email}
                 onChange={handleChange}
                 placeholder=""
-                className={`w-full bg-white border text-sm font-bold text-[#00206B] rounded-xl px-4 py-2.5 outline-none transition-colors ${
+                className={`w-full bg-white border text-sm font-semibold text-[#00206B] rounded-xl px-4 py-2.5 outline-none transition-colors ${
                   (isEdit ? duplicateEditEmail : duplicateAddEmail)
                     ? "border-rose-400 bg-rose-50/20 focus:border-rose-500"
                     : "border-slate-200 focus:border-[#00206B]"
                 }`}
               />
               {(isEdit ? duplicateEditEmail : duplicateAddEmail) && (
-                <p className="text-[10px] font-bold text-rose-500 mt-1 flex items-center gap-1">
+                <p className="text-[10px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
                   <span>⚠️ Email sudah terdaftar</span>
                 </p>
               )}
@@ -215,7 +215,7 @@ const UserDriverModal = ({
 
             {/* Password */}
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                 {isEdit ? "Password Baru" : "Password Login"}
               </label>
               <div className="relative">
@@ -254,14 +254,14 @@ const UserDriverModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase cursor-pointer"
+              className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs uppercase cursor-pointer"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={isSubmitting || hasValidationError}
-              className="px-6 py-3 rounded-xl bg-[#00206B] hover:bg-[#00174E] text-white font-black text-xs uppercase tracking-wider shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-6 py-3 rounded-xl bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-xs uppercase tracking-wider shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan Driver"}
             </button>

@@ -95,7 +95,7 @@ const TimePickerInput = ({
   return (
     <div className={className}>
       {label && (
-        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+        <label className="block text-xs font-semibold text-slate-600 mb-1.5">
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
       )}
@@ -109,7 +109,7 @@ const TimePickerInput = ({
         placeholder={placeholder}
         disabled={disabled}
         maxLength={5}
-        className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2.5 outline-none focus:border-[#00206B] transition-colors disabled:bg-slate-100 disabled:cursor-not-allowed"
+        className="w-full bg-white border border-slate-200 text-sm font-semibold text-slate-800 rounded-xl px-4 py-2.5 outline-none focus:border-[#00206B] transition-colors disabled:bg-slate-100 disabled:cursor-not-allowed tabular-nums"
       />
     </div>
   );

@@ -103,7 +103,7 @@ const AppLayout = ({ children, title = "SICLUS", onBack = null, activeMenu = "be
       <aside className={`hidden md:flex flex-col h-full bg-[#131314] text-[#C4C7C5] transition-all duration-300 ease-in-out border-r border-white/5 z-50 ${isSidebarOpen ? "w-64" : "w-[72px]"}`}>
         <div className={`flex items-center h-20 ${isSidebarOpen ? "px-4 justify-between" : "justify-center"}`}>
           <div className={`overflow-hidden transition-all duration-300 ${isSidebarOpen ? "w-auto opacity-100" : "w-0 opacity-0"}`}>
-            <span className="text-xl font-black text-white tracking-widest uppercase">SICLUS</span>
+            <span className="text-xl font-bold text-white tracking-widest uppercase">SICLUS</span>
           </div>
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -180,7 +180,7 @@ const AppLayout = ({ children, title = "SICLUS", onBack = null, activeMenu = "be
                 <div
                   className={`${
                     isSidebarOpen ? "w-10 h-10 text-sm" : "w-9 h-9 text-xs"
-                  } rounded-xl bg-gradient-to-tr from-[#00206B] via-[#0A328C] to-blue-500 text-white flex items-center justify-center font-black shadow-sm ring-2 ring-white/15 group-hover:ring-[#A8C7FA]/40 transition-all`}
+                  } rounded-xl bg-gradient-to-tr from-[#00206B] via-[#0A328C] to-blue-500 text-white flex items-center justify-center font-bold shadow-sm ring-2 ring-white/15 group-hover:ring-[#A8C7FA]/40 transition-all`}
                 >
                   {(user?.nama_lengkap || user?.nama || user?.name || "A").charAt(0).toUpperCase()}
                 </div>
@@ -198,7 +198,7 @@ const AppLayout = ({ children, title = "SICLUS", onBack = null, activeMenu = "be
                 {user?.nama_lengkap || user?.nama || user?.name || "Pengguna"}
               </p>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="inline-block px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md bg-white/10 text-slate-300">
+                <span className="inline-block px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded-md bg-white/10 text-slate-300">
                   {user?.role || "USER"}
                 </span>
               </div>
@@ -228,7 +228,7 @@ const AppLayout = ({ children, title = "SICLUS", onBack = null, activeMenu = "be
           </div>
 
           <div className="text-center flex-1">
-            <span className="text-lg font-black tracking-widest text-[#00206B] block uppercase">{title}</span>
+            <span className="text-lg font-bold tracking-widest text-[#00206B] block uppercase">{title}</span>
           </div>
           <div className="w-10"></div>
         </header>

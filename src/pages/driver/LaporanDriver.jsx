@@ -585,8 +585,8 @@ const LaporanDriver = ({ user: propUser, onFinishShift }) => {
     <div className="space-y-4 max-w-5xl mx-auto pb-12 px-4 md:px-0 font-sans text-left">
       {/* Header Halaman */}
       <div className="pb-1">
-        <h2 className="text-2xl font-bold text-slate-900 m-0 tracking-tight">Laporan Operasional</h2>
-        <p className="text-xs text-slate-400 font-medium mt-0.5 tracking-wide">
+        <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] tracking-tight m-0">Laporan Operasional</h2>
+        <p className="text-xs text-slate-500 font-normal mt-1">
           Sesi {activeShift === "siang" ? "Siang" : "Pagi"} • Formulir Operasional Perjalanan
         </p>
       </div>
@@ -612,34 +612,34 @@ const LaporanDriver = ({ user: propUser, onFinishShift }) => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Kolom Kiri: Spesifikasi Armada, Odo, Foto */}
               <div className="space-y-4">
-                {/* 4 Rincian Penugasan Armada */}
+                {/* 4 Rincian Penugasan Kendaraan */}
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                    Rincian Penugasan Armada
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Rincian Penugasan Kendaraan
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3">
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase block">Trayek</span>
-                      <p className="text-xs font-bold text-[#00206B] mt-0.5 truncate">{user?.trayek || "-"}</p>
+                      <span className="text-xs font-medium text-slate-500 uppercase block">Trayek</span>
+                      <p className="text-sm font-semibold text-[#00206B] mt-0.5 truncate">{user?.trayek || "-"}</p>
                     </div>
                     <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3">
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase block">Jenis Kendaraan</span>
-                      <p className="text-xs font-semibold text-slate-700 mt-0.5 truncate">{user?.jenis_kendaraan || user?.bus || "-"}</p>
+                      <span className="text-xs font-medium text-slate-500 uppercase block">Jenis Kendaraan</span>
+                      <p className="text-sm font-semibold text-slate-800 mt-0.5 truncate">{user?.jenis_kendaraan || user?.bus || "-"}</p>
                     </div>
                     <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3">
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase block">Nomor Polisi</span>
-                      <p className="text-xs font-semibold text-slate-700 mt-0.5 truncate">{user?.nomer_kendaraan || user?.bus || "-"}</p>
+                      <span className="text-xs font-medium text-slate-500 uppercase block">Nomor Polisi</span>
+                      <p className="text-sm font-semibold text-slate-800 mt-0.5 truncate">{user?.nomer_kendaraan || user?.bus || "-"}</p>
                     </div>
                     <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3">
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase block">Kapasitas</span>
-                      <p className="text-xs font-semibold text-slate-700 mt-0.5 truncate">{user?.kapasitas ? `${user.kapasitas} Penumpang` : "-"}</p>
+                      <span className="text-xs font-medium text-slate-500 uppercase block">Kapasitas</span>
+                      <p className="text-sm font-semibold text-slate-800 mt-0.5 truncate">{user?.kapasitas ? `${user.kapasitas} Penumpang` : "-"}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Odometer Awal */}
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
                     Odometer Awal (KM)
                   </label>
                   <div className="relative">
@@ -750,7 +750,7 @@ const LaporanDriver = ({ user: propUser, onFinishShift }) => {
               {cpToConfirm === 1 ? (
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-3">
                   <p className="text-xs font-semibold text-slate-800 m-0">
-                    Pastikan angka Odometer (<span className="font-bold text-[#00206B]">{odoAwal} KM</span>) dan kelengkapan armada sudah sesuai. Kirim data keberangkatan?
+                    Pastikan angka Odometer (<span className="font-bold text-[#00206B]">{odoAwal} KM</span>) dan kelengkapan kendaraan sudah sesuai. Kirim data keberangkatan?
                   </p>
                   <div className="flex gap-2.5 max-w-xs mx-auto">
                     <button

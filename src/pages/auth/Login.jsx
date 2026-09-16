@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { apiService } from "../../services/api";
 
-
 const Login = ({ onLoginSuccess }) => {
   const [driverId, setDriverId] = useState("");
   const [pin, setPin] = useState("");
@@ -98,10 +97,10 @@ const Login = ({ onLoginSuccess }) => {
             </div>
           </div>
           <div className="space-y-1 group">
-            <label className="text-[11px] sm:text-sm font-bold text-[#00206B] ml-1 uppercase tracking-wide">ID Driver / Email</label>
+            <label className="text-xs sm:text-sm font-semibold text-slate-700 ml-1 uppercase tracking-wider">Email</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 sm:pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#00206B] transition-colors">
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                   <rect x="3" y="4" width="18" height="16" rx="2" />
                   <circle cx="9" cy="11" r="2.5" />
                   <path d="M15 9h3M15 13h3M15 17h3" />
@@ -112,16 +111,16 @@ const Login = ({ onLoginSuccess }) => {
                 required
                 value={driverId}
                 onChange={(e) => setDriverId(e.target.value)}
-                className="w-full bg-slate-100/80 border-2 border-slate-200/70 focus:border-[#00206B] focus:bg-white focus:ring-4 focus:ring-[#00206B]/10 rounded-2xl pl-10 sm:pl-11 pr-4 py-3 sm:py-4 text-xs sm:text-base font-bold text-[#00206B] placeholder-slate-400 outline-none transition-all duration-300"
-                placeholder="Contoh: admin@siclus.id"
+                className="w-full bg-slate-100/80 border border-slate-200 focus:border-[#00206B] focus:bg-white focus:ring-4 focus:ring-[#00206B]/10 rounded-2xl pl-10 sm:pl-11 pr-4 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 outline-none transition-all duration-300"
+                placeholder="@siclus.id"
               />
             </div>
           </div>
           <div className="space-y-1 group">
-            <label className="text-[11px] sm:text-sm font-bold text-[#00206B] ml-1 uppercase tracking-wide">Password</label>
+            <label className="text-xs sm:text-sm font-semibold text-slate-700 ml-1 uppercase tracking-wider">Password</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 sm:pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#00206B] transition-colors">
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                   <path d="M7 11V7a5 5 0 0110 0v4" />
                 </svg>
@@ -131,13 +130,13 @@ const Login = ({ onLoginSuccess }) => {
                 required
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                className="w-full bg-slate-100/80 border-2 border-slate-200/70 focus:border-[#00206B] focus:bg-white focus:ring-4 focus:ring-[#00206B]/10 rounded-2xl pl-10 sm:pl-11 pr-11 py-3 sm:py-4 text-xs sm:text-base font-bold text-[#00206B] placeholder-slate-400 outline-none transition-all duration-300 tracking-wider"
+                className="w-full bg-slate-100/80 border border-slate-200 focus:border-[#00206B] focus:bg-white focus:ring-4 focus:ring-[#00206B]/10 rounded-2xl pl-10 sm:pl-11 pr-11 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 outline-none transition-all duration-300 tracking-wider"
                 placeholder="••••••"
               />
               <button
                 type="button"
                 onClick={() => setShowPin(!showPin)}
-                className="absolute inset-y-0 right-0 pr-3.5 sm:pr-4 flex items-center text-slate-400 hover:text-[#00206B] transition-colors focus:outline-none"
+                className="absolute inset-y-0 right-0 pr-3.5 sm:pr-4 flex items-center text-slate-400 hover:text-[#00206B] transition-colors focus:outline-none cursor-pointer"
               >
                 {showPin ? (
                   <svg className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -156,7 +155,7 @@ const Login = ({ onLoginSuccess }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full relative overflow-hidden bg-gradient-to-r from-[#00206B] via-[#001D60] to-[#001240] text-white font-black py-3.5 sm:py-4 px-4 rounded-2xl shadow-[0_10px_25px_-5px_rgba(0,32,107,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(0,32,107,0.6)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 mt-3 sm:mt-6 group"
+            className="w-full relative overflow-hidden bg-gradient-to-r from-[#00206B] via-[#001D60] to-[#001240] text-white font-semibold py-3.5 sm:py-4 px-4 rounded-2xl shadow-[0_10px_25px_-5px_rgba(0,32,107,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(0,32,107,0.6)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 mt-3 sm:mt-6 group cursor-pointer"
           >
             <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white/30 opacity-20 group-hover:animate-[shine_1s] pointer-events-none" />
             <div className="flex items-center justify-center gap-2 relative z-10 text-xs sm:text-base">

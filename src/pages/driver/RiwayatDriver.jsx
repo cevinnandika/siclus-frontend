@@ -97,8 +97,8 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
     <div className="space-y-5 max-w-5xl mx-auto pb-12 px-4 md:px-0 font-sans text-left">
       {/* Header Halaman */}
       <div className="pb-1">
-        <h2 className="text-2xl font-bold text-slate-900 m-0 tracking-tight">Riwayat Perjalanan</h2>
-        <p className="text-xs text-slate-400 font-medium mt-0.5 tracking-wide">Daftar catatan dan laporan operasional harian</p>
+        <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] tracking-tight m-0">Riwayat Perjalanan</h2>
+        <p className="text-xs text-slate-500 font-normal mt-1">Daftar catatan dan laporan operasional harian</p>
       </div>
 
       {reports.length > 0 ? (
@@ -133,7 +133,7 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-sm font-semibold text-slate-800 m-0 tracking-tight truncate group-hover:text-[#00206B] transition-colors">Laporan Operasional</h3>
-                      <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/60">{report.statusLabel}</span>
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/60">{report.statusLabel}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-slate-500 font-medium">{report.date}</span>
@@ -166,7 +166,7 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
               />
             </svg>
           </div>
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Belum Ada Data Laporan</span>
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Belum Ada Data Laporan</span>
         </div>
       )}
     </div>

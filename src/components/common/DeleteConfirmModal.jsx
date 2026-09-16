@@ -24,8 +24,8 @@ const DeleteConfirmModal = ({
           </svg>
         </div>
         <div>
-          <h3 className="text-lg font-black text-[#00206B] m-0">{title}</h3>
-          <p className="text-xs text-slate-500 font-semibold mt-1">{description}</p>
+          <h3 className="text-lg font-bold text-[#00206B] m-0">{title}</h3>
+          <p className="text-xs text-slate-500 font-normal mt-1">{description}</p>
         </div>
 
         {/* Indikator Hitung Mundur 5 Detik (Batal Otomatis) */}
@@ -35,9 +35,9 @@ const DeleteConfirmModal = ({
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
             </svg>
-            <span className="text-[11px] font-bold">Batal otomatis dalam:</span>
+            <span className="text-[11px] font-semibold">Batal otomatis dalam:</span>
           </div>
-          <span className="text-xs font-black bg-amber-200/80 text-amber-900 px-2.5 py-0.5 rounded-lg tabular-nums">
+          <span className="text-xs font-bold bg-amber-200/80 text-amber-900 px-2.5 py-0.5 rounded-lg tabular-nums">
             {countdown}s
           </span>
         </div>
@@ -53,7 +53,7 @@ const DeleteConfirmModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs uppercase cursor-pointer transition-colors"
+            className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl text-xs uppercase cursor-pointer transition-colors"
           >
             Batal
           </button>
@@ -61,10 +61,10 @@ const DeleteConfirmModal = ({
             type="button"
             onClick={onConfirm}
             disabled={isSubmitting}
-            className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl text-xs uppercase shadow-md cursor-pointer disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
+            className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl text-xs uppercase shadow-md cursor-pointer disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
           >
             <span>{isSubmitting ? "Menghapus..." : "Ya, Hapus"}</span>
-            {!isSubmitting && <span className="opacity-80 font-semibold">({countdown}s)</span>}
+            {!isSubmitting && <span className="opacity-80 font-medium">({countdown}s)</span>}
           </button>
         </div>
       </div>

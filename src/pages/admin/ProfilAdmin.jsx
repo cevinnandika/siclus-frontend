@@ -80,10 +80,10 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
     <div className="space-y-6 max-w-4xl mx-auto pb-12 font-sans text-left animate-[fadeIn_0.2s]">
       {/* Header Halaman: Konsisten dengan Tampilan Driver */}
       <div className="pb-1">
-        <h2 className="text-2xl font-bold text-slate-900 m-0 tracking-tight">
+        <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] tracking-tight m-0">
           Profil Administrator
         </h2>
-        <p className="text-xs text-slate-400 font-medium mt-0.5 tracking-wide">
+        <p className="text-xs text-slate-500 font-normal mt-1">
           Informasi identitas dan rincian akun administrator sistem.
         </p>
       </div>
@@ -125,7 +125,7 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
               }`}
             >
               {isUploading ? (
-                <span className="text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                <span className="text-[10px] font-medium uppercase tracking-wider animate-pulse">
                   Mengunggah...
                 </span>
               ) : (
@@ -138,7 +138,7 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
                     />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <span className="text-[9px] font-bold uppercase tracking-wider">Ubah Foto</span>
+                  <span className="text-[9px] font-medium uppercase tracking-wider">Ubah Foto</span>
                 </>
               )}
             </div>
@@ -153,12 +153,12 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
                     type="text"
                     value={adminName}
                     onChange={(e) => setAdminName(e.target.value)}
-                    className="border-2 border-slate-300 rounded-lg px-3 py-1 text-base sm:text-lg font-bold text-slate-900 outline-none focus:border-[#00206B]"
+                    className="border-2 border-slate-300 rounded-lg px-3 py-1 text-base sm:text-lg font-semibold text-slate-900 outline-none focus:border-[#00206B]"
                     autoFocus
                   />
                   <button
                     onClick={handleSaveName}
-                    className="bg-[#00206B] text-white px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider shadow-sm hover:bg-[#00174E] cursor-pointer"
+                    className="bg-[#00206B] text-white px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider shadow-sm hover:bg-[#00174E] cursor-pointer"
                   >
                     Simpan
                   </button>
@@ -167,7 +167,7 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
                       setIsEditing(false);
                       setAdminName(user?.nama_lengkap || user?.nama || user?.name || "Administrator");
                     }}
-                    className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-slate-200 cursor-pointer"
+                    className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-slate-200 cursor-pointer"
                   >
                     Batal
                   </button>
@@ -194,16 +194,16 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
               )}
 
               {/* Status Badge Role */}
-              <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 self-center sm:self-auto">
+              <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 self-center sm:self-auto">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
                 ADMINISTRATOR
               </span>
             </div>
 
-            <p className="text-xs text-slate-400 font-medium m-0">
+            <p className="text-xs text-slate-500 font-normal m-0">
               Administrator Pengelola Sistem Monitoring Angkutan Sekolah
             </p>
-            <p className="text-[11px] text-slate-400 mt-2">
+            <p className="text-xs text-slate-400 mt-2">
               Klik pada foto profil di samping untuk memperbarui foto akun Anda.
             </p>
           </div>
@@ -211,13 +211,13 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
 
         {/* Rincian Akun Admin (Fungsi & Informasi Khusus Admin) */}
         <div className="py-6">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
             Informasi Akun
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {/* ID Administrator */}
             <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
-              <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+              <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium uppercase tracking-wider">
                 <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path
                     strokeLinecap="round"
@@ -227,14 +227,14 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
                 </svg>
                 ID Administrator
               </div>
-              <p className="text-sm font-bold text-[#00206B] mt-1 truncate">
+              <p className="text-sm font-semibold text-[#00206B] mt-1 truncate">
                 {user?.id || user?.id_driver || "ADM-DISHUB"}
               </p>
             </div>
 
             {/* Email Terdaftar */}
             <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
-              <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+              <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium uppercase tracking-wider">
                 <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path
                     strokeLinecap="round"
@@ -244,14 +244,14 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
                 </svg>
                 Email Terdaftar
               </div>
-              <p className="text-sm font-bold text-slate-800 mt-1 truncate" title={user?.email || "-"}>
+              <p className="text-sm font-semibold text-slate-800 mt-1 truncate" title={user?.email || "-"}>
                 {user?.email || "admin@siclus.id"}
               </p>
             </div>
 
             {/* Hak Akses & Otoritas Sistem */}
             <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
-              <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+              <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium uppercase tracking-wider">
                 <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path
                     strokeLinecap="round"
@@ -261,14 +261,14 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
                 </svg>
                 Hak Akses Sistem
               </div>
-              <p className="text-sm font-bold text-slate-800 mt-1 truncate">
+              <p className="text-sm font-semibold text-slate-800 mt-1 truncate">
                 Super Admin (Monitoring & Master Data)
               </p>
             </div>
 
             {/* Instansi Kedinasan */}
             <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
-              <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+              <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium uppercase tracking-wider">
                 <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path
                     strokeLinecap="round"
@@ -278,7 +278,7 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
                 </svg>
                 Instansi Kedinasan
               </div>
-              <p className="text-sm font-bold text-slate-800 mt-1 truncate">
+              <p className="text-sm font-semibold text-slate-800 mt-1 truncate">
                 Dinas Perhubungan Kota Mojokerto
               </p>
             </div>

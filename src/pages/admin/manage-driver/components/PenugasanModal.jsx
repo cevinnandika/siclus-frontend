@@ -7,6 +7,62 @@ import {
   getMaxDays,
 } from "../../../../utils/dateUtils";
 
+// Format otomatis plat nomor sesuai standar TNKB Indonesia (1-2 huruf, 1-4 angka, 1-3 huruf)
+const formatPlatNomor = (input) => {
+  if (!input) return "";
+  let raw = input.toUpperCase().replace(/[-_]/g, " ").replace(/[^A-Z0-9\s]/g, "");
+  raw = raw.replace(/^[^A-Z]+/, "");
+  if (!raw) return "";
+
+  const hasTrailingSpace = input.endsWith(" ");
+  const tokens = raw.trimStart().split(/\s+/);
+
+  let p1 = "";
+  let p2 = "";
+  let p3 = "";
+
+  if (tokens.length === 1) {
+    const firstDigitIdx = tokens[0].search(/[0-9]/);
+    if (firstDigitIdx !== -1) {
+      p1 = tokens[0].slice(0, Math.min(firstDigitIdx, 2));
+      const rest = tokens[0].slice(firstDigitIdx);
+      const m = rest.match(/^([0-9]{1,4})([A-Z]{0,3})/);
+      if (m) {
+        p2 = m[1] || "";
+        p3 = m[2] || "";
+      }
+    } else {
+      p1 = tokens[0].slice(0, 2);
+    }
+  } else if (tokens.length === 2) {
+    p1 = tokens[0].replace(/[^A-Z]/g, "").slice(0, 2);
+    const rest = tokens[1];
+    const m = rest.match(/^([0-9]{0,4})([A-Z]{0,3})/);
+    if (m) {
+      p2 = m[1] || "";
+      p3 = m[2] || "";
+    }
+  } else {
+    p1 = tokens[0].replace(/[^A-Z]/g, "").slice(0, 2);
+    p2 = tokens[1].replace(/[^0-9]/g, "").slice(0, 4);
+    p3 = tokens.slice(2).join("").replace(/[^A-Z]/g, "").slice(0, 3);
+  }
+
+  let res = p1;
+  if (p2) {
+    res += " " + p2;
+    if (p3) {
+      res += " " + p3;
+    } else if (hasTrailingSpace && tokens.length >= 2) {
+      res += " ";
+    }
+  } else if (hasTrailingSpace && tokens.length >= 1) {
+    res += " ";
+  }
+
+  return res;
+};
+
 const PenugasanModal = ({
   isOpen = false,
   isEdit = false,
@@ -37,9 +93,8 @@ const PenugasanModal = ({
   };
 
   const handleNopolChange = (e) => {
-    let val = e.target.value.toUpperCase();
-    val = val.replace(/[^A-Z0-9\s]/g, "");
-    setFormPenugasan((prev) => ({ ...prev, nopol_kendaraan: val }));
+    const formatted = formatPlatNomor(e.target.value);
+    setFormPenugasan((prev) => ({ ...prev, nopol_kendaraan: formatted }));
   };
 
   const handleKapasitasChange = (e) => {
@@ -66,11 +121,11 @@ const PenugasanModal = ({
       <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-100 space-y-5 my-8">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div>
-            <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest block">
-              {isEdit ? "Perbarui Penugasan" : "Penugasan Armada"}
+            <span className="text-xs font-semibold uppercase text-slate-400 tracking-wider block">
+              {isEdit ? "Perbarui Penugasan" : "Penugasan Kendaraan"}
             </span>
-            <h3 className="text-xl font-extrabold text-[#00206B] m-0">
-              {isEdit ? "Edit Penugasan & Jadwal" : "Tugaskan Armada Baru"}
+            <h3 className="text-xl font-bold text-[#00206B] m-0">
+              {isEdit ? "Edit Penugasan & Jadwal" : "Tugaskan Kendaraan Baru"}
             </h3>
           </div>
           <button
@@ -85,14 +140,14 @@ const PenugasanModal = ({
         <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
           {/* 1. Supir */}
           <div>
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
               Pilih Supir
             </label>
             <select
               required
               value={formPenugasan.id_supir}
               onChange={(e) => setFormPenugasan({ ...formPenugasan, id_supir: e.target.value })}
-              className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2.5 outline-none focus:border-[#00206B] cursor-pointer"
+              className="w-full bg-white border border-slate-200 text-sm font-semibold text-slate-800 rounded-xl px-4 py-2.5 outline-none focus:border-[#00206B] cursor-pointer"
             >
               <option value="">-- Pilih Supir --</option>
               {drivers.map((d) => (
@@ -105,14 +160,14 @@ const PenugasanModal = ({
 
           {/* 2. Tanggal */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-slate-600">
                 Tanggal
               </label>
               <button
                 type="button"
                 onClick={() => setFormPenugasan((prev) => ({ ...prev, tanggal: getTodayDateStr() }))}
-                className="text-[10px] font-bold text-[#00206B] hover:text-blue-700 hover:underline cursor-pointer bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md border border-slate-200/80 transition-colors"
+                className="text-xs font-semibold text-[#00206B] hover:text-blue-700 hover:underline cursor-pointer bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg border border-slate-200/80 transition-colors"
               >
                 Hari Ini
               </button>
@@ -124,7 +179,7 @@ const PenugasanModal = ({
                 <select
                   value={parsedDate.day}
                   onChange={(e) => handleDatePartChange("day", e.target.value)}
-                  className="w-full bg-white border border-slate-200 text-xs sm:text-sm font-bold text-[#00206B] rounded-xl px-2 py-2.5 outline-none focus:border-[#00206B] cursor-pointer"
+                  className="w-full bg-white border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 rounded-xl px-2 py-2.5 outline-none focus:border-[#00206B] cursor-pointer tabular-nums"
                 >
                   {Array.from({ length: getMaxDays(formPenugasan.tanggal) }, (_, i) => {
                     const val = String(i + 1).padStart(2, "0");
@@ -142,7 +197,7 @@ const PenugasanModal = ({
                 <select
                   value={parsedDate.month}
                   onChange={(e) => handleDatePartChange("month", e.target.value)}
-                  className="w-full bg-white border border-slate-200 text-xs sm:text-sm font-bold text-[#00206B] rounded-xl px-2 py-2.5 outline-none focus:border-[#00206B] cursor-pointer truncate"
+                  className="w-full bg-white border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 rounded-xl px-2 py-2.5 outline-none focus:border-[#00206B] cursor-pointer truncate"
                 >
                   {INDO_MONTHS.map((bln, idx) => {
                     const val = String(idx + 1).padStart(2, "0");
@@ -160,7 +215,7 @@ const PenugasanModal = ({
                 <select
                   value={parsedDate.year}
                   onChange={(e) => handleDatePartChange("year", e.target.value)}
-                  className="w-full bg-white border border-slate-200 text-xs sm:text-sm font-bold text-[#00206B] rounded-xl px-2 py-2.5 outline-none focus:border-[#00206B] cursor-pointer"
+                  className="w-full bg-white border border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 rounded-xl px-2 py-2.5 outline-none focus:border-[#00206B] cursor-pointer tabular-nums"
                 >
                   {[2025, 2026, 2027, 2028].map((yr) => (
                     <option key={yr} value={String(yr)}>
@@ -174,7 +229,7 @@ const PenugasanModal = ({
 
           {/* 3. Trayek */}
           <div>
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
               Trayek Rute
             </label>
             <input
@@ -183,16 +238,16 @@ const PenugasanModal = ({
               autoComplete="off"
               value={formPenugasan.trayek}
               onChange={(e) => setFormPenugasan({ ...formPenugasan, trayek: e.target.value.toUpperCase() })}
-              placeholder="Contoh: T07 / KAMPUS - TERMINAL"
-              className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-4 py-2.5 outline-none focus:border-[#00206B] uppercase"
+              placeholder="Masukan Trayek"
+              className="w-full bg-white border border-slate-200 text-sm font-semibold text-slate-800 rounded-xl px-4 py-2.5 outline-none focus:border-[#00206B] uppercase"
             />
           </div>
 
           {/* 4. Kendaraan & Kapasitas */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                Nopol Bus
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                Plat Nomor
               </label>
               <input
                 type="text"
@@ -201,12 +256,14 @@ const PenugasanModal = ({
                 value={formPenugasan.nopol_kendaraan}
                 onChange={handleNopolChange}
                 placeholder="W 7689 NBH"
-                className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-3 py-2.5 outline-none focus:border-[#00206B] uppercase"
+                maxLength={11}
+                title="Format TNKB Indonesia: 1-2 huruf depan, 1-4 angka, 1-3 huruf belakang (Contoh: W 7689 NBH)"
+                className="w-full bg-white border border-slate-200 text-sm font-semibold text-slate-800 rounded-xl px-3 py-2.5 outline-none focus:border-[#00206B] uppercase tracking-wider placeholder:normal-case placeholder:font-normal placeholder:text-slate-300 tabular-nums"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                Jenis Mobil
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                Nama Kendaraan
               </label>
               <input
                 type="text"
@@ -214,12 +271,12 @@ const PenugasanModal = ({
                 autoComplete="off"
                 value={formPenugasan.jenis_kendaraan}
                 onChange={(e) => setFormPenugasan({ ...formPenugasan, jenis_kendaraan: e.target.value.toUpperCase() })}
-                placeholder="AVANZA / HIACE"
-                className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-3 py-2.5 outline-none focus:border-[#00206B] uppercase"
+                placeholder="Avanza"
+                className="w-full bg-white border border-slate-200 text-sm font-semibold text-slate-800 rounded-xl px-3 py-2.5 outline-none focus:border-[#00206B] uppercase"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                 Kapasitas
               </label>
               <input
@@ -231,17 +288,17 @@ const PenugasanModal = ({
                 value={formPenugasan.kapasitas_penumpang}
                 onChange={handleKapasitasChange}
                 placeholder="Max 60"
-                className="w-full bg-white border border-slate-200 text-sm font-bold text-[#00206B] rounded-xl px-3 py-2.5 outline-none focus:border-[#00206B]"
+                className="w-full bg-white border border-slate-200 text-sm font-semibold text-slate-800 rounded-xl px-3 py-2.5 outline-none focus:border-[#00206B] tabular-nums"
               />
             </div>
           </div>
 
           {/* 5. Jam Sesi Pagi */}
           <div className="pt-2">
-            <span className="text-[10px] font-bold text-[#00206B] uppercase tracking-widest">
+            <span className="text-xs font-semibold text-[#00206B] uppercase tracking-wider">
               Toleransi Sesi Pagi (Penjemputan)
             </span>
-            <div className="w-full h-[1px] bg-slate-200 mt-1 mb-3"></div>
+            <div className="w-full h-[1px] bg-slate-200 mt-1.5 mb-3"></div>
 
             <div className="grid grid-cols-3 gap-3">
               <TimePickerInput
@@ -264,10 +321,10 @@ const PenugasanModal = ({
 
           {/* 6. Jam Sesi Siang */}
           <div className="pt-2">
-            <span className="text-[10px] font-bold text-[#00206B] uppercase tracking-widest">
+            <span className="text-xs font-semibold text-[#00206B] uppercase tracking-wider">
               Toleransi Sesi Siang (Pengantaran)
             </span>
-            <div className="w-full h-[1px] bg-slate-200 mt-1 mb-3"></div>
+            <div className="w-full h-[1px] bg-slate-200 mt-1.5 mb-3"></div>
 
             <div className="grid grid-cols-3 gap-3">
               <TimePickerInput
@@ -292,14 +349,14 @@ const PenugasanModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase cursor-pointer transition-colors"
+              className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs uppercase tracking-wider cursor-pointer transition-colors"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-3 rounded-xl bg-[#00206B] hover:bg-[#00174E] text-white font-black text-xs uppercase tracking-wider shadow-md cursor-pointer disabled:opacity-50 transition-all active:scale-95"
+              className="px-6 py-2.5 rounded-xl bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-xs uppercase tracking-wider shadow-sm hover:shadow cursor-pointer disabled:opacity-50 transition-all active:scale-95"
             >
               {isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan Penugasan"}
             </button>

@@ -143,8 +143,8 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
       {/* Header Halaman (Identik dengan Beranda & Riwayat) */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-1">
         <div className="space-y-1">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 m-0 tracking-tight">Detail Riwayat Operasional</h2>
-          <p className="text-sm text-slate-400 font-normal">Catatan Perjalanan Operasional {formatDisplayDate(report.tanggal || report.date)}.</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] tracking-tight m-0">Detail Riwayat Operasional</h2>
+          <p className="text-xs text-slate-500 font-normal mt-1">Catatan Perjalanan Operasional {formatDisplayDate(report.tanggal || report.date)}.</p>
         </div>
       </div>
 
@@ -263,29 +263,29 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
                 <span className="text-xs font-semibold text-slate-400">{formatTime(activeSession.jam_berangkat_kantor)} WIB</span>
               </div>
 
-              {/* Rincian Penugasan Armada */}
+              {/* Rincian Penugasan Kendaraan */}
               <div className="mb-4">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Rincian Penugasan Armada</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Rincian Penugasan Kendaraan</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {(() => {
                     const penugasan = getPenugasanData(activeSession);
                     return (
                       <>
                         <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3 transition-colors hover:bg-slate-50">
-                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Trayek</span>
-                          <p className="text-xs font-bold text-[#00206B] mt-1 truncate m-0">{penugasan.trayek}</p>
+                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">Trayek</span>
+                          <p className="text-sm font-semibold text-[#00206B] mt-1 truncate m-0">{penugasan.trayek}</p>
                         </div>
                         <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3 transition-colors hover:bg-slate-50">
-                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Jenis Kendaraan</span>
-                          <p className="text-xs font-bold text-slate-800 mt-1 truncate m-0">{penugasan.jenis}</p>
+                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">Jenis Kendaraan</span>
+                          <p className="text-sm font-semibold text-slate-800 mt-1 truncate m-0">{penugasan.jenis}</p>
                         </div>
                         <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3 transition-colors hover:bg-slate-50">
-                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Nomor Polisi</span>
-                          <p className="text-xs font-bold text-slate-800 mt-1 truncate m-0">{penugasan.nopol}</p>
+                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">Nomor Polisi</span>
+                          <p className="text-sm font-semibold text-slate-800 mt-1 truncate m-0">{penugasan.nopol}</p>
                         </div>
                         <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3 transition-colors hover:bg-slate-50">
-                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Kapasitas</span>
-                          <p className="text-xs font-bold text-slate-800 mt-1 truncate m-0">{penugasan.kapasitas}</p>
+                          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider block">Kapasitas</span>
+                          <p className="text-sm font-semibold text-slate-800 mt-1 truncate m-0">{penugasan.kapasitas}</p>
                         </div>
                       </>
                     );
