@@ -1,11 +1,16 @@
 import React from "react";
 
+// ==============================================================================
+// KOMPONEN: TABEL PENUGASAN (DAFTAR PENUGASAN ARMADA, STATUS & JADWAL OPERASIONAL)
+// ==============================================================================
 const PenugasanTable = ({
   penugasanList = [],
+  drivers = [],
   isLoading = false,
   onAddPenugasan,
   onEditPenugasan,
   onDeletePenugasan,
+  onBatalkanPenugasan,
 }) => {
   return (
     <div className="space-y-4 text-left">
@@ -18,7 +23,7 @@ const PenugasanTable = ({
         <button
           type="button"
           onClick={onAddPenugasan}
-          className="bg-[#00206B] hover:bg-[#0A328C] text-white font-semibold py-2.5 px-4 rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-2 text-[11px] uppercase tracking-wider cursor-pointer"
+          className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md shadow-blue-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 text-[11px] uppercase tracking-wider cursor-pointer"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -53,6 +58,10 @@ const PenugasanTable = ({
                 {penugasanList.map((p, pIdx) => {
                   const driverName = p.users?.nama || p.users?.nama_lengkap || p.id_supir || "Driver";
                   const initials = driverName.slice(0, 2).toUpperCase();
+                  const matchedDriver = (drivers || []).find(
+                    (d) => (d.id || d.id_driver) === p.id_supir || (d.nama || d.nama_lengkap) === p.users?.nama
+                  );
+                  const driverPhoto = p?.foto_profil || p?.users?.foto_profil || matchedDriver?.foto_profil || null;
 
                   const pagiKeluar = p.jam_keluar_dishub_pagi || p.batas_keluar_pagi || "06:30";
                   const pagiKembali = p.jam_kembali_dishub_pagi || p.batas_kembali_pagi || "08:00";
@@ -60,20 +69,53 @@ const PenugasanTable = ({
                   const siangKeluar = p.jam_keluar_dishub_siang || p.batas_keluar_siang || "13:30";
                   const siangKembali = p.jam_kembali_dishub_siang || p.batas_kembali_siang || "14:30";
 
-                  const sessions = [
-                    {
-                      key: "pagi",
-                      name: "Pagi",
-                      jam: `${pagiKeluar} s/d ${pagiKembali}`,
-                      isPagi: true,
-                    },
-                    {
-                      key: "siang",
-                      name: "Siang",
-                      jam: `${siangKeluar} s/d ${siangKembali}`,
-                      isPagi: false,
-                    },
-                  ];
+                  const rawTipe = String(p.tipe_sesi || "SEMUA").replace(/'/g, "").trim().toUpperCase();
+                  let sessions = [];
+                  if (rawTipe === "PAGI") {
+                    sessions = [
+                      {
+                        key: "pagi",
+                        name: "Pagi",
+                        jam: `${pagiKeluar} s/d ${pagiKembali}`,
+                        isPagi: true,
+                      },
+                    ];
+                  } else if (rawTipe === "SIANG") {
+                    sessions = [
+                      {
+                        key: "siang",
+                        name: "Siang",
+                        jam: `${siangKeluar} s/d ${siangKembali}`,
+                        isPagi: false,
+                      },
+                    ];
+                  } else if (rawTipe === "BATAL") {
+                    sessions = [
+                      {
+                        key: "batal",
+                        name: "Dibatalkan",
+                        jam: "-",
+                        isPagi: false,
+                        isBatal: true,
+                      },
+                    ];
+                  } else {
+                    // "SEMUA"
+                    sessions = [
+                      {
+                        key: "pagi",
+                        name: "Pagi",
+                        jam: `${pagiKeluar} s/d ${pagiKembali}`,
+                        isPagi: true,
+                      },
+                      {
+                        key: "siang",
+                        name: "Siang",
+                        jam: `${siangKeluar} s/d ${siangKembali}`,
+                        isPagi: false,
+                      },
+                    ];
+                  }
 
                   return sessions.map((sesi, sIdx) => {
                     const isFirst = sIdx === 0;
@@ -107,7 +149,11 @@ const PenugasanTable = ({
                         <td className="py-3.5 px-2 text-center whitespace-nowrap">
                           <span
                             className={`inline-block px-2.5 py-1 rounded-md text-xs font-semibold border shadow-2xs ${
-                              sesi.isPagi ? "bg-amber-50 text-amber-800 border-amber-200/70" : "bg-blue-50 text-blue-800 border-blue-200/70"
+                              sesi.isBatal
+                                ? "bg-rose-50 text-rose-800 border-rose-200/70"
+                                : sesi.isPagi
+                                ? "bg-amber-50 text-amber-800 border-amber-200/70"
+                                : "bg-blue-50 text-blue-800 border-blue-200/70"
                             }`}
                           >
                             {sesi.name}
@@ -118,9 +164,9 @@ const PenugasanTable = ({
                         <td className="py-3.5 px-3 whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-2xl overflow-hidden bg-gradient-to-br from-sky-100/90 to-blue-50 border border-sky-200/70 text-[#00206B] flex items-center justify-center font-bold text-xs shadow-2xs flex-shrink-0">
-                              {p?.foto_profil || p?.users?.foto_profil ? (
+                              {driverPhoto ? (
                                 <img
-                                  src={p.foto_profil || p.users?.foto_profil}
+                                  src={driverPhoto}
                                   alt={driverName}
                                   loading="lazy"
                                   className="w-full h-full object-cover"
@@ -173,29 +219,65 @@ const PenugasanTable = ({
 
                         {/* 8. Aksi */}
                         <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                          {!sesi.isPagi ? (
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => onEditPenugasan(p)}
-                                className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/70 text-slate-600 hover:text-[#00206B] transition-all cursor-pointer active:scale-95 shadow-2xs"
-                                title="Edit Penugasan"
-                              >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 015.25 6H10" />
+                          {isLast ? (
+                            rawTipe === "BATAL" || p.status_operasional === "BATAL" ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 shadow-2xs">
+                                <svg className="w-3.5 h-3.5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                                 </svg>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => onDeletePenugasan(p)}
-                                className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200/70 text-rose-600 transition-all cursor-pointer active:scale-95 shadow-2xs"
-                                title="Hapus Penugasan"
-                              >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                Dibatalkan
+                              </span>
+                            ) : p.status_operasional === "SELESAI" ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 shadow-2xs">
+                                <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                                 </svg>
-                              </button>
-                            </div>
+                                Selesai
+                              </span>
+                            ) : p.status_operasional === "BERJALAN" ? (
+                              <div className="flex items-center justify-center gap-1.5">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 shadow-2xs">
+                                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                  Sedang Jalan
+                                </span>
+                                {onBatalkanPenugasan && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onBatalkanPenugasan(p)}
+                                    className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200/70 text-rose-600 font-semibold text-xs transition-all cursor-pointer active:scale-95 shadow-2xs flex items-center gap-1"
+                                    title="Batalkan Sisa Operasional Driver"
+                                  >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                    </svg>
+                                    Batalkan
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => onEditPenugasan(p)}
+                                  className="p-2 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-200/70 hover:border-blue-200 text-slate-600 hover:text-blue-600 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                  title="Edit Penugasan (Belum Dimulai)"
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                  </svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => onDeletePenugasan(p)}
+                                  className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200/70 text-rose-600 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                  title="Hapus Penugasan (Belum Dimulai)"
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                  </svg>
+                                </button>
+                              </div>
+                            )
                           ) : (
                             <span className="text-slate-300 text-xs">-</span>
                           )}

@@ -4,9 +4,10 @@ import UserDriverTable from "./manage-driver/components/UserDriverTable";
 import UserDriverModal from "./manage-driver/components/UserDriverModal";
 import PenugasanTable from "./manage-driver/components/PenugasanTable";
 import PenugasanModal from "./manage-driver/components/PenugasanModal";
+import DeleteDriverModal from "./manage-driver/components/DeleteDriverModal";
+import BatalOperasionalModal from "./manage-driver/components/BatalOperasionalModal";
 import DeleteConfirmModal from "../../components/common/DeleteConfirmModal";
-import { sanitizeTime } from "../../components/common/TimePickerInput";
-import { getTodayDateStr } from "../../utils/dateUtils";
+import { getTodayDateStr, sanitizeTime } from "../../utils/dateUtils";
 
 const initialPenugasanForm = {
   id_supir: "",
@@ -15,6 +16,7 @@ const initialPenugasanForm = {
   jenis_kendaraan: "",
   kapasitas_penumpang: "",
   trayek: "",
+  tipe_sesi: "SEMUA",
   jam_pengisian_pagi: "06:00",
   batas_keluar_pagi: "06:30",
   batas_kembali_pagi: "08:00",
@@ -23,6 +25,9 @@ const initialPenugasanForm = {
   batas_kembali_siang: "14:30",
 };
 
+// ==============================================================================
+// KOMPONEN: MANAGE DRIVER (MANAJEMEN AKUN PENGEMUDI & PENUGASAN HARIAN ARMADA)
+// ==============================================================================
 const ManageDriver = () => {
   const [activeTab, setActiveTab] = useState("penugasan");
   const [drivers, setDrivers] = useState([]);
@@ -30,7 +35,12 @@ const ManageDriver = () => {
   const [isLoadingDrivers, setIsLoadingDrivers] = useState(true);
   const [isLoadingPenugasan, setIsLoadingPenugasan] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [deleteCountdown, setDeleteCountdown] = useState(5);
+
+  // Ambil profil admin yang sedang login untuk auto-fill email verifikasi
+  const savedAdminUser = JSON.parse(localStorage.getItem("siclus_user") || "{}");
+  const currentAdminEmail = savedAdminUser?.email || "";
 
   // Toast State
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
@@ -53,10 +63,11 @@ const ManageDriver = () => {
   const [editPenugasanId, setEditPenugasanId] = useState(null);
   const [formPenugasan, setFormPenugasan] = useState(initialPenugasanForm);
   const [penugasanToDelete, setPenugasanToDelete] = useState(null);
+  const [penugasanToBatal, setPenugasanToBatal] = useState(null);
 
-  // Auto-cancel countdown untuk modal konfirmasi hapus
+  // Auto-cancel countdown khusus modal konfirmasi hapus penugasan
   useEffect(() => {
-    if (!penugasanToDelete && !driverToDelete) {
+    if (!penugasanToDelete) {
       setDeleteCountdown(5);
       return;
     }
@@ -67,7 +78,6 @@ const ManageDriver = () => {
         if (prev <= 1) {
           clearInterval(timer);
           setPenugasanToDelete(null);
-          setDriverToDelete(null);
           return 5;
         }
         return prev - 1;
@@ -75,7 +85,7 @@ const ManageDriver = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [penugasanToDelete, driverToDelete]);
+  }, [penugasanToDelete]);
 
   // =========================================================================
   // FETCH DATA
@@ -103,28 +113,65 @@ const ManageDriver = () => {
     }
   };
 
-  const fetchPenugasan = async () => {
-    setIsLoadingPenugasan(true);
+  const fetchPenugasan = async (silent = false) => {
+    if (!silent) setIsLoadingPenugasan(true);
     try {
       const res = await apiService.getSemuaPenugasan();
       const data = res?.data || (Array.isArray(res) ? res : []);
       setPenugasanList(data);
     } catch (err) {
       console.error("Gagal mengambil data penugasan:", err);
-      setPenugasanList([]);
+      if (!silent) setPenugasanList([]);
     } finally {
-      setIsLoadingPenugasan(false);
+      if (!silent) setIsLoadingPenugasan(false);
+    }
+  };
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([fetchDrivers(), fetchPenugasan(true)]);
+      showToast("Data penugasan dan driver berhasil diperbarui!", "success");
+    } catch {
+      showToast("Gagal memperbarui data.", "error");
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchDrivers();
     fetchPenugasan();
+
+    // 1. Auto-revalidate saat admin kembali memfokuskan tab browser
+    const handleRevalidate = () => {
+      if (document.visibilityState === "visible") {
+        fetchDrivers();
+        fetchPenugasan();
+      }
+    };
+
+    window.addEventListener("focus", handleRevalidate);
+    document.addEventListener("visibilitychange", handleRevalidate);
+
+    // 2. Interval background sync berkala
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchDrivers();
+        fetchPenugasan();
+      }
+    }, 45000);
+
+    return () => {
+      window.removeEventListener("focus", handleRevalidate);
+      document.removeEventListener("visibilitychange", handleRevalidate);
+      clearInterval(intervalId);
+    };
   }, []);
 
-  // =========================================================================
-  // HANDLERS: DRIVER
-  // =========================================================================
+  // ==============================================================================
+  // HANDLER: OPERASI DATA AKUN DRIVER (TAMBAH, EDIT, HAPUS)
+  // ==============================================================================
   const handleOpenAddDriver = () => {
     setIsEditDriverMode(false);
     setSelectedDriver(null);
@@ -149,6 +196,10 @@ const ManageDriver = () => {
     }
     if (!formData.email?.trim()) {
       showToast("Email akun driver wajib diisi!", "error");
+      return;
+    }
+    if (!formData.email.trim().toLowerCase().endsWith("@siclus.id")) {
+      showToast("Email driver wajib berakhiran @siclus.id (contoh: budi@siclus.id)!", "error");
       return;
     }
 
@@ -207,26 +258,38 @@ const ManageDriver = () => {
     }
   };
 
-  const handleConfirmDeleteDriver = async () => {
+  const handleConfirmDeleteDriver = async ({ email_admin, password_admin }) => {
     if (!driverToDelete) return;
     setIsSubmitting(true);
     try {
       const targetId = driverToDelete.id || driverToDelete._id || driverToDelete.id_supir;
-      await apiService.deleteUserAdmin(targetId);
+      await apiService.deleteUserAdmin(targetId, {
+        email_admin: email_admin.trim(),
+        password_admin: password_admin,
+      });
       showToast(`Akun driver ${driverToDelete.nama_lengkap || driverToDelete.nama || driverToDelete.name} berhasil dihapus!`);
       setDriverToDelete(null);
       fetchDrivers();
     } catch (err) {
-      console.error("Gagal hapus user:", err);
-      showToast("Gagal menghapus driver", "error");
+      console.error("Gagal hapus user driver:", err);
+      let errorMsg = "Gagal menghapus driver";
+      if (err.response?.data?.detail) {
+        if (typeof err.response.data.detail === "string") {
+          errorMsg = err.response.data.detail;
+        } else if (Array.isArray(err.response.data.detail)) {
+          errorMsg = err.response.data.detail.map((d) => d.msg).join(", ");
+        }
+      }
+      showToast(errorMsg, "error");
+      throw err; // Lempar error agar DeleteDriverModal menampilkan pesan error inline
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // =========================================================================
-  // HANDLERS: PENUGASAN
-  // =========================================================================
+  // ==============================================================================
+  // HANDLER: OPERASI DATA PENUGASAN KENDARAAN & JADWAL DISHUB
+  // ==============================================================================
   const handleOpenAddPenugasan = () => {
     setIsEditPenugasanMode(false);
     setEditPenugasanId(null);
@@ -239,6 +302,17 @@ const ManageDriver = () => {
   };
 
   const handleOpenEditPenugasan = (p) => {
+    if (p.status_operasional === "BERJALAN") {
+      showToast("Penugasan ini terkunci karena driver sedang aktif beroperasi di rute.", "error");
+      fetchPenugasan(true);
+      return;
+    }
+    if (p.status_operasional === "SELESAI") {
+      showToast("Penugasan ini terkunci karena operasional hari ini telah selesai.", "error");
+      fetchPenugasan(true);
+      return;
+    }
+
     setIsEditPenugasanMode(true);
     setEditPenugasanId(p.id);
     setFormPenugasan({
@@ -248,6 +322,7 @@ const ManageDriver = () => {
       jenis_kendaraan: p.jenis_kendaraan || "",
       kapasitas_penumpang: p.kapasitas_penumpang || "",
       trayek: p.trayek || "",
+      tipe_sesi: p.tipe_sesi || "SEMUA",
       jam_pengisian_pagi: p.jadwal_pagi?.jam_formulir_pengisian ? String(p.jadwal_pagi.jam_formulir_pengisian).slice(0, 5) : "06:00",
       batas_keluar_pagi: p.jadwal_pagi?.batas_keluar_dishub ? String(p.jadwal_pagi.batas_keluar_dishub).slice(0, 5) : "06:30",
       batas_kembali_pagi: p.jadwal_pagi?.batas_tiba_start ? String(p.jadwal_pagi.batas_tiba_start).slice(0, 5) : (p.jadwal_pagi?.batas_kembali_dishub ? String(p.jadwal_pagi.batas_kembali_dishub).slice(0, 5) : "08:00"),
@@ -283,6 +358,7 @@ const ManageDriver = () => {
         jenis_kendaraan: (formPenugasan.jenis_kendaraan || "").trim().toUpperCase(),
         kapasitas_penumpang: Math.min(60, Math.max(1, parseInt(formPenugasan.kapasitas_penumpang, 10) || 0)),
         trayek: (formPenugasan.trayek || "").trim().toUpperCase(),
+        tipe_sesi: formPenugasan.tipe_sesi || "SEMUA",
         jadwal_pagi: {
           jam_formulir_pengisian: sanitizeTime(formPenugasan.jam_pengisian_pagi),
           batas_keluar_dishub: sanitizeTime(formPenugasan.batas_keluar_pagi),
@@ -310,7 +386,21 @@ const ManageDriver = () => {
     } catch (err) {
       console.error("Gagal simpan penugasan & jadwal:", err);
       const errMsg = err.response?.data?.detail || err.message || "Gagal menyimpan penugasan";
-      showToast(typeof errMsg === "string" ? errMsg : "Gagal menyimpan penugasan", "error");
+      const errStr = typeof errMsg === "string" ? errMsg : JSON.stringify(errMsg);
+      showToast(errStr, "error");
+
+      // Auto-close modal dan refresh tabel jika penugasan terkunci karena driver sudah operasional
+      if (
+        errStr.toLowerCase().includes("telah mengirim") ||
+        errStr.toLowerCase().includes("telah memulai") ||
+        errStr.toLowerCase().includes("terkunci") ||
+        errStr.toLowerCase().includes("operasional")
+      ) {
+        setShowPenugasanModal(false);
+        setIsEditPenugasanMode(false);
+        setEditPenugasanId(null);
+        fetchPenugasan(true);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -327,7 +417,34 @@ const ManageDriver = () => {
     } catch (err) {
       console.error("Gagal menghapus penugasan:", err);
       const errMsg = err.response?.data?.detail || err.message || "Gagal menghapus penugasan";
-      showToast(typeof errMsg === "string" ? errMsg : "Gagal menghapus penugasan", "error");
+      const errStr = typeof errMsg === "string" ? errMsg : JSON.stringify(errMsg);
+      showToast(errStr, "error");
+
+      if (
+        errStr.toLowerCase().includes("telah memulai") ||
+        errStr.toLowerCase().includes("telah mengirim") ||
+        errStr.toLowerCase().includes("operasional")
+      ) {
+        setPenugasanToDelete(null);
+        fetchPenugasan(true);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmBatalkanPenugasan = async () => {
+    if (!penugasanToBatal) return;
+    setIsSubmitting(true);
+    try {
+      await apiService.batalkanOperasionalPenugasan(penugasanToBatal.id);
+      showToast("Sisa operasional berhasil dibatalkan. Driver kini berstatus Selesai & Siaga.");
+      setPenugasanToBatal(null);
+      fetchPenugasan();
+    } catch (err) {
+      console.error("Gagal membatalkan operasional:", err);
+      const errMsg = err.response?.data?.detail || err.message || "Gagal membatalkan operasional";
+      showToast(typeof errMsg === "string" ? errMsg : JSON.stringify(errMsg), "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -361,12 +478,33 @@ const ManageDriver = () => {
         </div>
       )}
 
-      {/* Page Header */}
-      <div>
-        <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] tracking-tight m-0">Kelola Driver</h2>
-        <p className="text-xs text-slate-500 font-normal mt-1">
-          Manajemen master akun driver dan konfigurasi toleransi waktu cut-off operasional
-        </p>
+      {/* Page Header & Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-1">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] tracking-tight m-0">Kelola Driver</h2>
+          <p className="text-xs text-slate-500 font-normal mt-1">
+            Manajemen akun driver dan konfigurasi toleransi waktu cut-off operasional
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleManualRefresh}
+          disabled={isLoadingDrivers || isLoadingPenugasan || isRefreshing}
+          className="self-start sm:self-auto flex items-center gap-2 bg-white border border-slate-200 hover:border-blue-300 hover:text-blue-600 text-slate-700 px-4 py-2 rounded-xl font-semibold text-xs shadow-xs hover:shadow-sm hover:shadow-blue-500/10 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+          title="Segarkan data penugasan dan akun driver"
+        >
+          <svg
+            className={`w-4 h-4 ${isRefreshing ? "animate-spin text-blue-600" : "text-blue-600"}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {isRefreshing ? "Memperbarui..." : "Segarkan Data"}
+        </button>
       </div>
 
       {/* Tabs Switcher */}
@@ -376,7 +514,7 @@ const ManageDriver = () => {
           onClick={() => setActiveTab("penugasan")}
           className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center gap-2 cursor-pointer ${
             activeTab === "penugasan"
-              ? "bg-[#00206B] text-white shadow-xs"
+              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
           }`}
         >
@@ -397,7 +535,7 @@ const ManageDriver = () => {
           onClick={() => setActiveTab("supir")}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer ${
             activeTab === "supir"
-              ? "bg-[#00206B] text-white shadow-xs"
+              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
               : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
           }`}
         >
@@ -418,7 +556,6 @@ const ManageDriver = () => {
       {activeTab === "supir" ? (
         <UserDriverTable
           drivers={drivers}
-          penugasanList={penugasanList}
           isLoading={isLoadingDrivers}
           onAddDriver={handleOpenAddDriver}
           onEditDriver={handleOpenEditDriver}
@@ -427,10 +564,12 @@ const ManageDriver = () => {
       ) : (
         <PenugasanTable
           penugasanList={penugasanList}
+          drivers={drivers}
           isLoading={isLoadingPenugasan}
           onAddPenugasan={handleOpenAddPenugasan}
           onEditPenugasan={handleOpenEditPenugasan}
           onDeletePenugasan={(penugasan) => setPenugasanToDelete(penugasan)}
+          onBatalkanPenugasan={(penugasan) => setPenugasanToBatal(penugasan)}
         />
       )}
 
@@ -457,25 +596,23 @@ const ManageDriver = () => {
         onSubmit={handleSubmitPenugasanForm}
       />
 
-      {/* Modal: Delete Driver Confirmation */}
-      <DeleteConfirmModal
+      {/* Modal: Delete Driver Confirmation dengan Pengamanan Kredensial Admin */}
+      <DeleteDriverModal
         isOpen={Boolean(driverToDelete)}
-        title="Hapus Akun Driver?"
-        description={
-          driverToDelete ? (
-            <>
-              Apakah Anda yakin ingin menghapus akun driver{" "}
-              <span className="font-bold text-rose-600">
-                {driverToDelete.nama_lengkap || driverToDelete.nama || driverToDelete.name}
-              </span>
-              ? Tindakan ini tidak dapat dibatalkan.
-            </>
-          ) : null
-        }
-        countdown={deleteCountdown}
+        driver={driverToDelete}
+        currentAdminEmail={currentAdminEmail}
         isSubmitting={isSubmitting}
         onClose={() => setDriverToDelete(null)}
         onConfirm={handleConfirmDeleteDriver}
+      />
+
+      {/* Modal: Batalkan Operasional Driver (Amankan SPJ & Laporan) */}
+      <BatalOperasionalModal
+        isOpen={Boolean(penugasanToBatal)}
+        penugasan={penugasanToBatal}
+        isSubmitting={isSubmitting}
+        onClose={() => setPenugasanToBatal(null)}
+        onConfirm={handleConfirmBatalkanPenugasan}
       />
 
       {/* Modal: Delete Penugasan Confirmation */}

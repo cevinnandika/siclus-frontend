@@ -3,6 +3,9 @@ import { apiService } from "../../services/api";
 import imageCompression from "browser-image-compression";
 import toast from 'react-hot-toast';
 
+// ==============================================================================
+// KOMPONEN: PROFIL DRIVER (MANAJEMEN INFORMASI AKUN & UNGGAH FOTO PROFIL)
+// ==============================================================================
 const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [fotoPreview, setFotoPreview] = useState(user?.foto_profil || null);

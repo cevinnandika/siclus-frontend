@@ -1,18 +1,9 @@
 import React from "react";
+import { sanitizeTime } from "../../utils/dateUtils";
 
-export const sanitizeTime = (t) => {
-  if (!t || typeof t !== "string") return "00:00";
-  const digits = t.replace(/\D/g, "");
-  if (digits.length === 0) return "00:00";
-  let hh = parseInt(digits.slice(0, 2) || "0", 10);
-  if (isNaN(hh) || hh < 0) hh = 0;
-  if (hh > 23) hh = 23;
-  let mm = digits.length > 2 ? parseInt(digits.slice(2, 4) || "0", 10) : 0;
-  if (isNaN(mm) || mm < 0) mm = 0;
-  if (mm > 59) mm = 59;
-  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-};
-
+// ==============================================================================
+// KOMPONEN: TIME PICKER INPUT (INPUT MASKING WAKTU 24 JAM STANDAR DISHUB)
+// ==============================================================================
 const TimePickerInput = ({
   label,
   value = "",

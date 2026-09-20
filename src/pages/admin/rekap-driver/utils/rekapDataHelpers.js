@@ -35,13 +35,9 @@ export const sortSessions = (sessions) => {
   });
 };
 
-export const calculateJarakTempuh = (cp1, cp4, cp3) => {
+export const calculateJarakTempuh = (cp1, cp3, legacyCp) => {
   const km1 = Number(cp1) || 0;
-  const km4 = Number(cp4) || 0;
-  const km3 = Number(cp3) || 0;
-  if (km4 > 0 && km1 > 0 && km4 >= km1) {
-    return `${km4 - km1} KM`;
-  }
+  const km3 = Number(cp3) || Number(legacyCp) || 0;
   if (km3 > 0 && km1 > 0 && km3 >= km1) {
     return `${km3 - km1} KM`;
   }
@@ -63,16 +59,23 @@ export const generateSessionRows = (driver, lap) => {
     const loadFactorNum = kapasitas > 0 ? Math.round((siswa / kapasitas) * 100) : 0;
     const loadFactor = `${loadFactorNum}%`;
 
+    // Normalisasi CP1 (Berangkat Dishub), CP2 (Tiba Rute), CP3 (Kembali Dishub)
     const cp1Raw = sesi.km_berangkat_kantor ?? sesi.cp1_km ?? (idx === 0 ? lap.odo_awal : null);
-    const cp3Raw = sesi.km_tiba_finish ?? sesi.cp3_km ?? (idx === 0 ? lap.odo_dishub : null);
-    const cp4Raw = sesi.km_tiba_kantor ?? sesi.cp4_km ?? (idx === 0 ? lap.odo_akhir : null);
+    const cp2Raw = sesi.km_tiba_finish ?? sesi.cp2_km ?? (idx === 0 ? lap.odo_dishub : null);
+    const cp3Raw = sesi.km_tiba_kantor ?? sesi.cp3_km ?? (idx === 0 ? lap.odo_akhir : null);
 
     const cp1Display = cp1Raw !== null && cp1Raw !== undefined && cp1Raw !== "" ? cp1Raw : "-";
+    const cp2Display = cp2Raw !== null && cp2Raw !== undefined && cp2Raw !== "" ? cp2Raw : "-";
     const cp3Display = cp3Raw !== null && cp3Raw !== undefined && cp3Raw !== "" ? cp3Raw : "-";
-    const cp4Display = cp4Raw !== null && cp4Raw !== undefined && cp4Raw !== "" ? cp4Raw : "-";
 
-    const jarakTempuh = calculateJarakTempuh(cp1Raw, cp4Raw, cp3Raw);
+    const jarakTempuh = calculateJarakTempuh(cp1Raw, cp3Raw);
     const status = resolveSessionStatus(sesi);
+
+    const jam1 = sesi.jam_berangkat_kantor || sesi.cp1_time || null;
+    const jam2 = sesi.jam_tiba_finish || sesi.cp2_time || null;
+    const jam3 = sesi.jam_tiba_kantor || sesi.cp3_time || null;
+    const foto1 = sesi.foto_awal || null;
+    const foto3 = sesi.foto_akhir || null;
 
     return {
       lapId: lap.id,
@@ -90,17 +93,16 @@ export const generateSessionRows = (driver, lap) => {
       loadFactor,
       loadFactorNum,
       cp1: cp1Display,
+      cp2: cp2Display,
       cp3: cp3Display,
-      cp4: cp4Display,
       jarakTempuh,
       status,
-      jamCP1: sesi.jam_berangkat_kantor || sesi.cp1_time || null,
-      jamCP2: sesi.jam_berangkat_start || sesi.cp2_time || null,
-      jamCP3: sesi.jam_tiba_finish || sesi.cp3_time || null,
-      jamCP4: sesi.jam_tiba_kantor || sesi.cp4_time || null,
-      kmCP2: sesi.km_berangkat_start || sesi.cp2_km || null,
-      fotoCP1: sesi.foto_awal || null,
-      fotoCP4: sesi.foto_akhir || null,
+      jamCP1: jam1,
+      jamCP2: jam2,
+      jamCP3: jam3,
+      fotoCP1: foto1,
+      fotoCP2: null,
+      fotoCP3: foto3,
     };
   });
 };
@@ -236,4 +238,20 @@ export const groupRekapData = (rawData = [], startDate = "", endDate = "", searc
   }
 
   return result;
+};
+
+export const formatCompactNumber = (num) => {
+  if (num === null || num === undefined) return "0";
+  const n = Number(num);
+  if (isNaN(n)) return "0";
+  if (n >= 1e12) {
+    return (n / 1e12).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " T";
+  }
+  if (n >= 1e9) {
+    return (n / 1e9).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " M";
+  }
+  if (n >= 1e6) {
+    return (n / 1e6).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Jt";
+  }
+  return n.toLocaleString("id-ID");
 };

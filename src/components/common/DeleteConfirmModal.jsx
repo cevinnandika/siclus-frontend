@@ -1,5 +1,8 @@
 import React from "react";
 
+// ==============================================================================
+// KOMPONEN: MODAL KONFIRMASI HAPUS (DILENGKAPI SAFETY COUNTDOWN AUTO-CANCEL)
+// ==============================================================================
 const DeleteConfirmModal = ({
   isOpen,
   title = "Hapus Data?",

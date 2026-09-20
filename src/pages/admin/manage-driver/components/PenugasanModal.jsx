@@ -1,16 +1,16 @@
 import React from "react";
 import TimePickerInput from "../../../../components/common/TimePickerInput";
-import {
-  INDO_MONTHS,
-  getTodayDateStr,
-  parseTanggal,
-  getMaxDays,
-} from "../../../../utils/dateUtils";
+import { INDO_MONTHS, getTodayDateStr, parseTanggal, getMaxDays } from "../../../../utils/dateUtils";
 
-// Format otomatis plat nomor sesuai standar TNKB Indonesia (1-2 huruf, 1-4 angka, 1-3 huruf)
+// ==============================================================================
+// HELPER: FORMATTER OTOMATIS PLAT NOMOR KENDARAAN (STANDAR TNKB INDONESIA)
+// ==============================================================================
 const formatPlatNomor = (input) => {
   if (!input) return "";
-  let raw = input.toUpperCase().replace(/[-_]/g, " ").replace(/[^A-Z0-9\s]/g, "");
+  let raw = input
+    .toUpperCase()
+    .replace(/[-_]/g, " ")
+    .replace(/[^A-Z0-9\s]/g, "");
   raw = raw.replace(/^[^A-Z]+/, "");
   if (!raw) return "";
 
@@ -45,7 +45,11 @@ const formatPlatNomor = (input) => {
   } else {
     p1 = tokens[0].replace(/[^A-Z]/g, "").slice(0, 2);
     p2 = tokens[1].replace(/[^0-9]/g, "").slice(0, 4);
-    p3 = tokens.slice(2).join("").replace(/[^A-Z]/g, "").slice(0, 3);
+    p3 = tokens
+      .slice(2)
+      .join("")
+      .replace(/[^A-Z]/g, "")
+      .slice(0, 3);
   }
 
   let res = p1;
@@ -63,16 +67,10 @@ const formatPlatNomor = (input) => {
   return res;
 };
 
-const PenugasanModal = ({
-  isOpen = false,
-  isEdit = false,
-  formPenugasan,
-  setFormPenugasan,
-  drivers = [],
-  isSubmitting = false,
-  onClose,
-  onSubmit,
-}) => {
+// ==============================================================================
+// KOMPONEN: MODAL PENUGASAN (FORM PENUGASAN ARMADA & JADWAL CUT-OFF OPERASIONAL)
+// ==============================================================================
+const PenugasanModal = ({ isOpen = false, isEdit = false, formPenugasan, setFormPenugasan, drivers = [], isSubmitting = false, onClose, onSubmit }) => {
   if (!isOpen) return null;
 
   const handleDatePartChange = (part, value) => {
@@ -109,6 +107,28 @@ const PenugasanModal = ({
     }
   };
 
+  const currentTipeSesi = formPenugasan.tipe_sesi || "SEMUA";
+  const pagiActive = currentTipeSesi === "PAGI" || currentTipeSesi === "SEMUA";
+  const siangActive = currentTipeSesi === "SIANG" || currentTipeSesi === "SEMUA";
+
+  const handleTogglePagi = () => {
+    if (pagiActive && !siangActive) return; // Minimal 1 sesi aktif
+    if (pagiActive) {
+      setFormPenugasan((prev) => ({ ...prev, tipe_sesi: "SIANG" }));
+    } else {
+      setFormPenugasan((prev) => ({ ...prev, tipe_sesi: siangActive ? "SEMUA" : "PAGI" }));
+    }
+  };
+
+  const handleToggleSiang = () => {
+    if (siangActive && !pagiActive) return; // Minimal 1 sesi aktif
+    if (siangActive) {
+      setFormPenugasan((prev) => ({ ...prev, tipe_sesi: "PAGI" }));
+    } else {
+      setFormPenugasan((prev) => ({ ...prev, tipe_sesi: pagiActive ? "SEMUA" : "SIANG" }));
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit(e);
@@ -121,18 +141,10 @@ const PenugasanModal = ({
       <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-100 space-y-5 my-8">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div>
-            <span className="text-xs font-semibold uppercase text-slate-400 tracking-wider block">
-              {isEdit ? "Perbarui Penugasan" : "Penugasan Kendaraan"}
-            </span>
-            <h3 className="text-xl font-bold text-[#00206B] m-0">
-              {isEdit ? "Edit Penugasan & Jadwal" : "Tugaskan Kendaraan Baru"}
-            </h3>
+            <span className="text-xs font-semibold uppercase text-slate-400 tracking-wider block">{isEdit ? "Perbarui Penugasan" : "Penugasan Kendaraan"}</span>
+            <h3 className="text-xl font-bold text-[#00206B] m-0">{isEdit ? "Edit Penugasan & Jadwal" : "Tugaskan Kendaraan Baru"}</h3>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-          >
+          <button type="button" onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors cursor-pointer">
             ✕
           </button>
         </div>
@@ -140,9 +152,7 @@ const PenugasanModal = ({
         <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
           {/* 1. Supir */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-              Pilih Supir
-            </label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Pilih Supir</label>
             <select
               required
               value={formPenugasan.id_supir}
@@ -161,9 +171,7 @@ const PenugasanModal = ({
           {/* 2. Tanggal */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-slate-600">
-                Tanggal
-              </label>
+              <label className="block text-xs font-semibold text-slate-600">Tanggal</label>
               <button
                 type="button"
                 onClick={() => setFormPenugasan((prev) => ({ ...prev, tanggal: getTodayDateStr() }))}
@@ -229,9 +237,7 @@ const PenugasanModal = ({
 
           {/* 3. Trayek */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-              Trayek Rute
-            </label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Trayek Rute</label>
             <input
               type="text"
               required
@@ -246,9 +252,7 @@ const PenugasanModal = ({
           {/* 4. Kendaraan & Kapasitas */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                Plat Nomor
-              </label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Plat Kendaraan</label>
               <input
                 type="text"
                 required
@@ -262,9 +266,7 @@ const PenugasanModal = ({
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                Nama Kendaraan
-              </label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Nama Kendaraan</label>
               <input
                 type="text"
                 required
@@ -276,9 +278,7 @@ const PenugasanModal = ({
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                Kapasitas
-              </label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Kapasitas Kendaraan</label>
               <input
                 type="number"
                 min="1"
@@ -295,54 +295,64 @@ const PenugasanModal = ({
 
           {/* 5. Jam Sesi Pagi */}
           <div className="pt-2">
-            <span className="text-xs font-semibold text-[#00206B] uppercase tracking-wider">
-              Toleransi Sesi Pagi (Penjemputan)
-            </span>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={pagiActive}
+                  onChange={handleTogglePagi}
+                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                />
+                <span className={`text-xs font-bold uppercase tracking-wider ${pagiActive ? "text-[#00206B]" : "text-slate-400 line-through"}`}>
+                  Sesi Pagi (Penjemputan)
+                </span>
+              </label>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${pagiActive ? "bg-amber-50 text-amber-700 border border-amber-200/60" : "bg-slate-100 text-slate-400"}`}>
+                {pagiActive ? "Aktif" : "Nonaktif"}
+              </span>
+            </div>
             <div className="w-full h-[1px] bg-slate-200 mt-1.5 mb-3"></div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <TimePickerInput
-                label="Buka Formulir"
-                value={formPenugasan.jam_pengisian_pagi}
-                onChange={(val) => setFormPenugasan((p) => ({ ...p, jam_pengisian_pagi: val }))}
-              />
-              <TimePickerInput
-                label="Batas Keluar"
-                value={formPenugasan.batas_keluar_pagi}
-                onChange={(val) => setFormPenugasan((p) => ({ ...p, batas_keluar_pagi: val }))}
-              />
-              <TimePickerInput
-                label="Batas Kembali"
-                value={formPenugasan.batas_kembali_pagi}
-                onChange={(val) => setFormPenugasan((p) => ({ ...p, batas_kembali_pagi: val }))}
-              />
-            </div>
+            {pagiActive ? (
+              <div className="grid grid-cols-3 gap-3 animate-[fadeIn_0.2s]">
+                <TimePickerInput label="Buka Formulir" value={formPenugasan.jam_pengisian_pagi} onChange={(val) => setFormPenugasan((p) => ({ ...p, jam_pengisian_pagi: val }))} />
+                <TimePickerInput label="Batas Keluar" value={formPenugasan.batas_keluar_pagi} onChange={(val) => setFormPenugasan((p) => ({ ...p, batas_keluar_pagi: val }))} />
+                <TimePickerInput label="Batas Kembali" value={formPenugasan.batas_kembali_pagi} onChange={(val) => setFormPenugasan((p) => ({ ...p, batas_kembali_pagi: val }))} />
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic py-1">Sesi Pagi dilewati (driver tidak bertugas pada rute penjemputan pagi).</p>
+            )}
           </div>
 
           {/* 6. Jam Sesi Siang */}
           <div className="pt-2">
-            <span className="text-xs font-semibold text-[#00206B] uppercase tracking-wider">
-              Toleransi Sesi Siang (Pengantaran)
-            </span>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={siangActive}
+                  onChange={handleToggleSiang}
+                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                />
+                <span className={`text-xs font-bold uppercase tracking-wider ${siangActive ? "text-[#00206B]" : "text-slate-400 line-through"}`}>
+                  Sesi Siang (Pengantaran)
+                </span>
+              </label>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${siangActive ? "bg-blue-50 text-blue-700 border border-blue-200/60" : "bg-slate-100 text-slate-400"}`}>
+                {siangActive ? "Aktif" : "Nonaktif"}
+              </span>
+            </div>
             <div className="w-full h-[1px] bg-slate-200 mt-1.5 mb-3"></div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <TimePickerInput
-                label="Buka Formulir"
-                value={formPenugasan.jam_pengisian_siang}
-                onChange={(val) => setFormPenugasan((p) => ({ ...p, jam_pengisian_siang: val }))}
-              />
-              <TimePickerInput
-                label="Batas Keluar"
-                value={formPenugasan.batas_keluar_siang}
-                onChange={(val) => setFormPenugasan((p) => ({ ...p, batas_keluar_siang: val }))}
-              />
-              <TimePickerInput
-                label="Batas Kembali"
-                value={formPenugasan.batas_kembali_siang}
-                onChange={(val) => setFormPenugasan((p) => ({ ...p, batas_kembali_siang: val }))}
-              />
-            </div>
+            {siangActive ? (
+              <div className="grid grid-cols-3 gap-3 animate-[fadeIn_0.2s]">
+                <TimePickerInput label="Buka Formulir" value={formPenugasan.jam_pengisian_siang} onChange={(val) => setFormPenugasan((p) => ({ ...p, jam_pengisian_siang: val }))} />
+                <TimePickerInput label="Batas Keluar" value={formPenugasan.batas_keluar_siang} onChange={(val) => setFormPenugasan((p) => ({ ...p, batas_keluar_siang: val }))} />
+                <TimePickerInput label="Batas Kembali" value={formPenugasan.batas_kembali_siang} onChange={(val) => setFormPenugasan((p) => ({ ...p, batas_kembali_siang: val }))} />
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic py-1">Sesi Siang dilewati (driver tidak bertugas pada rute kepulangan siang).</p>
+            )}
           </div>
 
           <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
@@ -356,7 +366,7 @@ const PenugasanModal = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-xl bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-xs uppercase tracking-wider shadow-sm hover:shadow cursor-pointer disabled:opacity-50 transition-all active:scale-95"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white font-semibold text-xs uppercase tracking-wider shadow-md shadow-blue-500/25 cursor-pointer disabled:opacity-50 transition-all active:scale-95"
             >
               {isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan Penugasan"}
             </button>

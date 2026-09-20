@@ -1,12 +1,10 @@
 import React, { useState } from "react";
 import { INDO_MONTHS, formatYMD, formatDateRangeDisplay } from "../../../../utils/dateUtils";
 
-const DateRangeFilter = ({
-  startDate = "",
-  endDate = "",
-  onApply,
-  onClear,
-}) => {
+// ==============================================================================
+// KOMPONEN: FILTER RENTANG TANGGAL (DATE RANGE PICKER & PRESETS KALENDER)
+// ==============================================================================
+const DateRangeFilter = ({ startDate = "", endDate = "", onApply, onClear }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [tempStart, setTempStart] = useState("");
@@ -111,18 +109,10 @@ const DateRangeFilter = ({
         type="button"
         onClick={toggleDatePicker}
         className={`h-10 px-3.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer shadow-2xs ${
-          startDate || endDate
-            ? "bg-blue-50/90 text-[#00206B] border-blue-200 hover:bg-blue-100/70"
-            : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-white hover:border-slate-300"
+          startDate || endDate ? "bg-blue-50/90 text-[#00206B] border-blue-200 hover:bg-blue-100/70" : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-white hover:border-slate-300"
         }`}
       >
-        <svg
-          className={`w-4 h-4 ${startDate || endDate ? "text-[#00206B]" : "text-slate-400"}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
+        <svg className={`w-4 h-4 ${startDate || endDate ? "text-[#00206B]" : "text-slate-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -130,13 +120,7 @@ const DateRangeFilter = ({
           />
         </svg>
         <span>{formatDateRangeDisplay(startDate, endDate)}</span>
-        <svg
-          className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showDatePicker ? "rotate-180" : ""}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2.5}
-        >
+        <svg className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showDatePicker ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
         </svg>
       </button>
@@ -176,9 +160,7 @@ const DateRangeFilter = ({
                     type="button"
                     onClick={() => handleApplyPreset(p.key)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                      isSelected
-                        ? "bg-[#00206B] text-white shadow-2xs"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900"
+                      isSelected ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-2xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900"
                     }`}
                   >
                     {p.label}
@@ -215,12 +197,7 @@ const DateRangeFilter = ({
             {/* Day of Week Headers */}
             <div className="grid grid-cols-7 gap-1 text-center mb-1">
               {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map((d, i) => (
-                <span
-                  key={d}
-                  className={`text-[10px] font-bold uppercase tracking-wider ${
-                    i === 0 ? "text-rose-400" : "text-slate-400"
-                  }`}
-                >
+                <span key={d} className={`text-[10px] font-bold uppercase tracking-wider ${i === 0 ? "text-rose-400" : "text-slate-400"}`}>
                   {d}
                 </span>
               ))}
@@ -233,9 +210,7 @@ const DateRangeFilter = ({
               ))}
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const dayNum = i + 1;
-                const currentDayStr = `${calendarDate.getFullYear()}-${String(
-                  calendarDate.getMonth() + 1
-                ).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+                const currentDayStr = `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
                 const isStart = tempStart === currentDayStr;
                 const isEnd = tempEnd === currentDayStr;
                 const isInRange = tempStart && tempEnd && currentDayStr > tempStart && currentDayStr < tempEnd;
@@ -248,16 +223,16 @@ const DateRangeFilter = ({
                     onClick={() => handleSelectDay(dayNum)}
                     className={`h-8 w-full text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${
                       isStart && isEnd
-                        ? "bg-[#00206B] text-white rounded-lg font-bold shadow-2xs"
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-bold shadow-2xs"
                         : isStart
-                        ? "bg-[#00206B] text-white rounded-l-lg font-bold shadow-2xs"
-                        : isEnd
-                        ? "bg-[#00206B] text-white rounded-r-lg font-bold shadow-2xs"
-                        : isInRange
-                        ? "bg-blue-50 text-[#00206B] font-semibold rounded-none"
-                        : isToday
-                        ? "border border-blue-400 text-blue-600 rounded-lg hover:bg-blue-50 font-bold"
-                        : "text-slate-700 hover:bg-slate-100 rounded-lg"
+                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-l-lg font-bold shadow-2xs"
+                          : isEnd
+                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-r-lg font-bold shadow-2xs"
+                            : isInRange
+                              ? "bg-blue-50 text-blue-700 font-semibold rounded-none"
+                              : isToday
+                                ? "border border-blue-400 text-blue-600 rounded-lg hover:bg-blue-50 font-bold"
+                                : "text-slate-700 hover:bg-slate-100 rounded-lg"
                     }`}
                   >
                     {dayNum}
@@ -269,11 +244,7 @@ const DateRangeFilter = ({
             {/* Range Summary & Bottom Actions */}
             <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between gap-2">
               <div className="text-[11px] font-semibold text-slate-500 truncate max-w-[130px]">
-                {tempStart ? (
-                  formatDateRangeDisplay(tempStart, tempEnd || tempStart)
-                ) : (
-                  <span className="text-slate-400 italic">Pilih tanggal</span>
-                )}
+                {tempStart ? formatDateRangeDisplay(tempStart, tempEnd || tempStart) : <span className="text-slate-400 italic">Pilih tanggal</span>}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 {(tempStart || tempEnd || startDate || endDate) && (
@@ -291,7 +262,7 @@ const DateRangeFilter = ({
                   onClick={handleApplyCustomDate}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-2xs ${
                     tempStart
-                      ? "bg-[#00206B] hover:bg-[#001850] text-white cursor-pointer active:scale-95"
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white cursor-pointer active:scale-95 shadow-blue-500/20"
                       : "bg-slate-100 text-slate-400 cursor-not-allowed"
                   }`}
                 >

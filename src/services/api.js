@@ -1,5 +1,8 @@
 import axios from "axios";
 
+// ==============================================================================
+// KONFIGURASI INSTANCE API CLIENT (AXIOS)
+// ==============================================================================
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://siclus-backend.vercel.app/api";
 
 const apiClient = axios.create({
@@ -9,7 +12,9 @@ const apiClient = axios.create({
   },
 });
 
-// Interceptor Token Masuk
+// ==============================================================================
+// INTERCEPTOR: PENYEMATAN TOKEN JWT PADA REQUEST
+// ==============================================================================
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("siclus_token");
@@ -21,7 +26,9 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Interceptor Token Keluar
+// ==============================================================================
+// INTERCEPTOR: PENANGANAN RESPON & AUTO-LOGOUT 401
+// ==============================================================================
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -34,23 +41,25 @@ apiClient.interceptors.response.use(
   },
 );
 
+// ==============================================================================
+// SERVICE: API INTEGRASI SICLUS
+// ==============================================================================
 export const apiService = {
-  // ==========================================
-  // AUTHENTIKASI & USER
-  // ==========================================
+  // ==============================================================================
+  // MODUL: AUTENTIKASI & PENGGUNA
+  // ==============================================================================
   login: async (email, password) => {
     const payload = {
       email: email,
-      password: password
+      password: password,
     };
-
     const response = await apiClient.post("/auth/login", payload);
     return response.data;
   },
 
-  // ==========================================
-  // ZONA DRIVER
-  // ==========================================
+  // ==============================================================================
+  // MODUL: PENGEMUDI (DRIVER) - PROFIL, PENUGASAN & RIWAYAT
+  // ==============================================================================
   getPenugasanHariIni: async () => {
     const response = await apiClient.get("/driver/penugasan/hari-ini");
     return response.data;
@@ -76,7 +85,9 @@ export const apiService = {
     return response.data;
   },
 
-  // -- Laporan Operasional --
+  // ==============================================================================
+  // MODUL: PENGEMUDI (DRIVER) - ALUR LAPORAN OPERASIONAL & CHECKPOINTS
+  // ==============================================================================
   getLaporanHariIni: async (params) => {
     const response = await apiClient.get("/laporan/hari-ini", { params });
     return response.data;
@@ -97,27 +108,22 @@ export const apiService = {
     });
     return response.data;
   },
-
-  // -- Checkpoints --
-  // CP 1: Keluar Garasi
   submitCP1: async (laporanId, data) => {
     const response = await apiClient.post(`/laporan/sesi/cp1?laporan_id=${laporanId}`, data);
     return response.data;
   },
-  // CP 2: Tiba di Titik Finish (Di Backend Menggunakan Endpoint CP3)
   submitCP2: async (sesiId, data) => {
+    const response = await apiClient.put(`/laporan/sesi/cp2/${sesiId}`, data);
+    return response.data;
+  },
+  submitCP3: async (sesiId, data) => {
     const response = await apiClient.put(`/laporan/sesi/cp3/${sesiId}`, data);
     return response.data;
   },
-  // CP 3: Kembali ke Garasi (Di Backend Menggunakan Endpoint CP4)
-  submitCP3: async (sesiId, data) => {
-    const response = await apiClient.put(`/laporan/sesi/cp4/${sesiId}`, data);
-    return response.data;
-  },
 
-  // ==========================================
-  // ZONA ADMIN
-  // ==========================================
+  // ==============================================================================
+  // MODUL: ADMINISTRATOR - PENUGASAN & JADWAL OPERASIONAL
+  // ==============================================================================
   createPenugasanHarian: async (data) => {
     const response = await apiClient.post("/admin/penugasan", data);
     return response.data;
@@ -130,20 +136,30 @@ export const apiService = {
     const response = await apiClient.delete(`/admin/penugasan/${id}`);
     return response.data;
   },
+  batalkanOperasionalPenugasan: async (id) => {
+    const response = await apiClient.post(`/admin/penugasan/${id}/batal`);
+    return response.data;
+  },
   getSemuaPenugasan: async () => {
     const response = await apiClient.get("/admin/penugasan");
     return response.data;
   },
+
+  // ==============================================================================
+  // MODUL: ADMINISTRATOR - DASHBOARD, REKAPITULASI & MANAJEMEN USER
+  // ==============================================================================
   getDashboardAdmin: async () => (await apiClient.get("/admin/dashboard")).data,
   getRekapAdmin: async () => (await apiClient.get("/admin/rekap")).data,
   getOperasionalHariIniAdmin: async () => (await apiClient.get("/admin/operasional-hari-ini")).data,
   getUsersAdmin: async () => (await apiClient.get("/admin/users")).data,
   createUserAdmin: async (data) => (await apiClient.post("/admin/users", data)).data,
   updateUserAdmin: async (id, data) => (await apiClient.put(`/admin/users/${id}`, data)).data,
-  deleteUserAdmin: async (id) => (await apiClient.delete(`/admin/users/${id}`)).data,
-  getJadwalAdmin: async () => (await apiClient.get("/admin/jadwal")).data,
-  createJadwalAdmin: async (data) => (await apiClient.post("/admin/jadwal", data)).data,
-  updateJadwalAdmin: async (id, data) => (await apiClient.put(`/admin/jadwal/${id}`, data)).data,
+  deleteUserAdmin: async (id, payload) => {
+    if (payload && payload.password_admin) {
+      return (await apiClient.post(`/admin/users/${id}/hapus`, payload)).data;
+    }
+    return (await apiClient.delete(`/admin/users/${id}`)).data;
+  },
   updateFotoProfilAdmin: async (fileBlob) => {
     const formData = new FormData();
     formData.append("foto", fileBlob, "profile_admin.jpg");

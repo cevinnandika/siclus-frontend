@@ -1,10 +1,29 @@
 import React, { useState, useEffect } from "react";
 import { apiService } from "../../services/api";
 
+// ==============================================================================
+// KOMPONEN: DETAIL LAPORAN (RINCIAN TIMELINE 3 CHECKPOINT & INSPEKSI FISIK)
+// ==============================================================================
 const DetailLaporan = ({ report, user: propUser, onBack }) => {
   const [profilePhoto, setProfilePhoto] = useState(propUser?.foto_profil || null);
-  const [activeTab, setActiveTab] = useState("pagi");
+  const [activeTab, setActiveTab] = useState(() => {
+    const sesiPagi = report?.trip_sessions?.find((s) => s.tipe_sesi?.toUpperCase() === "PAGI");
+    const sesiSiang = report?.trip_sessions?.find((s) => s.tipe_sesi?.toUpperCase() === "SIANG");
+    return !sesiPagi && sesiSiang ? "siang" : "pagi";
+  });
   const [selectedPhotoModal, setSelectedPhotoModal] = useState(null);
+
+  useEffect(() => {
+    if (report) {
+      const hasPagi = report.trip_sessions?.some((s) => s.tipe_sesi?.toUpperCase() === "PAGI");
+      const hasSiang = report.trip_sessions?.some((s) => s.tipe_sesi?.toUpperCase() === "SIANG");
+      if (!hasPagi && hasSiang) {
+        setActiveTab("siang");
+      } else if (hasPagi) {
+        setActiveTab("pagi");
+      }
+    }
+  }, [report]);
 
   useEffect(() => {
     if (propUser?.foto_profil) {
@@ -18,7 +37,7 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
             setProfilePhoto(parsed.foto_profil);
             return;
           }
-        } catch (e) {}
+        } catch {}
       }
       apiService
         .getProfilDriver()
@@ -176,73 +195,77 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
 
       {/* TAB PILIHAN SESI: BERANGKAT (PAGI) vs PULANG (SIANG) */}
       <div className="flex items-center gap-2.5 border-b border-slate-200/80 pb-3">
-        <button
-          type="button"
-          onClick={() => setActiveTab("pagi")}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === "pagi"
-              ? "bg-[#00206B] text-white shadow-xs"
-              : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50"
-          }`}
-        >
-          <span>Sesi Pagi</span>
-          {sesiPagi && String(sesiPagi.status_waktu || "").toUpperCase() === "TEPAT WAKTU" && (
-            <span
-              className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
-                activeTab === "pagi"
-                  ? "bg-white/20 text-white"
-                  : "bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              Tepat Waktu
-            </span>
-          )}
-          {sesiPagi && String(sesiPagi.status_waktu || "").toUpperCase() === "TERLAMBAT" && (
-            <span
-              className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
-                activeTab === "pagi"
-                  ? "bg-white/20 text-white"
-                  : "bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              Terlambat
-            </span>
-          )}
-        </button>
+        {Boolean(sesiPagi || !sesiSiang) && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("pagi")}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === "pagi"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
+                : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50"
+            }`}
+          >
+            <span>Sesi Pagi</span>
+            {sesiPagi && String(sesiPagi.status_waktu || "").toUpperCase() === "TEPAT WAKTU" && (
+              <span
+                className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
+                  activeTab === "pagi"
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-100 text-slate-600 border border-slate-200"
+                }`}
+              >
+                Tepat Waktu
+              </span>
+            )}
+            {sesiPagi && String(sesiPagi.status_waktu || "").toUpperCase() === "TERLAMBAT" && (
+              <span
+                className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
+                  activeTab === "pagi"
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-100 text-slate-600 border border-slate-200"
+                }`}
+              >
+                Terlambat
+              </span>
+            )}
+          </button>
+        )}
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("siang")}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === "siang"
-              ? "bg-[#00206B] text-white shadow-xs"
-              : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50"
-          }`}
-        >
-          <span>Sesi Siang</span>
-          {sesiSiang && String(sesiSiang.status_waktu || "").toUpperCase() === "TEPAT WAKTU" && (
-            <span
-              className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
-                activeTab === "siang"
-                  ? "bg-white/20 text-white"
-                  : "bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              Tepat Waktu
-            </span>
-          )}
-          {sesiSiang && String(sesiSiang.status_waktu || "").toUpperCase() === "TERLAMBAT" && (
-            <span
-              className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
-                activeTab === "siang"
-                  ? "bg-white/20 text-white"
-                  : "bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              Terlambat
-            </span>
-          )}
-        </button>
+        {Boolean(sesiSiang || !sesiPagi) && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("siang")}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === "siang"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
+                : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50"
+            }`}
+          >
+            <span>Sesi Siang</span>
+            {sesiSiang && String(sesiSiang.status_waktu || "").toUpperCase() === "TEPAT WAKTU" && (
+              <span
+                className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
+                  activeTab === "siang"
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-100 text-slate-600 border border-slate-200"
+                }`}
+              >
+                Tepat Waktu
+              </span>
+            )}
+            {sesiSiang && String(sesiSiang.status_waktu || "").toUpperCase() === "TERLAMBAT" && (
+              <span
+                className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
+                  activeTab === "siang"
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-100 text-slate-600 border border-slate-200"
+                }`}
+              >
+                Terlambat
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* KONTEN SESI AKTIF (PAGI ATAU SIANG) */}

@@ -2,7 +2,22 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiService } from "../../services/api";
 
-const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStartInspection, currentShift, laporanHariIni, laporan }) => {
+// ==============================================================================
+// KOMPONEN: BERANDA DRIVER (DASHBOARD UTAMA OPERASIONAL HARIAN PENGEMUDI)
+// ==============================================================================
+const Beranda = ({
+  activeUser,
+  tripStatus = "belum_mulai",
+  currentShift = "pagi",
+  _isLaporanLocked = false,
+  _shiftRules = null,
+  _onLogout,
+  onStartInspection,
+  _onStartSiang,
+  onQuickAction,
+  laporanHariIni = null,
+  laporan = null,
+}) => {
   const navigate = useNavigate();
   const currentDate = new Date().toLocaleDateString("id-ID", {
     weekday: "long",
@@ -17,50 +32,71 @@ const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStar
   const [laporanDriver, setLaporanDriver] = useState(null);
   const [isStartingReport, setIsStartingReport] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  // Sinkronisasi data penugasan, jadwal, dan laporan operasional
+  // ==============================================================================
+  // FUNGSI: SINKRONISASI ATOMIC DATA PENUGASAN, JADWAL & STATUS LAPORAN
+  // ==============================================================================
   const fetchAllData = async () => {
     setIsRefreshing(true);
     try {
-      // 1. Ambil Penugasan Aktif (otomatis memilih penugasan yang belum tuntas)
+      // 1. Ambil Penugasan Aktif terlebih dahulu
       const resPenugasan = await apiService.getPenugasanHariIni();
       const currentTask = resPenugasan?.data || null;
-      setPenugasan(currentTask);
 
+      // 2. Ambil Jadwal dan Laporan secara paralel tanpa jeda re-render
+      const [resJadwal, resLaporan] = await Promise.all([
+        apiService.getJadwalDriver().catch((err) => {
+          console.warn("Jadwal driver belum tersedia:", err);
+          return [];
+        }),
+        currentTask
+          ? apiService
+              .getLaporanHariIni({
+                trayek: currentTask.trayek,
+                bus: currentTask.nopol_kendaraan,
+              })
+              .catch((err) => {
+                console.warn("Laporan hari ini belum tersedia:", err);
+                return null;
+              })
+          : Promise.resolve(null),
+      ]);
+
+      // Parsing Jadwal
+      const rawList = Array.isArray(resJadwal) ? resJadwal : Array.isArray(resJadwal?.data) ? resJadwal.data : [];
+      let pagi = null;
+      let siang = null;
+      if (rawList.length > 0) {
+        pagi = rawList.find((j) => (j?.tipe_sesi || "").toUpperCase() === "PAGI") || null;
+        siang = rawList.find((j) => (j?.tipe_sesi || "").toUpperCase() === "SIANG") || null;
+      }
+
+      // Parsing Laporan
+      const lapData = resLaporan?.data || null;
+
+      // Simpan referensi ID ke localStorage
       if (currentTask?.id) {
         localStorage.setItem("siclus_active_penugasan_id", String(currentTask.id));
-      }
-
-      // 2. Ambil Jadwal Operasional untuk Penugasan Aktif
-      const resJadwal = await apiService.getJadwalDriver();
-      const rawList = Array.isArray(resJadwal) ? resJadwal : Array.isArray(resJadwal?.data) ? resJadwal.data : [];
-      if (rawList.length > 0) {
-        const pagi = rawList.find((j) => (j?.tipe_sesi || "").toUpperCase() === "PAGI") || null;
-        const siang = rawList.find((j) => (j?.tipe_sesi || "").toUpperCase() === "SIANG") || null;
-        setJadwalSesi({ pagi, siang });
-      }
-
-      // 3. Ambil Laporan untuk Penugasan Aktif
-      if (currentTask) {
-        const resLaporan = await apiService.getLaporanHariIni({
-          trayek: currentTask.trayek,
-          bus: currentTask.nopol_kendaraan,
-        });
-        const lapData = resLaporan?.data || null;
-        setLaporanDriver(lapData);
-        if (lapData?.id) {
-          localStorage.setItem("siclus_active_laporan_id", String(lapData.id));
-        } else {
-          localStorage.removeItem("siclus_active_laporan_id");
-        }
       } else {
-        setLaporanDriver(null);
+        localStorage.removeItem("siclus_active_penugasan_id");
+      }
+
+      if (lapData?.id) {
+        localStorage.setItem("siclus_active_laporan_id", String(lapData.id));
+      } else {
         localStorage.removeItem("siclus_active_laporan_id");
       }
+
+      // BATCH UPDATE STATE: Semua state diperbarui bersamaan dalam 1 render cycle
+      setPenugasan(currentTask);
+      setJadwalSesi({ pagi, siang });
+      setLaporanDriver(lapData);
     } catch (error) {
       console.error("Gagal sinkronisasi data beranda driver:", error);
     } finally {
       setIsRefreshing(false);
+      setIsInitialLoading(false);
     }
   };
 
@@ -91,7 +127,7 @@ const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStar
   const jamBukaSiang = formSiang !== "-" ? formSiang : "13:00";
   const jamSekarangHM = jamTeks.slice(0, 5);
   const isSiangTime = jamSekarangHM >= jamBukaSiang;
-  
+
   const jamBukaPagi = formPagi !== "-" ? formPagi : "06:00";
   const isPagiTime = jamSekarangHM >= jamBukaPagi;
 
@@ -105,30 +141,63 @@ const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStar
   const displayKapasitas = penugasan?.kapasitas_penumpang ? `${penugasan.kapasitas_penumpang} Penumpang` : "-";
 
   // Validasi apakah sudah ditugaskan admin
-  const hasPenugasan = Boolean(
-    penugasan && penugasan.trayek && penugasan.trayek !== "-" && penugasan.trayek !== "Belum Ditentukan"
-  );
+  const hasPenugasan = Boolean(penugasan && penugasan.trayek && penugasan.trayek !== "-" && penugasan.trayek !== "Belum Ditentukan");
 
   // Proteksi data Laporan & Trip Sessions
-  const safeReport = laporanHariIni ?? laporanDriver ?? laporan ?? null;
+  const safeReport = laporanDriver || laporanHariIni || laporan || null;
   const tripSessions = Array.isArray(safeReport?.trip_sessions) ? safeReport.trip_sessions : [];
 
-  const hasFinishedPagi = tripSessions.some((s) => (s?.tipe_sesi || "").toLowerCase() === "pagi" || s?.tipe_sesi === 1);
-  const hasFinishedSiang = tripSessions.some((s) => (s?.tipe_sesi || "").toLowerCase() === "siang" || s?.tipe_sesi === 2);
+  const pagiSession = tripSessions.find((s) => (s?.tipe_sesi || "").toLowerCase() === "pagi" || s?.tipe_sesi === 1);
+  const siangSession = tripSessions.find((s) => (s?.tipe_sesi || "").toLowerCase() === "siang" || s?.tipe_sesi === 2);
+
+  const taskTipeSesi = String(penugasan?.tipe_sesi || "SEMUA").replace(/'/g, "").trim().toUpperCase();
+
+  const hasFinishedPagi = Boolean(pagiSession && ((pagiSession.km_tiba_kantor !== null && pagiSession.km_tiba_kantor !== undefined) || pagiSession.jam_tiba_kantor));
+  const hasFinishedSiang = Boolean(siangSession && ((siangSession.km_tiba_kantor !== null && siangSession.km_tiba_kantor !== undefined) || siangSession.jam_tiba_kantor));
+
+  // Status jika ada sesi yang sedang berjalan di jalan (belum tuntas CP3)
+  const isPagiInProgress = Boolean(pagiSession && !hasFinishedPagi);
+  const isSiangInProgress = Boolean(siangSession && !hasFinishedSiang);
+  const isAnySessionInProgress = isPagiInProgress || isSiangInProgress;
+
+  // Operasional SELESAI jika sesi sesuai tipe penugasan sudah tuntas
+  let isShiftSelesai = false;
+  if (taskTipeSesi === "BATAL") {
+    isShiftSelesai = true;
+  } else if (taskTipeSesi === "PAGI") {
+    isShiftSelesai = hasFinishedPagi;
+  } else if (taskTipeSesi === "SIANG") {
+    isShiftSelesai = hasFinishedSiang;
+  } else {
+    // "SEMUA"
+    isShiftSelesai = hasFinishedPagi && hasFinishedSiang;
+  }
 
   // Penentuan shift operasional aktif
-  // Jika sudah waktunya siang, langsung anggap shift efektif "siang" walaupun pagi bolong.
-  const effectiveShift = hasFinishedSiang ? "selesai" : (isSiangTime ? "siang" : (hasFinishedPagi ? "siang" : currentShift || "pagi"));
-
+  let effectiveShift = "pagi";
+  if (isShiftSelesai) {
+    effectiveShift = "selesai";
+  } else if (taskTipeSesi === "SIANG") {
+    effectiveShift = "siang";
+  } else if (taskTipeSesi === "PAGI") {
+    effectiveShift = "pagi";
+  } else {
+    effectiveShift = hasFinishedPagi || isSiangTime ? "siang" : (currentShift || "pagi");
+  }
   const isShiftSiang = effectiveShift === "siang";
-  const isShiftSelesai = effectiveShift === "selesai";
 
-  // Kondisi Jeda Operasional: Sesi Pagi selesai, Sesi Siang belum, dan belum masuk jam siang
-  const isJedaOperasional = hasFinishedPagi && !hasFinishedSiang && !isSiangTime;
-  const isJedaPagi = !hasFinishedPagi && !isPagiTime;
+  // Kondisi Jeda Operasional
+  const isJedaOperasional = taskTipeSesi === "SEMUA" && hasFinishedPagi && !hasFinishedSiang && !isSiangTime && !isSiangInProgress;
+  const isJedaPagi = taskTipeSesi !== "SIANG" && !hasFinishedPagi && !isPagiTime && !isPagiInProgress;
+  const isJedaSiang = taskTipeSesi === "SIANG" && !hasFinishedSiang && !isSiangTime && !isSiangInProgress;
 
   // Logika Kesiapan Memulai Laporan:
-  const canStartReport = isShiftSiang ? hasPenugasan && isSiangTime && !hasFinishedSiang : hasPenugasan && isPagiTime && !hasFinishedPagi;
+  const canStartReport =
+    !isShiftSelesai &&
+    !isAnySessionInProgress &&
+    (isShiftSiang
+      ? hasPenugasan && isSiangTime && !hasFinishedSiang
+      : hasPenugasan && isPagiTime && !hasFinishedPagi);
 
   // Handler Inisiasi Laporan Harian (Simpan ke localStorage)
   const handleMulaiLaporan = async () => {
@@ -169,11 +238,10 @@ const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStar
       }
     } catch (error) {
       console.error("Gagal memulai laporan:", error);
-      if (typeof onQuickAction === "function") {
-        onQuickAction("laporan");
-      } else {
-        navigate("/driver/laporan");
-      }
+      const errMsg = error?.response?.data?.detail || error?.data?.detail || error?.message || "Tidak dapat memulai laporan.";
+      alert(errMsg);
+      // Sinkronkan ulang data agar status langsung ter-update di layar
+      fetchAllData();
     } finally {
       setIsStartingReport(false);
     }
@@ -196,9 +264,9 @@ const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStar
   // Komponen Batas Operasional (Sidebar Kanan) - Minimalis & Elegan
   const renderCardJadwal = () => {
     const isSiang = isShiftSiang || isJedaOperasional;
-    const formWaktu = isShiftSelesai ? "-" : (isSiang ? formSiang : formPagi);
-    const keluarWaktu = isShiftSelesai ? "-" : (isSiang ? batasSiang : batasPagi);
-    const kembaliWaktu = isShiftSelesai ? "-" : (isSiang ? kembaliSiang : kembaliPagi);
+    const formWaktu = isShiftSelesai ? "-" : isSiang ? formSiang : formPagi;
+    const keluarWaktu = isShiftSelesai ? "-" : isSiang ? batasSiang : batasPagi;
+    const kembaliWaktu = isShiftSelesai ? "-" : isSiang ? kembaliSiang : kembaliPagi;
 
     return (
       <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 ease-out flex-1 flex flex-col justify-between">
@@ -207,9 +275,7 @@ const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStar
           <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4">
             <div>
               <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Batas Operasional</span>
-              <span className="text-xs font-bold text-[#00206B] mt-0.5 block">
-                {isShiftSelesai ? "Operasional Selesai" : isSiang ? "Sesi Siang" : "Sesi Pagi"}
-              </span>
+              <span className="text-xs font-bold text-[#00206B] mt-0.5 block">{isShiftSelesai ? "Operasional Selesai" : isSiang ? "Sesi Siang" : "Sesi Pagi"}</span>
             </div>
             <span className="text-xs font-medium text-slate-500 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg tabular-nums">{jamTeks.slice(0, 5)} WIB</span>
           </div>
@@ -218,16 +284,12 @@ const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStar
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 border border-slate-100">
               <span className="text-xs font-medium text-slate-600">Waktu Pengisian</span>
-              <span className={`text-sm tabular-nums ${formWaktu !== "-" ? "font-semibold text-slate-800" : "font-normal text-slate-400"}`}>
-                {formWaktu !== "-" ? `${formWaktu} WIB` : "-"}
-              </span>
+              <span className={`text-sm tabular-nums ${formWaktu !== "-" ? "font-semibold text-slate-800" : "font-normal text-slate-400"}`}>{formWaktu !== "-" ? `${formWaktu} WIB` : "-"}</span>
             </div>
 
             <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 border border-slate-100">
               <span className="text-xs font-medium text-slate-600">Batas Keluar</span>
-              <span className={`text-sm tabular-nums ${keluarWaktu !== "-" ? "font-semibold text-slate-800" : "font-normal text-slate-400"}`}>
-                {keluarWaktu !== "-" ? `${keluarWaktu} WIB` : "-"}
-              </span>
+              <span className={`text-sm tabular-nums ${keluarWaktu !== "-" ? "font-semibold text-slate-800" : "font-normal text-slate-400"}`}>{keluarWaktu !== "-" ? `${keluarWaktu} WIB` : "-"}</span>
             </div>
 
             <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 border border-slate-100">
@@ -248,9 +310,7 @@ const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStar
       <div className="space-y-6 text-left max-w-5xl mx-auto pb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <header className="space-y-1">
-            <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] m-0 tracking-tight">
-              Selamat bertugas, {driverName}
-            </h2>
+            <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] m-0 tracking-tight">Selamat bertugas, {driverName}</h2>
             <p className="text-xs text-slate-500 font-normal mt-1">{currentDate}</p>
           </header>
           <button
@@ -353,7 +413,7 @@ const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStar
                       navigate("/driver/laporan");
                     }
                   }}
-                  className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-sm py-3.5 px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer active:scale-95"
+                  className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white font-semibold text-sm py-3.5 px-6 rounded-xl shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer active:scale-95"
                 >
                   <span>Lanjutkan Laporan</span>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
@@ -394,152 +454,173 @@ const Beranda = ({ activeUser, onQuickAction, tripStatus = "belum_mulai", onStar
         <div className="lg:col-span-2 flex flex-col">
           {/* Tampilan Utama: Rincian Penugasan Armada */}
           <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-7 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 ease-out flex-1 flex flex-col justify-between">
-              <div>
-                {/* Header: Operasional di atas, Keterangan di bawah */}
-                <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">
-                      {isShiftSelesai ? "Operasional Selesai" : isJedaOperasional ? "Jeda Operasional" : isShiftSiang ? "Operasional Siang" : "Operasional Pagi"}
-                    </h3>
-                    <p className="text-xs font-medium text-slate-400 mt-0.5">
-                      {isShiftSelesai
-                        ? "Semua sesi harian telah diselesaikan."
-                        : isJedaOperasional
-                          ? `Sesi Pagi selesai. Sesi Siang dibuka pukul ${jamBukaSiang} WIB.`
-                          : isShiftSiang
-                            ? "Pengantaran Siswa"
-                            : "Penjemputan Siswa"}
-                    </p>
-                  </div>
+            <div>
+              {/* Header: Operasional di atas, Keterangan di bawah */}
+              <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                    {isShiftSelesai ? "Operasional Selesai" : isJedaOperasional ? "Jeda Operasional" : isShiftSiang ? "Operasional Siang" : "Operasional Pagi"}
+                  </h3>
+                  <p className="text-xs font-medium text-slate-400 mt-0.5">
+                    {isShiftSelesai
+                      ? "Semua sesi harian telah diselesaikan."
+                      : isJedaOperasional
+                        ? `Sesi Pagi selesai. Sesi Siang dibuka pukul ${jamBukaSiang} WIB.`
+                        : isShiftSiang
+                          ? "Pengantaran Siswa"
+                          : "Penjemputan Siswa"}
+                  </p>
                 </div>
-
-                {/* Rincian Penugasan Armada */}
-                <div className="py-5">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Rincian Penugasan Kendaraan</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
-                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
-                        <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-                          />
-                        </svg>
-                        Trayek Penugasan
-                      </div>
-                      <p className={`text-sm font-bold mt-1 truncate ${displayTrayek !== "-" ? "text-[#00206B]" : "text-slate-400 font-normal"}`}>{displayTrayek}</p>
-                    </div>
-
-                    <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
-                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
-                        <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h8m-8 4h8m-4 4h4M4 6h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" />
-                        </svg>
-                        Jenis Kendaraan
-                      </div>
-                      <p className={`text-sm mt-1 truncate ${displayJenis !== "-" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayJenis}</p>
-                    </div>
-
-                    <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
-                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
-                        <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                        </svg>
-                        Nomor Polisi
-                      </div>
-                      <p className={`text-sm mt-1 truncate ${displayNopol !== "-" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayNopol}</p>
-                    </div>
-
-                    <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
-                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
-                        <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                          />
-                        </svg>
-                        Kapasitas Penumpang
-                      </div>
-                      <p className={`text-sm mt-1 truncate ${displayKapasitas !== "-" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayKapasitas}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sesi / Trip Sessions jika ada */}
-                {tripSessions.length > 0 && (
-                  <div className="border-t border-slate-100 pt-3 mt-1 space-y-2">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Sesi Terdaftar</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {tripSessions.map((sesi, idx) => (
-                        <div key={idx} className="bg-slate-50/70 p-2.5 rounded-lg border border-slate-100 text-xs flex items-center justify-between">
-                          <span className="font-semibold text-slate-800 uppercase">Sesi {sesi?.tipe_sesi || idx + 1}</span>
-                          <span className="text-[10px] text-slate-500">{sesi?.status || "Terekam"}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Action Button dengan Proteksi Jeda & Selesai */}
-              <div className="pt-3">
-                {isShiftSelesai ? (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-500 font-semibold text-sm py-3.5 px-6 rounded-xl cursor-default flex items-center justify-center gap-2"
-                  >
-                    <span>Operasional Selesai</span>
-                  </button>
-                ) : isJedaOperasional ? (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-500 font-medium text-sm py-3.5 px-6 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    <span>Menunggu Sesi Siang ({jamBukaSiang} WIB)</span>
-                  </button>
-                ) : canStartReport ? (
-                  <button
-                    type="button"
-                    onClick={handleMulaiLaporan}
-                    disabled={isStartingReport}
-                    className="w-full bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-sm py-3.5 px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span>{isStartingReport ? "Memulai Laporan..." : "Mulai Laporan"}</span>
-                  </button>
-                ) : !hasPenugasan ? (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-400 font-medium text-sm py-3.5 px-6 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <span>Belum Ada Penugasan</span>
-                  </button>
-                ) : isJedaPagi ? (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-500 font-medium text-sm py-3.5 px-6 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    <span>Menunggu Sesi Pagi ({jamBukaPagi} WIB)</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-400 font-medium text-sm py-3.5 px-6 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    <span>Belum Dimulai</span>
-                  </button>
-                )}
+              {/* Rincian Penugasan Armada */}
+              <div className="py-5">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Rincian Penugasan Kendaraan</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+                    <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                        />
+                      </svg>
+                      Trayek Penugasan
+                    </div>
+                    <p className={`text-sm font-bold mt-1 truncate ${displayTrayek !== "-" ? "text-[#00206B]" : "text-slate-400 font-normal"}`}>{displayTrayek}</p>
+                  </div>
+
+                  <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+                    <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h8m-8 4h8m-4 4h4M4 6h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                      </svg>
+                      Jenis Kendaraan
+                    </div>
+                    <p className={`text-sm mt-1 truncate ${displayJenis !== "-" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayJenis}</p>
+                  </div>
+
+                  <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+                    <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                      </svg>
+                      Nomor Polisi
+                    </div>
+                    <p className={`text-sm mt-1 truncate ${displayNopol !== "-" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayNopol}</p>
+                  </div>
+
+                  <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+                    <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
+                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                        />
+                      </svg>
+                      Kapasitas Penumpang
+                    </div>
+                    <p className={`text-sm mt-1 truncate ${displayKapasitas !== "-" ? "text-slate-800 font-semibold" : "text-slate-400 font-normal"}`}>{displayKapasitas}</p>
+                  </div>
+                </div>
               </div>
+
+              {/* Sesi / Trip Sessions jika ada */}
+              {tripSessions.length > 0 && (
+                <div className="border-t border-slate-100 pt-3 mt-1 space-y-2">
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Sesi Terdaftar</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {tripSessions.map((sesi, idx) => (
+                      <div key={idx} className="bg-slate-50/70 p-2.5 rounded-lg border border-slate-100 text-xs flex items-center justify-between">
+                        <span className="font-semibold text-slate-800 uppercase">Sesi {sesi?.tipe_sesi || idx + 1}</span>
+                        <span className="text-[10px] text-slate-500">{sesi?.status || "Terekam"}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Action Button dengan Proteksi Jeda & Selesai */}
+            <div className="pt-3">
+              {isInitialLoading ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full bg-slate-50 border border-slate-200/80 text-slate-400 font-medium text-sm py-3.5 px-6 rounded-xl cursor-wait flex items-center justify-center gap-2"
+                >
+                  <div className="w-4 h-4 border-2 border-slate-300 border-t-[#00206B] rounded-full animate-spin"></div>
+                  <span>Memeriksa Status Operasional...</span>
+                </button>
+              ) : isShiftSelesai ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-500 font-semibold text-sm py-3.5 px-6 rounded-xl cursor-default flex items-center justify-center gap-2"
+                >
+                  <span>Operasional Selesai</span>
+                </button>
+              ) : isAnySessionInProgress ? (
+                <button
+                  type="button"
+                  onClick={() => navigate("/driver/laporan")}
+                  className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:via-teal-700 hover:to-emerald-800 text-white font-semibold text-sm py-3.5 px-6 rounded-xl shadow-md shadow-emerald-500/25 hover:shadow-lg hover:shadow-emerald-500/30 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <span>Lanjutkan Laporan ({isPagiInProgress ? "Sesi Pagi" : "Sesi Siang"})</span>
+                </button>
+              ) : (isJedaOperasional || isJedaSiang) ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-500 font-medium text-sm py-3.5 px-6 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <span>Menunggu Sesi Siang ({jamBukaSiang} WIB)</span>
+                </button>
+              ) : canStartReport ? (
+                <button
+                  type="button"
+                  onClick={handleMulaiLaporan}
+                  disabled={isStartingReport}
+                  className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white font-semibold text-sm py-3.5 px-6 rounded-xl shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span>{isStartingReport ? "Memulai Laporan..." : "Mulai Laporan"}</span>
+                </button>
+              ) : !hasPenugasan ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-400 font-medium text-sm py-3.5 px-6 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                  <span>Belum Ada Penugasan</span>
+                </button>
+              ) : isJedaPagi ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-500 font-medium text-sm py-3.5 px-6 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <span>Menunggu Sesi Pagi ({jamBukaPagi} WIB)</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-400 font-medium text-sm py-3.5 px-6 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <span>Belum Dimulai</span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         <aside className="lg:col-span-1 flex flex-col">{renderCardJadwal()}</aside>

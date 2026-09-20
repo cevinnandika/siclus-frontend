@@ -3,6 +3,9 @@ import { apiService } from "../../services/api";
 import imageCompression from "browser-image-compression";
 import toast from 'react-hot-toast';
 
+// ==============================================================================
+// KOMPONEN: PROFIL ADMIN (PENGATURAN IDENTITAS & FOTO PROFIL ADMINISTRATOR)
+// ==============================================================================
 const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [fotoPreview, setFotoPreview] = useState(user?.foto_profil || null);
@@ -145,20 +148,20 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
           </div>
 
           {/* Info Admin */}
-          <div className="flex-1 text-center sm:text-left min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+          <div className="flex-1 text-center sm:text-left min-w-0 w-full">
+            <div className="flex flex-col sm:flex-row items-center sm:items-center gap-2 mb-1">
               {isEditing ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center sm:justify-start gap-2 w-full sm:w-auto">
                   <input
                     type="text"
                     value={adminName}
                     onChange={(e) => setAdminName(e.target.value)}
-                    className="border-2 border-slate-300 rounded-lg px-3 py-1 text-base sm:text-lg font-semibold text-slate-900 outline-none focus:border-[#00206B]"
+                    className="border-2 border-slate-300 rounded-lg px-3 py-1 text-base sm:text-lg font-semibold text-slate-900 outline-none focus:border-[#00206B] w-full max-w-xs text-center sm:text-left"
                     autoFocus
                   />
                   <button
                     onClick={handleSaveName}
-                    className="bg-[#00206B] text-white px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider shadow-sm hover:bg-[#00174E] cursor-pointer"
+                    className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider shadow-sm hover:shadow-md cursor-pointer active:scale-95 transition-all flex-shrink-0"
                   >
                     Simpan
                   </button>
@@ -167,19 +170,19 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
                       setIsEditing(false);
                       setAdminName(user?.nama_lengkap || user?.nama || user?.name || "Administrator");
                     }}
-                    className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-slate-200 cursor-pointer"
+                    className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-slate-200 cursor-pointer flex-shrink-0"
                   >
                     Batal
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center sm:justify-start gap-2.5 w-full sm:w-auto">
                   <h3 className="text-xl sm:text-2xl font-bold text-slate-900 m-0 tracking-tight truncate">
                     {adminName}
                   </h3>
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="text-slate-400 hover:text-[#00206B] transition-colors p-1 cursor-pointer"
+                    className="text-slate-400 hover:text-[#00206B] transition-colors p-1 cursor-pointer flex-shrink-0"
                     title="Ubah Nama Admin"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -194,7 +197,7 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
               )}
 
               {/* Status Badge Role */}
-              <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 self-center sm:self-auto">
+              <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 self-center sm:self-auto flex-shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
                 ADMINISTRATOR
               </span>
@@ -204,7 +207,7 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
               Administrator Pengelola Sistem Monitoring Angkutan Sekolah
             </p>
             <p className="text-xs text-slate-400 mt-2">
-              Klik pada foto profil di samping untuk memperbarui foto akun Anda.
+              Klik pada foto profil untuk memperbarui foto akun Anda.
             </p>
           </div>
         </div>
@@ -262,7 +265,7 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
                 Hak Akses Sistem
               </div>
               <p className="text-sm font-semibold text-slate-800 mt-1 truncate">
-                Super Admin (Monitoring & Master Data)
+                Monitoring Driver Angkutan Sekolah
               </p>
             </div>
 

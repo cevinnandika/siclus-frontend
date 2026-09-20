@@ -1,14 +1,9 @@
 import React, { useState, useEffect } from "react";
 
-const UserDriverModal = ({
-  isOpen = false,
-  isEdit = false,
-  initialData = null,
-  drivers = [],
-  isSubmitting = false,
-  onClose,
-  onSubmit,
-}) => {
+// ==============================================================================
+// KOMPONEN: MODAL AKUN DRIVER (FORM PENDAFTARAN & PERUBAHAN DATA PENGEMUDI)
+// ==============================================================================
+const UserDriverModal = ({ isOpen = false, isEdit = false, initialData = null, drivers = [], isSubmitting = false, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     id_driver: "DRV-",
     nama_lengkap: "",
@@ -58,48 +53,32 @@ const UserDriverModal = ({
   // Duplicate checks
   const editTargetId = initialData?.id || initialData?._id || initialData?.id_supir || formData.id_driver;
 
-  const duplicateAddId =
-    !isEdit &&
-    (formData.id_driver || "").trim().length > 4 &&
-    drivers.find(
-      (d) => (d.id || d.id_driver || "").toUpperCase() === (formData.id_driver || "").trim().toUpperCase()
-    );
+  const duplicateAddId = !isEdit && (formData.id_driver || "").trim().length > 4 && drivers.find((d) => (d.id || d.id_driver || "").toUpperCase() === (formData.id_driver || "").trim().toUpperCase());
 
   const duplicateAddName =
     !isEdit &&
     (formData.nama_lengkap || "").trim().length > 1 &&
-    drivers.find(
-      (d) => (d.nama || d.nama_lengkap || d.name || "").trim().toLowerCase() === (formData.nama_lengkap || "").trim().toLowerCase()
-    );
+    drivers.find((d) => (d.nama || d.nama_lengkap || d.name || "").trim().toLowerCase() === (formData.nama_lengkap || "").trim().toLowerCase());
 
-  const duplicateAddEmail =
-    !isEdit &&
-    (formData.email || "").trim().length > 3 &&
-    drivers.find(
-      (d) => (d.email || "").trim().toLowerCase() === (formData.email || "").trim().toLowerCase()
-    );
+  const duplicateAddEmail = !isEdit && (formData.email || "").trim().length > 3 && drivers.find((d) => (d.email || "").trim().toLowerCase() === (formData.email || "").trim().toLowerCase());
 
   const duplicateEditName =
     isEdit &&
     (formData.nama_lengkap || "").trim().length > 1 &&
-    drivers.find(
-      (d) =>
-        (d.id || d.id_driver) !== editTargetId &&
-        (d.nama || d.nama_lengkap || d.name || "").trim().toLowerCase() === (formData.nama_lengkap || "").trim().toLowerCase()
-    );
+    drivers.find((d) => (d.id || d.id_driver) !== editTargetId && (d.nama || d.nama_lengkap || d.name || "").trim().toLowerCase() === (formData.nama_lengkap || "").trim().toLowerCase());
 
   const duplicateEditEmail =
     isEdit &&
     (formData.email || "").trim().length > 3 &&
-    drivers.find(
-      (d) =>
-        (d.id || d.id_driver) !== editTargetId &&
-        (d.email || "").trim().toLowerCase() === (formData.email || "").trim().toLowerCase()
-    );
+    drivers.find((d) => (d.id || d.id_driver) !== editTargetId && (d.email || "").trim().toLowerCase() === (formData.email || "").trim().toLowerCase());
+
+  // Validasi domain resmi @siclus.id
+  const emailVal = (formData.email || "").trim().toLowerCase();
+  const isInvalidEmailDomain = emailVal.length > 0 && !emailVal.endsWith("@siclus.id");
 
   const hasValidationError = isEdit
-    ? Boolean(duplicateEditName) || Boolean(duplicateEditEmail)
-    : Boolean(duplicateAddId) || Boolean(duplicateAddName) || Boolean(duplicateAddEmail);
+    ? Boolean(duplicateEditName) || Boolean(duplicateEditEmail) || isInvalidEmailDomain
+    : Boolean(duplicateAddId) || Boolean(duplicateAddName) || Boolean(duplicateAddEmail) || isInvalidEmailDomain;
 
   const handleSubmitForm = (e) => {
     e.preventDefault();
@@ -112,18 +91,10 @@ const UserDriverModal = ({
       <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-100 space-y-5 my-8">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div>
-            <span className="text-xs font-semibold uppercase text-slate-500 tracking-wider block">
-              {isEdit ? "Perbarui Driver" : "Registrasi Driver"}
-            </span>
-            <h3 className="text-xl font-bold text-[#00206B] m-0">
-              {isEdit ? "Edit Data Driver" : "Tambah Driver Baru"}
-            </h3>
+            <span className="text-xs font-semibold uppercase text-slate-500 tracking-wider block">{isEdit ? "Perbarui Driver" : "Registrasi Driver"}</span>
+            <h3 className="text-xl font-bold text-[#00206B] m-0">{isEdit ? "Edit Data Driver" : "Tambah Driver Baru"}</h3>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-          >
+          <button type="button" onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors cursor-pointer">
             ✕
           </button>
         </div>
@@ -137,9 +108,7 @@ const UserDriverModal = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* ID Driver */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                ID Driver
-              </label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Driver</label>
               <input
                 type="text"
                 name="id_driver"
@@ -152,8 +121,8 @@ const UserDriverModal = ({
                   isEdit
                     ? "bg-slate-100 border-slate-200 opacity-70 cursor-not-allowed"
                     : duplicateAddId
-                    ? "bg-rose-50/20 border-rose-400 focus:border-rose-500"
-                    : "bg-white border-slate-200 focus:border-[#00206B]"
+                      ? "bg-rose-50/20 border-rose-400 focus:border-rose-500"
+                      : "bg-white border-slate-200 focus:border-[#00206B]"
                 }`}
               />
               {duplicateAddId && (
@@ -165,9 +134,7 @@ const UserDriverModal = ({
 
             {/* Nama Lengkap */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                Nama Lengkap
-              </label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Nama Lengkap</label>
               <input
                 type="text"
                 name="nama_lengkap"
@@ -176,9 +143,7 @@ const UserDriverModal = ({
                 onChange={handleChange}
                 placeholder=""
                 className={`w-full bg-white border text-sm font-semibold text-[#00206B] rounded-xl px-4 py-2.5 outline-none transition-colors ${
-                  (isEdit ? duplicateEditName : duplicateAddName)
-                    ? "border-rose-400 bg-rose-50/20 focus:border-rose-500"
-                    : "border-slate-200 focus:border-[#00206B]"
+                  (isEdit ? duplicateEditName : duplicateAddName) ? "border-rose-400 bg-rose-50/20 focus:border-rose-500" : "border-slate-200 focus:border-[#00206B]"
                 }`}
               />
               {(isEdit ? duplicateEditName : duplicateAddName) && (
@@ -190,22 +155,23 @@ const UserDriverModal = ({
 
             {/* Email */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                Email Akun
-              </label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email Akun Driver</label>
               <input
                 type="email"
                 name="email"
                 required
                 value={formData.email}
                 onChange={handleChange}
-                placeholder=""
+                placeholder="nama@siclus.id"
                 className={`w-full bg-white border text-sm font-semibold text-[#00206B] rounded-xl px-4 py-2.5 outline-none transition-colors ${
-                  (isEdit ? duplicateEditEmail : duplicateAddEmail)
-                    ? "border-rose-400 bg-rose-50/20 focus:border-rose-500"
-                    : "border-slate-200 focus:border-[#00206B]"
+                  (isEdit ? duplicateEditEmail : duplicateAddEmail) || isInvalidEmailDomain ? "border-rose-400 bg-rose-50/20 focus:border-rose-500" : "border-slate-200 focus:border-[#00206B]"
                 }`}
               />
+              {isInvalidEmailDomain && (
+                <p className="text-[10px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
+                  <span>⚠️ Wajib menggunakan domain resmi @siclus.id</span>
+                </p>
+              )}
               {(isEdit ? duplicateEditEmail : duplicateAddEmail) && (
                 <p className="text-[10px] font-semibold text-rose-500 mt-1 flex items-center gap-1">
                   <span>⚠️ Email sudah terdaftar</span>
@@ -215,9 +181,7 @@ const UserDriverModal = ({
 
             {/* Password */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                {isEdit ? "Password Baru" : "Password Login"}
-              </label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">{isEdit ? "Password Baru" : "Password Login"}</label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -251,17 +215,13 @@ const UserDriverModal = ({
           </div>
 
           <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs uppercase cursor-pointer"
-            >
+            <button type="button" onClick={onClose} className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs uppercase cursor-pointer">
               Batal
             </button>
             <button
               type="submit"
               disabled={isSubmitting || hasValidationError}
-              className="px-6 py-3 rounded-xl bg-[#00206B] hover:bg-[#00174E] text-white font-semibold text-xs uppercase tracking-wider shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white font-semibold text-xs uppercase tracking-wider shadow-md shadow-blue-500/25 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
             >
               {isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan Driver"}
             </button>

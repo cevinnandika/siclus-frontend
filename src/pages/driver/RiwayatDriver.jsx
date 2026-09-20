@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { apiService } from "../../services/api";
 
+// ==============================================================================
+// KOMPONEN: RIWAYAT DRIVER (DAFTAR HISTORI CATATAN & LAPORAN OPERASIONAL)
+// ==============================================================================
 const RiwayatDriver = ({ onViewDetail, user }) => {
   const [reports, setReports] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [profilePhoto, setProfilePhoto] = useState(user?.foto_profil || null);
 
-  // Ambil data foto profil supir agar selalu sinkron dengan foto yang dipasang di profil
+  // ==============================================================================
+  // EFFECT: SINKRONISASI FOTO PROFIL PENGEMUDI
+  // ==============================================================================
   useEffect(() => {
     if (user?.foto_profil) {
       setProfilePhoto(user.foto_profil);
@@ -19,7 +24,9 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
             setProfilePhoto(parsed.foto_profil);
             return;
           }
-        } catch (e) {}
+        } catch {
+          // Abaikan kesalahan parsing storage lokal
+        }
       }
       apiService
         .getProfilDriver()
@@ -32,6 +39,9 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
     }
   }, [user]);
 
+  // ==============================================================================
+  // EFFECT: AMBIL DATA RIWAYAT PERJALANAN & SESI OPERASIONAL
+  // ==============================================================================
   useEffect(() => {
     if (!user) return;
 
@@ -93,9 +103,11 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
     );
   }
 
+  // ==============================================================================
+  // RENDER: TAMPILAN RIWAYAT LAPORAN DRIVER
+  // ==============================================================================
   return (
     <div className="space-y-5 max-w-5xl mx-auto pb-12 px-4 md:px-0 font-sans text-left">
-      {/* Header Halaman */}
       <div className="pb-1">
         <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] tracking-tight m-0">Riwayat Perjalanan</h2>
         <p className="text-xs text-slate-500 font-normal mt-1">Daftar catatan dan laporan operasional harian</p>
@@ -104,8 +116,13 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
       {reports.length > 0 ? (
         <div className="space-y-3 pt-1">
           {reports.map((report, index) => {
-            const rawId = user?.id || (report.id_supir && !report.id_supir.includes("@") ? report.id_supir : "") || user?.email?.split("@")[0].toUpperCase() || "DRIVER";
-            const driverIdDisplay = rawId.toUpperCase().startsWith("DRV") || rawId.toUpperCase().startsWith("ID") ? rawId : `ID: ${rawId}`;
+            const rawId =
+              user?.id ||
+              (report.id_supir && !report.id_supir.includes("@") ? report.id_supir : "") ||
+              user?.email?.split("@")[0].toUpperCase() ||
+              "DRIVER";
+            const driverIdDisplay =
+              rawId.toUpperCase().startsWith("DRV") || rawId.toUpperCase().startsWith("ID") ? rawId : `ID: ${rawId}`;
 
             return (
               <div
@@ -113,7 +130,7 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
                 onClick={() => onViewDetail && onViewDetail(report)}
                 className="bg-white border border-slate-100 hover:border-slate-200 rounded-3xl p-4 sm:px-5 sm:py-4 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.05)] hover:-translate-y-0.5 hover:shadow-md transition-all duration-300 ease-out cursor-pointer flex items-center justify-between group"
               >
-                {/* Kiri: Icon Rapi + Info Laporan & Tanggal */}
+                {/* Kiri: Icon / Foto Profil + Info Laporan */}
                 <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
                   <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/80 flex-shrink-0 flex items-center justify-center text-slate-500 overflow-hidden">
                     {profilePhoto ? (
@@ -129,11 +146,14 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
                     )}
                   </div>
 
-                  {/* Teks Info: Judul Laporan & Status Minimalis */}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm font-semibold text-slate-800 m-0 tracking-tight truncate group-hover:text-[#00206B] transition-colors">Laporan Operasional</h3>
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/60">{report.statusLabel}</span>
+                      <h3 className="text-sm font-semibold text-slate-800 m-0 tracking-tight truncate group-hover:text-[#00206B] transition-colors">
+                        Laporan Operasional
+                      </h3>
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/60">
+                        {report.statusLabel}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-slate-500 font-medium">{report.date}</span>
@@ -143,9 +163,11 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
                   </div>
                 </div>
 
-                {/* Kanan: Navigasi Lihat Rincian Minimalis */}
+                {/* Kanan: Link Rincian */}
                 <div className="flex items-center gap-2 pl-3 flex-shrink-0 text-slate-400 group-hover:text-[#00206B] transition-colors">
-                  <span className="text-xs font-medium hidden sm:inline text-slate-400 group-hover:text-[#00206B] transition-colors">Lihat Rincian</span>
+                  <span className="text-xs font-medium hidden sm:inline text-slate-400 group-hover:text-[#00206B] transition-colors">
+                    Lihat Rincian
+                  </span>
                   <svg className="w-4 h-4 text-slate-300 group-hover:text-[#00206B] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>

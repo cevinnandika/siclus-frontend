@@ -1,6 +1,9 @@
 import React from 'react';
 import { useLocation, NavLink } from 'react-router-dom';
 
+// ==============================================================================
+// KOMPONEN: BOTTOM NAVIGATION (NAVIGASI BAWAH RESPONSIVE MOBILE DRIVER & ADMIN)
+// ==============================================================================
 const BottomNav = ({ user = null }) => {
   const location = useLocation();
   const currentPath = location.pathname.split("/").pop(); // Ambil path terakhir
@@ -103,12 +106,12 @@ const BottomNav = ({ user = null }) => {
   const baseRoute = isAdmin ? '/admin' : '/driver';
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 shadow-lg pb-safe">
-      <div className="flex items-center justify-around px-2 py-2">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#131314]/95 backdrop-blur-xl border-t border-white/10 z-50 shadow-[0_-8px_30px_rgba(0,0,0,0.45)] pb-safe transition-all duration-300">
+      <div className="flex items-center justify-around px-2.5 py-2 gap-1.5 max-w-md mx-auto">
         {navItems.map((item) => {
           // Cek apakah item aktif berdasarkan path URL saat ini
-          const isReportTabActive = item.id === 'laporan' && currentPath === 'laporan';
-          const isRiwayatTabActive = item.id === 'riwayat' && (currentPath === 'riwayat' || currentPath === 'detail-laporan');
+          const isReportTabActive = item.id === 'laporan' && ['persiapan', 'inspeksi', 'kendala', 'laporan'].includes(currentPath);
+          const isRiwayatTabActive = item.id === 'riwayat' && ['ringkasan', 'riwayat', 'detaillaporan', 'detail-laporan'].includes(currentPath);
           const isItemActive = currentPath === item.id || isReportTabActive || isRiwayatTabActive;
 
           return (
@@ -117,18 +120,37 @@ const BottomNav = ({ user = null }) => {
               to={`${baseRoute}/${item.id}`}
               className={({ isActive }) => {
                 const active = isActive || isItemActive;
-                if (isAdmin) {
-                  return `flex flex-col items-center justify-center w-full py-1.5 transition-all duration-200 ${
-                    active ? 'text-[#00206B] font-semibold' : 'text-slate-400 font-medium'
-                  }`;
-                }
-                return `flex flex-col items-center justify-center flex-1 py-2 rounded-2xl transition-all duration-200 ${
-                  active ? 'bg-emerald-50 text-emerald-800 font-semibold shadow-xs' : 'text-slate-500 font-medium hover:text-slate-800 hover:bg-slate-50'
+                return `flex flex-col items-center justify-center flex-1 py-2 px-1 rounded-2xl transition-all duration-200 relative group cursor-pointer ${
+                  active
+                    ? 'bg-[#A8C7FA]/15 text-[#A8C7FA] font-bold border border-[#A8C7FA]/30 shadow-sm shadow-[#A8C7FA]/10'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent font-medium'
                 }`;
               }}
             >
-              {item.icon}
-              <span className="text-[11px] font-medium mt-0.5 tracking-tight">{item.label}</span>
+              {({ isActive }) => {
+                const active = isActive || isItemActive;
+                return (
+                  <>
+                    {active && (
+                      <span className="absolute -top-1 w-6 h-0.5 bg-[#A8C7FA] rounded-full shadow-[0_0_8px_#A8C7FA]"></span>
+                    )}
+                    <div
+                      className={`w-5 h-5 flex items-center justify-center transition-transform duration-200 ${
+                        active ? 'scale-110 text-[#A8C7FA]' : 'text-slate-400 group-hover:text-white'
+                      }`}
+                    >
+                      {item.icon}
+                    </div>
+                    <span
+                      className={`text-[11px] mt-1 tracking-tight transition-colors duration-200 ${
+                        active ? 'text-[#A8C7FA] font-bold' : 'text-slate-400 font-medium group-hover:text-white'
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                  </>
+                );
+              }}
             </NavLink>
           );
         })}

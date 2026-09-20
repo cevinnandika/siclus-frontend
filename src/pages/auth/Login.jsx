@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { apiService } from "../../services/api";
 
+// ==============================================================================
+// KOMPONEN: LOGIN SISTEM SICLUS (AUTENTIKASI & PENYIMPANAN JWT TOKEN)
+// ==============================================================================
 const Login = ({ onLoginSuccess }) => {
   const [driverId, setDriverId] = useState("");
   const [pin, setPin] = useState("");
@@ -14,6 +17,9 @@ const Login = ({ onLoginSuccess }) => {
     return () => clearTimeout(timer);
   }, []);
 
+  // ==============================================================================
+  // HANDLER: SUBMIT FORM LOGIN & RESOLUSI SESI PENGGUNA
+  // ==============================================================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -26,13 +32,13 @@ const Login = ({ onLoginSuccess }) => {
     setIsLoading(true);
 
     try {
-      // 1. Tembak API Login (ngelewatin apiService yang udah disetting axios)
+      // 1. Eksekusi endpoint login
       const response = await apiService.login(driverId, pin);
 
-      // 2. SIMPAN TIKET VIP (JWT) KE BRANKAS BROWSER!
+      // 2. Simpan token JWT ke local storage
       localStorage.setItem("siclus_token", response.access_token);
 
-      // 3. Rapihin data dari Backend lu biar gampang dibaca FE Cevin
+      // 3. Normalisasi data profil pengguna
       const userData = {
         ...response.user,
         id: response.user.id,
@@ -155,7 +161,7 @@ const Login = ({ onLoginSuccess }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full relative overflow-hidden bg-gradient-to-r from-[#00206B] via-[#001D60] to-[#001240] text-white font-semibold py-3.5 sm:py-4 px-4 rounded-2xl shadow-[0_10px_25px_-5px_rgba(0,32,107,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(0,32,107,0.6)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 mt-3 sm:mt-6 group cursor-pointer"
+            className="w-full relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white font-semibold py-3.5 sm:py-4 px-4 rounded-2xl shadow-[0_10px_25px_-5px_rgba(37,99,235,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(37,99,235,0.6)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 mt-3 sm:mt-6 group cursor-pointer"
           >
             <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white/30 opacity-20 group-hover:animate-[shine_1s] pointer-events-none" />
             <div className="flex items-center justify-center gap-2 relative z-10 text-xs sm:text-base">

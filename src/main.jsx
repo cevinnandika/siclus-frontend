@@ -4,7 +4,11 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 
-// Import Font
+// ==============================================================================
+// ENTRY POINT: INISIALISASI REACT ROOT ENGINE & BROWSER ROUTER
+// ==============================================================================
+
+// font
 import '@fontsource/plus-jakarta-sans/400.css'
 import '@fontsource/plus-jakarta-sans/500.css'
 import '@fontsource/plus-jakarta-sans/600.css'

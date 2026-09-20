@@ -1,5 +1,8 @@
 import React from "react";
 
+// ==============================================================================
+// KOMPONEN: IMAGE LIGHTBOX MODAL (PRATINJAU PEMBESARAN FOTO VALIDASI)
+// ==============================================================================
 const ImageLightboxModal = ({ selectedImage, onClose }) => {
   if (!selectedImage) return null;
 

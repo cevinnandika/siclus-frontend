@@ -6,6 +6,9 @@ import RekapTable from "./rekap-driver/components/RekapTable";
 import DetailRekapView from "./rekap-driver/components/DetailRekapView";
 import ImageLightboxModal from "./rekap-driver/components/ImageLightboxModal";
 
+// ==============================================================================
+// KOMPONEN: REKAP ADMIN (REKAPITULASI LAPORAN OPERASIONAL & EKSPOR EXCEL)
+// ==============================================================================
 const RekapAdmin = () => {
   const [rawData, setRawData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);

@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { apiService } from "./services/api";
 
-// Layouts
+// Layouts & Notification
 import AppLayout from "./components/layout/AppLayout";
 import BottomNav from "./components/layout/BottomNav";
-import { Toaster } from 'react-hot-toast';
+import { Toaster } from "react-hot-toast";
 
 // Pages - Auth
 import Login from "./pages/auth/Login";
@@ -23,7 +23,9 @@ import RiwayatDriver from "./pages/driver/RiwayatDriver";
 import DetailLaporan from "./pages/driver/DetailLaporan";
 import ProfilDriver from "./pages/driver/ProfilDriver";
 
-// (PROTECTED ROUTE)
+// ==============================================================================
+// HELPER: VALIDASI KESESUAIAN ROLE PENGGUNA
+// ==============================================================================
 const isRoleMatch = (userRole, allowedRole) => {
   if (!userRole) return false;
   const u = userRole.toLowerCase();
@@ -32,6 +34,9 @@ const isRoleMatch = (userRole, allowedRole) => {
   return u === a;
 };
 
+// ==============================================================================
+// KOMPONEN: PROTECTED ROUTE (PENGAWAL RUTE OTENTIKASI & ROLE)
+// ==============================================================================
 const ProtectedRoute = ({ user, allowedRole, children }) => {
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -43,53 +48,66 @@ const ProtectedRoute = ({ user, allowedRole, children }) => {
   return children;
 };
 
+// ==============================================================================
+// KOMPONEN UTAMA: APLIKASI SICLUS (ROUTING & GLOBAL STATE ENGINE)
+// ==============================================================================
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
   const [user, setUser] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
-
   const [tripStatus, setTripStatus] = useState("belum_mulai");
-  const [driverReports] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
   const [currentShift] = useState("pagi");
   const [isLaporanLocked, setIsLaporanLocked] = useState(false);
   const [shiftRules, setShiftRules] = useState({ pagi: 5, siang: 12 });
 
+  // ==============================================================================
+  // EFFECT: INITIAL CLEANUP LEGACY LOCKS
+  // ==============================================================================
   useEffect(() => {
-    // Bersihkan gembok legacy agar driver tidak terkunci di halaman selesai
     localStorage.removeItem("siclus_shift");
     localStorage.removeItem("siclus_locked");
   }, []);
 
+  // ==============================================================================
+  // EFFECT: INITIAL RESTORE SESI & SINKRONISASI JADWAL
+  // ==============================================================================
   useEffect(() => {
     const token = localStorage.getItem("siclus_token");
     const savedUser = localStorage.getItem("siclus_user");
 
     if (token && savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
 
-      if (parsedUser?.role?.toLowerCase() !== "admin") {
-        apiService
-          .getJadwalDriver()
-          .then((resJadwal) => {
-            if (resJadwal && resJadwal.data) {
-              const jadwalPagi = resJadwal.data.find((j) => j.tipe_sesi === "PAGI");
-              const jadwalSiang = resJadwal.data.find((j) => j.tipe_sesi === "SIANG");
-              setShiftRules({
-                pagi: jadwalPagi ? parseInt(jadwalPagi.batas_keluar_dishub.split(":")[0]) : 5,
-                siang: jadwalSiang ? parseInt(jadwalSiang.batas_keluar_dishub.split(":")[0]) : 12,
-              });
-            }
-          })
-          .catch((err) => console.error("Gagal refresh jadwal:", err));
+        if (parsedUser?.role?.toLowerCase() !== "admin") {
+          apiService
+            .getJadwalDriver()
+            .then((resJadwal) => {
+              if (resJadwal && resJadwal.data) {
+                const jadwalPagi = resJadwal.data.find((j) => j.tipe_sesi === "PAGI");
+                const jadwalSiang = resJadwal.data.find((j) => j.tipe_sesi === "SIANG");
+                setShiftRules({
+                  pagi: jadwalPagi ? parseInt(jadwalPagi.batas_keluar_dishub.split(":")[0]) : 5,
+                  siang: jadwalSiang ? parseInt(jadwalSiang.batas_keluar_dishub.split(":")[0]) : 12,
+                });
+              }
+            })
+            .catch((err) => console.error("Gagal refresh jadwal:", err));
+        }
+      } catch (err) {
+        console.error("Gagal parse data sesi user:", err);
       }
     }
     setIsInitializing(false);
   }, []);
 
+  // ==============================================================================
+  // HANDLER: LOGIN SUKSES
+  // ==============================================================================
   const handleLogin = async (userInfo) => {
     setUser(userInfo);
     localStorage.setItem("siclus_user", JSON.stringify(userInfo));
@@ -115,6 +133,9 @@ function App() {
     }
   };
 
+  // ==============================================================================
+  // HANDLER: LOGOUT & PEMBERSIHAN STORAGE
+  // ==============================================================================
   const handleLogout = () => {
     localStorage.removeItem("siclus_token");
     localStorage.removeItem("siclus_user");
@@ -128,6 +149,9 @@ function App() {
     navigate("/login");
   };
 
+  // ==============================================================================
+  // HANDLER: NAVIGASI MENU AKTIF
+  // ==============================================================================
   const handleMenuClick = (menuId) => {
     const baseRoute = user?.role?.toLowerCase() === "admin" ? "/admin" : "/driver";
     let targetRoute = menuId;
@@ -136,26 +160,31 @@ function App() {
     navigate(`${baseRoute}/${targetRoute}`);
   };
 
-
-  if (isInitializing) return <div className="min-h-screen bg-[#131314] text-white flex items-center justify-center">Memuat Sistem...</div>;
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-[#131314] text-white flex items-center justify-center">
+        Memuat Sistem...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-[#131314] font-sans antialiased overflow-hidden">
-      <Toaster 
-        position="top-center" 
-        reverseOrder={false} 
+      <Toaster
+        position="top-center"
+        reverseOrder={false}
         gutter={8}
         toastOptions={{
           duration: 3500,
           style: {
-            background: '#ffffff',
-            color: '#1e293b',
-            border: '1px solid #f1f5f9',
-            borderRadius: '1.25rem',
-            padding: '12px 16px',
-            fontSize: '13px',
-            fontWeight: '600',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04)',
+            background: "#ffffff",
+            color: "#1e293b",
+            border: "1px solid #f1f5f9",
+            borderRadius: "1.25rem",
+            padding: "12px 16px",
+            fontSize: "13px",
+            fontWeight: "600",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
           },
         }}
       />
@@ -165,10 +194,22 @@ function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       ) : (
-        <AppLayout user={user} title={"SICLUS"} onBack={null} activeMenu={location.pathname.split("/").pop()} onMenuClick={handleMenuClick}>
+        <AppLayout
+          user={user}
+          title={"SICLUS"}
+          onBack={null}
+          activeMenu={location.pathname.split("/").pop()}
+          onMenuClick={handleMenuClick}
+        >
           <Routes>
-            {/* ZONA KHUSUS DRIVER */}
-            <Route path="/" element={<Navigate to={user?.role?.toLowerCase() === "admin" ? "/admin/dashboard" : "/driver/beranda"} replace />} />
+            <Route
+              path="/"
+              element={<Navigate to={user?.role?.toLowerCase() === "admin" ? "/admin/dashboard" : "/driver/beranda"} replace />}
+            />
+
+            {/* ================================================================== */}
+            {/* ZONA RUTE PENGEMUDI (DRIVER)                                       */}
+            {/* ================================================================== */}
             <Route
               path="/driver/*"
               element={
@@ -210,7 +251,6 @@ function App() {
                       element={
                         <RiwayatDriver
                           user={user}
-                          driverReports={driverReports}
                           onViewDetail={(report) => {
                             setSelectedReport(report);
                             navigate("/driver/detail-laporan");
@@ -218,15 +258,23 @@ function App() {
                         />
                       }
                     />
-                    <Route path="detail-laporan" element={<DetailLaporan report={selectedReport} user={user} onBack={() => navigate("/driver/riwayat")} />} />
-                    <Route path="akun" element={<ProfilDriver user={user} onLogout={handleLogout} onUpdateUser={setUser} />} /> {/* ✅ FIX: Pake ProfilDriver */}
+                    <Route
+                      path="detail-laporan"
+                      element={<DetailLaporan report={selectedReport} user={user} onBack={() => navigate("/driver/riwayat")} />}
+                    />
+                    <Route
+                      path="akun"
+                      element={<ProfilDriver user={user} onLogout={handleLogout} onUpdateUser={setUser} />}
+                    />
                     <Route path="*" element={<Navigate to="/driver/beranda" replace />} />
                   </Routes>
                 </ProtectedRoute>
               }
             />
 
-            {/* ZONA KHUSUS ADMIN */}
+            {/* ================================================================== */}
+            {/* ZONA RUTE ADMINISTRATOR (ADMIN)                                    */}
+            {/* ================================================================== */}
             <Route
               path="/admin/*"
               element={
@@ -236,8 +284,6 @@ function App() {
                     <Route path="rekap" element={<RekapAdmin user={user} />} />
                     <Route path="kelola" element={<ManageDriver onBack={() => navigate("/admin/dashboard")} />} />
                     <Route path="akun" element={<ProfilAdmin user={user} onLogout={handleLogout} onUpdateUser={setUser} />} />
-                    
-                    {/* FIX KRUSIAL: Gunakan Absolute Path "/admin/dashboard" BUKAN "dashboard" */}
                     <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
                   </Routes>
                 </ProtectedRoute>

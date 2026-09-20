@@ -1,5 +1,8 @@
 import React, { useState } from "react";
 
+// ==============================================================================
+// KOMPONEN: LAYOUT UTAMA APLIKASI (RESPONSIVE SHELL, SIDEBAR & MOBILE WRAPPER)
+// ==============================================================================
 const AppLayout = ({ children, title = "SICLUS", onBack = null, activeMenu = "beranda", onMenuClick = () => {}, user = null }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
