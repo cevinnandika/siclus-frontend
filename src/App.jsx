@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { apiService } from "./services/api";
+import { isMasterAdmin } from "./utils/roleHelper";
 
 // Layouts & Notification
 import AppLayout from "./components/layout/AppLayout";
@@ -15,6 +16,7 @@ import BerandaAdmin from "./pages/admin/BerandaAdmin";
 import ManageDriver from "./pages/admin/ManageDriver";
 import RekapAdmin from "./pages/admin/RekapDriver";
 import ProfilAdmin from "./pages/admin/ProfilAdmin";
+import ManageAdmin from "./pages/admin/ManageAdmin";
 
 // Pages - Driver
 import Beranda from "./pages/driver/BerandaDriver";
@@ -150,6 +152,66 @@ function App() {
   };
 
   // ==============================================================================
+  // EFFECT: SINKRONISASI LINTAS TAB (CROSS-TAB INSTANT LOGOUT BILA AKUN DIHAPUS)
+  // ==============================================================================
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === "siclus_revoked_account" && e.newValue) {
+        try {
+          const data = JSON.parse(e.newValue);
+          const currentUser = JSON.parse(localStorage.getItem("siclus_user") || "{}");
+          if (currentUser?.email && data.email && currentUser.email.toLowerCase() === data.email.toLowerCase()) {
+            sessionStorage.setItem("siclus_logout_reason", "Akun Anda baru saja dinonaktifkan atau dihapus oleh Administrator Utama.");
+            handleLogout();
+          }
+        } catch (err) {
+          console.error("Storage sync err:", err);
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  // ==============================================================================
+  // EFFECT: DETEKSI REAL-TIME KEAKTIFAN SESI USER (HEARTBEAT & WINDOW FOCUS)
+  // ==============================================================================
+  useEffect(() => {
+    if (!user) return;
+
+    const checkSessionAlive = async () => {
+      if (document.visibilityState !== "visible") return;
+      const token = localStorage.getItem("siclus_token");
+      if (!token) return;
+
+      try {
+        if (user.role?.toLowerCase() === "admin") {
+          await apiService.getOperasionalHariIniAdmin();
+        } else {
+          await apiService.getJadwalDriver();
+        }
+      } catch (err) {
+        // Jika status 401 (akun dihapus di database), axios interceptor di api.js
+        // otomatis membersihkan storage dan mengarahkan ke halaman login.
+      }
+    };
+
+    // Validasi langsung saat user membuka atau beralih kembali ke tab ini
+    window.addEventListener("focus", checkSessionAlive);
+    document.addEventListener("visibilitychange", checkSessionAlive);
+
+    // Heartbeat berkala setiap 30 detik untuk mendeteksi perubahan dari perangkat lain
+    const heartbeatTimer = setInterval(checkSessionAlive, 30000);
+
+    return () => {
+      window.removeEventListener("focus", checkSessionAlive);
+      document.removeEventListener("visibilitychange", checkSessionAlive);
+      clearInterval(heartbeatTimer);
+    };
+  }, [user]);
+
+  // ==============================================================================
   // HANDLER: NAVIGASI MENU AKTIF
   // ==============================================================================
   const handleMenuClick = (menuId) => {
@@ -283,6 +345,16 @@ function App() {
                     <Route path="dashboard" element={<BerandaAdmin user={user} />} />
                     <Route path="rekap" element={<RekapAdmin user={user} />} />
                     <Route path="kelola" element={<ManageDriver onBack={() => navigate("/admin/dashboard")} />} />
+                    <Route
+                      path="kelola-admin"
+                      element={
+                        isMasterAdmin(user) ? (
+                          <ManageAdmin />
+                        ) : (
+                          <Navigate to="/admin/dashboard" replace />
+                        )
+                      }
+                    />
                     <Route path="akun" element={<ProfilAdmin user={user} onLogout={handleLogout} onUpdateUser={setUser} />} />
                     <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
                   </Routes>

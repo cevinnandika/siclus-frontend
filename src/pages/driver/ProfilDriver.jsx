@@ -136,7 +136,6 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
                 {driverName}
               </h3>
               <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 self-center sm:self-auto">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
                 {user?.role ? user.role.toUpperCase() : "PENGEMUDI AKTIF"}
               </span>
             </div>

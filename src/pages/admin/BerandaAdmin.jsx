@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { apiService } from "../../services/api";
+import { getAdminGreeting } from "../../utils/roleHelper";
 
 // ==============================================================================
 // KOMPONEN: BERANDA ADMIN (DASHBOARD PEMANTAUAN OPERASIONAL & PERGERAKAN ARMADA)
@@ -355,7 +356,7 @@ const BerandaAdmin = ({ user }) => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="space-y-1">
           <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] m-0 tracking-tight">{user?.nama_lengkap || user?.nama || user?.name || "Admin"}</h2>
-          <p className="text-xs text-slate-500 font-normal mt-1">Selamat Datang Administrator Dishub Kota Mojokerto</p>
+          <p className="text-xs text-slate-500 font-normal mt-1">{getAdminGreeting(user)}</p>
           <p className="text-xs text-slate-500 font-medium mt-0.5">{currentDate}</p>
         </div>
 

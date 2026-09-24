@@ -1,53 +1,81 @@
 import React, { useState, useRef, useEffect } from "react";
 import { apiService } from "../../services/api";
 import imageCompression from "browser-image-compression";
-import toast from 'react-hot-toast';
+import toast from "react-hot-toast";
+import {
+  isMasterAdmin,
+  getAdminRoleTitle,
+  getAdminFormattedId,
+  getAdminDutyLabel,
+  getAdminAccessLabel,
+} from "../../utils/roleHelper";
 
-// ==============================================================================
-// KOMPONEN: PROFIL ADMIN (PENGATURAN IDENTITAS & FOTO PROFIL ADMINISTRATOR)
-// ==============================================================================
 const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [fotoPreview, setFotoPreview] = useState(user?.foto_profil || null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [adminName, setAdminName] = useState(user?.nama_lengkap || user?.nama || user?.name || "Administrator");
+  const [adminName, setAdminName] = useState(
+    user?.nama_lengkap || user?.nama || user?.name || "Administrator"
+  );
+  const [formName, setFormName] = useState("");
   const fileInputRef = useRef(null);
+
+  const isMaster = isMasterAdmin(user);
+  const roleTitle = getAdminRoleTitle(user);
+  const formattedId = getAdminFormattedId(user);
+  const dutyLabel = getAdminDutyLabel(user);
+  const accessLabel = getAdminAccessLabel(user);
 
   useEffect(() => {
     if (user?.nama_lengkap || user?.nama || user?.name) {
-      setAdminName(user.nama_lengkap || user.nama || user.name);
+      const currentName = user.nama_lengkap || user.nama || user.name;
+      setAdminName(currentName);
+      setFormName(currentName);
     }
     if (user?.foto_profil) {
       setFotoPreview(user.foto_profil);
     }
   }, [user]);
 
-  // Fungsi menyimpan perubahan nama admin
-  const handleSaveName = async () => {
+  // Simpan perubahan nama admin
+  const handleSaveProfile = async (e) => {
+    if (e) e.preventDefault();
+    const cleanName = formName.trim();
+    if (!cleanName) {
+      toast.error("Nama lengkap tidak boleh kosong");
+      return;
+    }
+
+    setIsSaving(true);
     try {
       const savedUser = JSON.parse(localStorage.getItem("siclus_user") || "{}");
-      savedUser.nama = adminName;
-      savedUser.name = adminName;
-      savedUser.nama_lengkap = adminName;
+      savedUser.nama = cleanName;
+      savedUser.name = cleanName;
+      savedUser.nama_lengkap = cleanName;
       localStorage.setItem("siclus_user", JSON.stringify(savedUser));
 
       if (user?.id) {
         try {
-          await apiService.updateUserAdmin(user.id, { nama_lengkap: adminName });
+          await apiService.updateUserAdmin(user.id, { nama_lengkap: cleanName });
         } catch (apiErr) {
           console.warn("API update profile fallback:", apiErr);
         }
       }
 
-      setIsEditing(false);
+      setAdminName(cleanName);
+      setIsModalOpen(false);
+      toast.success("Profil berhasil diperbarui!");
       if (onUpdateUser) onUpdateUser(savedUser);
-      else window.location.reload();
     } catch (error) {
-      console.error("Gagal update nama admin:", error);
+      console.error("Gagal update profil:", error);
+      toast.error("Gagal memperbarui profil");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // Fungsi upload & kompres foto profil admin
+  // Upload & kompres foto profil admin
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -56,7 +84,6 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
     try {
       const options = { maxSizeMB: 0.2, maxWidthOrHeight: 800, useWebWorker: true };
       const compressedFile = await imageCompression(file, options);
-
       const res = await apiService.updateFotoProfilAdmin(compressedFile);
 
       if (res && res.foto_profil) {
@@ -67,11 +94,10 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
           savedUser.foto_profil = res.foto_profil;
           localStorage.setItem("siclus_user", JSON.stringify(savedUser));
           if (onUpdateUser) onUpdateUser(savedUser);
-          else window.location.reload();
         }
       }
     } catch (error) {
-      toast.error("Gagal upload foto profil admin: " + (error.response?.data?.detail || error.message));
+      toast.error("Gagal upload foto profil: " + (error.response?.data?.detail || error.message));
     } finally {
       setIsUploading(false);
     }
@@ -81,20 +107,20 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12 font-sans text-left animate-[fadeIn_0.2s]">
-      {/* Header Halaman: Konsisten dengan Tampilan Driver */}
+      {/* Header Halaman */}
       <div className="pb-1">
         <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] tracking-tight m-0">
           Profil Administrator
         </h2>
         <p className="text-xs text-slate-500 font-normal mt-1">
-          Informasi identitas dan rincian akun administrator sistem.
+          Informasi identitas dan wewenang akun kedinasan administrator sistem.
         </p>
       </div>
 
-      {/* Kartu Profil Utama: Bersih, Elegan, Identik dengan Driver */}
+      {/* Kartu Profil Utama */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-sm">
-        {/* Baris Atas: Avatar + Nama + Status Role */}
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 pb-6 border-b border-slate-100">
+        {/* Baris Atas: Avatar + Nama + Status Role + Tombol Edit */}
+        <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-5 pb-6 border-b border-slate-100">
           <input
             type="file"
             ref={fileInputRef}
@@ -103,116 +129,100 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
             className="hidden"
           />
 
-          {/* Avatar Bulat Utuh dengan Tombol Ubah Foto */}
-          <div
-            onClick={() => !isUploading && fileInputRef.current.click()}
-            className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200 flex-shrink-0 cursor-pointer group shadow-sm"
-            title="Klik untuk mengubah foto profil"
-          >
-            {fotoPreview ? (
-              <img
-                src={fotoPreview}
-                alt={adminName}
-                className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-200"
-              />
-            ) : (
-              <div className="w-full h-full rounded-full bg-[#00206B] text-white flex items-center justify-center font-bold text-3xl">
-                {adminInitial}
-              </div>
-            )}
-
-            {/* Overlay Ubah Foto saat Hover / Uploading */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 min-w-0 w-full sm:w-auto">
+            {/* Avatar */}
             <div
-              className={`absolute inset-0 bg-black/50 backdrop-blur-[2px] flex flex-col items-center justify-center text-white transition-opacity duration-200 ${
-                isUploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-              }`}
+              onClick={() => !isUploading && fileInputRef.current.click()}
+              className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200 flex-shrink-0 cursor-pointer group shadow-sm"
+              title="Klik untuk mengubah foto profil"
             >
-              {isUploading ? (
-                <span className="text-[10px] font-medium uppercase tracking-wider animate-pulse">
-                  Mengunggah...
-                </span>
+              {fotoPreview ? (
+                <img
+                  src={fotoPreview}
+                  alt={adminName}
+                  className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-200"
+                />
               ) : (
-                <>
-                  <svg className="w-5 h-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                    />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span className="text-[9px] font-medium uppercase tracking-wider">Ubah Foto</span>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Info Admin */}
-          <div className="flex-1 text-center sm:text-left min-w-0 w-full">
-            <div className="flex flex-col sm:flex-row items-center sm:items-center gap-2 mb-1">
-              {isEditing ? (
-                <div className="flex items-center justify-center sm:justify-start gap-2 w-full sm:w-auto">
-                  <input
-                    type="text"
-                    value={adminName}
-                    onChange={(e) => setAdminName(e.target.value)}
-                    className="border-2 border-slate-300 rounded-lg px-3 py-1 text-base sm:text-lg font-semibold text-slate-900 outline-none focus:border-[#00206B] w-full max-w-xs text-center sm:text-left"
-                    autoFocus
-                  />
-                  <button
-                    onClick={handleSaveName}
-                    className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider shadow-sm hover:shadow-md cursor-pointer active:scale-95 transition-all flex-shrink-0"
-                  >
-                    Simpan
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsEditing(false);
-                      setAdminName(user?.nama_lengkap || user?.nama || user?.name || "Administrator");
-                    }}
-                    className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider hover:bg-slate-200 cursor-pointer flex-shrink-0"
-                  >
-                    Batal
-                  </button>
+                <div className="w-full h-full rounded-full bg-[#00206B] text-white flex items-center justify-center font-bold text-3xl">
+                  {adminInitial}
                 </div>
-              ) : (
-                <div className="flex items-center justify-center sm:justify-start gap-2.5 w-full sm:w-auto">
-                  <h3 className="text-xl sm:text-2xl font-bold text-slate-900 m-0 tracking-tight truncate">
-                    {adminName}
-                  </h3>
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="text-slate-400 hover:text-[#00206B] transition-colors p-1 cursor-pointer flex-shrink-0"
-                    title="Ubah Nama Admin"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              )}
+
+              {/* Overlay Hover */}
+              <div
+                className={`absolute inset-0 bg-black/50 backdrop-blur-[2px] flex flex-col items-center justify-center text-white transition-opacity duration-200 ${
+                  isUploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                }`}
+              >
+                {isUploading ? (
+                  <span className="text-[10px] font-medium uppercase tracking-wider animate-pulse">
+                    Mengunggah...
+                  </span>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
                       />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                  </button>
-                </div>
-              )}
-
-              {/* Status Badge Role */}
-              <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 self-center sm:self-auto flex-shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
-                ADMINISTRATOR
-              </span>
+                    <span className="text-[9px] font-medium uppercase tracking-wider">Ubah Foto</span>
+                  </>
+                )}
+              </div>
             </div>
 
-            <p className="text-xs text-slate-500 font-normal m-0">
-              Administrator Pengelola Sistem Monitoring Angkutan Sekolah
-            </p>
-            <p className="text-xs text-slate-400 mt-2">
-              Klik pada foto profil untuk memperbarui foto akun Anda.
-            </p>
+            {/* Identitas Admin */}
+            <div className="flex-1 text-center sm:text-left min-w-0">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 mb-1.5">
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-900 m-0 tracking-tight truncate">
+                  {adminName}
+                </h3>
+
+                {/* Badge Role Formal */}
+                {isMaster ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#00206B]/10 text-[#00206B] border border-[#00206B]/20">
+                    {roleTitle}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                    {roleTitle}
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-slate-500 font-normal m-0">
+                {dutyLabel}
+              </p>
+              <p className="text-xs text-slate-400 mt-1.5">
+                Klik pada foto profil untuk memperbarui foto akun Anda.
+              </p>
+            </div>
           </div>
+
+          {/* Tombol Edit Profil Modal */}
+          <button
+            type="button"
+            onClick={() => {
+              setFormName(adminName);
+              setIsModalOpen(true);
+            }}
+            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200/80 hover:bg-slate-100 hover:text-slate-900 transition-colors shadow-xs cursor-pointer active:scale-95"
+          >
+            <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+              />
+            </svg>
+            Edit Profil
+          </button>
         </div>
 
-        {/* Rincian Akun Admin (Fungsi & Informasi Khusus Admin) */}
+        {/* Informasi Akun Kedinasan */}
         <div className="py-6">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
             Informasi Akun
@@ -231,7 +241,7 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
                 ID Administrator
               </div>
               <p className="text-sm font-semibold text-[#00206B] mt-1 truncate">
-                {user?.id || user?.id_driver || "ADM-DISHUB"}
+                {formattedId}
               </p>
             </div>
 
@@ -252,7 +262,7 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
               </p>
             </div>
 
-            {/* Hak Akses & Otoritas Sistem */}
+            {/* Hak Akses Sistem */}
             <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
               <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium uppercase tracking-wider">
                 <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -265,7 +275,7 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
                 Hak Akses Sistem
               </div>
               <p className="text-sm font-semibold text-slate-800 mt-1 truncate">
-                Monitoring Driver Angkutan Sekolah
+                {accessLabel}
               </p>
             </div>
 
@@ -288,7 +298,7 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
           </div>
         </div>
 
-        {/* Tombol Keluar: Elegan & Identik dengan Driver */}
+        {/* Tombol Keluar */}
         <div className="pt-4 border-t border-slate-100 flex justify-end">
           <button
             type="button"
@@ -306,6 +316,100 @@ const ProfilAdmin = ({ user, onLogout, onUpdateUser }) => {
           </button>
         </div>
       </div>
+
+      {/* Modal Edit Profil */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-[fadeIn_0.15s]">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl border border-slate-200 overflow-hidden text-left">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h4 className="text-base font-bold text-[#00206B] m-0">
+                  Edit Profil Administrator
+                </h4>
+                <p className="text-xs text-slate-500 m-0 mt-0.5">
+                  Perbarui identitas profil resmi akun Anda.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
+              {/* Input Nama Lengkap */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Nama Lengkap & Gelar Resmi
+                </label>
+                <input
+                  type="text"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="Contoh: Fajar Putra Nugroho, S.T."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-900 focus:outline-none focus:border-[#00206B] focus:ring-2 focus:ring-[#00206B]/10 transition-all"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              {/* ID Kedinasan (Read-Only) */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  ID Kedinasan (Terkunci)
+                </label>
+                <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-100/80 border border-slate-200 text-sm font-semibold text-slate-700">
+                  <span>{formattedId}</span>
+                  <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Email Kedinasan (Read-Only) */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Email Kedinasan (Terkunci)
+                </label>
+                <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-100/80 border border-slate-200 text-sm font-medium text-slate-700">
+                  <span>{user?.email || "admin@siclus.id"}</span>
+                  <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                  </svg>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Email kedinasan bersifat permanen dan tidak dapat diubah secara mandiri.
+                </p>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#00206B] hover:bg-[#001850] shadow-sm transition-all disabled:opacity-50 cursor-pointer active:scale-95"
+                >
+                  {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { isMasterAdmin } from "../../utils/roleHelper";
 
 // ==============================================================================
 // KOMPONEN: LAYOUT UTAMA APLIKASI (RESPONSIVE SHELL, SIDEBAR & MOBILE WRAPPER)
@@ -43,6 +44,21 @@ const AppLayout = ({ children, title = "SICLUS", onBack = null, activeMenu = "be
         </>
       ),
     },
+    ...(isMasterAdmin(user)
+      ? [
+          {
+            id: "kelola-admin",
+            label: "Kelola Admin",
+            icon: (
+              <>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <circle cx="12" cy="10" r="3" />
+                <path d="M7 17.5c1.3-1.8 3.1-2.5 5-2.5s3.7.7 5 2.5" />
+              </>
+            ),
+          },
+        ]
+      : []),
     {
       id: "akun",
       label: "Profil",
@@ -188,7 +204,6 @@ const AppLayout = ({ children, title = "SICLUS", onBack = null, activeMenu = "be
                   {(user?.nama_lengkap || user?.nama || user?.name || "A").charAt(0).toUpperCase()}
                 </div>
               )}
-              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#131314] rounded-full"></span>
             </div>
 
             {/* RENDER NAMA AMAN */}
@@ -202,7 +217,11 @@ const AppLayout = ({ children, title = "SICLUS", onBack = null, activeMenu = "be
               </p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="inline-block px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded-md bg-white/10 text-slate-300">
-                  {user?.role || "USER"}
+                  {user?.role?.toLowerCase() === "admin"
+                    ? isMasterAdmin(user)
+                      ? "ADMIN UTAMA"
+                      : "ADMIN OPS"
+                    : user?.role || "USER"}
                 </span>
               </div>
             </div>

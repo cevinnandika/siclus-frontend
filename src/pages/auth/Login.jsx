@@ -14,6 +14,11 @@ const Login = ({ onLoginSuccess }) => {
 
   useEffect(() => {
     const timer = setTimeout(() => setIsMounted(true), 100);
+    const logoutReason = sessionStorage.getItem("siclus_logout_reason");
+    if (logoutReason) {
+      setError(logoutReason);
+      sessionStorage.removeItem("siclus_logout_reason");
+    }
     return () => clearTimeout(timer);
   }, []);
 

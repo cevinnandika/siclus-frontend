@@ -33,6 +33,9 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401 && !error.config?.url?.includes("/auth/login")) {
+      const errorDetail = error.response?.data?.detail;
+      const msg = typeof errorDetail === "string" ? errorDetail : "Sesi Anda telah berakhir atau akun telah dihapus dari sistem.";
+      sessionStorage.setItem("siclus_logout_reason", msg);
       localStorage.removeItem("siclus_token");
       localStorage.removeItem("siclus_user");
       window.location.href = "/login";
@@ -167,6 +170,15 @@ export const apiService = {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
+  },
+  getStafAdmin: async () => (await apiClient.get("/admin/staf")).data,
+  createStafAdmin: async (data) => (await apiClient.post("/admin/staf", data)).data,
+  updateStafAdmin: async (id, data) => (await apiClient.put(`/admin/staf/${id}`, data)).data,
+  deleteStafAdmin: async (id, payload) => {
+    if (payload && payload.password_admin) {
+      return (await apiClient.post(`/admin/staf/${id}/hapus`, payload)).data;
+    }
+    return (await apiClient.delete(`/admin/staf/${id}`)).data;
   },
 };
 

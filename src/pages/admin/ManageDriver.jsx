@@ -160,7 +160,7 @@ const ManageDriver = () => {
         fetchDrivers();
         fetchPenugasan();
       }
-    }, 45000);
+    }, 60000);
 
     return () => {
       window.removeEventListener("focus", handleRevalidate);
@@ -206,6 +206,12 @@ const ManageDriver = () => {
     setIsSubmitting(true);
     try {
       if (isEditDriverMode && selectedDriver) {
+        if (!formData.password_admin?.trim()) {
+          showToast("Password administrator wajib diisi untuk verifikasi keamanan!", "error");
+          setIsSubmitting(false);
+          return;
+        }
+
         const targetId = selectedDriver.id || selectedDriver._id || selectedDriver.id_supir || formData.id_driver;
         const payload = {
           id: formData.id_driver || targetId,
@@ -213,6 +219,7 @@ const ManageDriver = () => {
           nama_lengkap: formData.nama_lengkap.trim(),
           email: formData.email.trim(),
           role: "driver",
+          password_admin: formData.password_admin,
         };
         if (formData.password && formData.password.trim() !== "") {
           payload.password = formData.password;
@@ -268,6 +275,9 @@ const ManageDriver = () => {
         password_admin: password_admin,
       });
       showToast(`Akun driver ${driverToDelete.nama_lengkap || driverToDelete.nama || driverToDelete.name} berhasil dihapus!`);
+      if (driverToDelete?.email) {
+        localStorage.setItem("siclus_revoked_account", JSON.stringify({ email: driverToDelete.email, time: Date.now() }));
+      }
       setDriverToDelete(null);
       fetchDrivers();
     } catch (err) {
@@ -281,7 +291,7 @@ const ManageDriver = () => {
         }
       }
       showToast(errorMsg, "error");
-      throw err; // Lempar error agar DeleteDriverModal menampilkan pesan error inline
+      throw err;
     } finally {
       setIsSubmitting(false);
     }
@@ -325,10 +335,18 @@ const ManageDriver = () => {
       tipe_sesi: p.tipe_sesi || "SEMUA",
       jam_pengisian_pagi: p.jadwal_pagi?.jam_formulir_pengisian ? String(p.jadwal_pagi.jam_formulir_pengisian).slice(0, 5) : "06:00",
       batas_keluar_pagi: p.jadwal_pagi?.batas_keluar_dishub ? String(p.jadwal_pagi.batas_keluar_dishub).slice(0, 5) : "06:30",
-      batas_kembali_pagi: p.jadwal_pagi?.batas_tiba_start ? String(p.jadwal_pagi.batas_tiba_start).slice(0, 5) : (p.jadwal_pagi?.batas_kembali_dishub ? String(p.jadwal_pagi.batas_kembali_dishub).slice(0, 5) : "08:00"),
+      batas_kembali_pagi: p.jadwal_pagi?.batas_tiba_start
+        ? String(p.jadwal_pagi.batas_tiba_start).slice(0, 5)
+        : p.jadwal_pagi?.batas_kembali_dishub
+          ? String(p.jadwal_pagi.batas_kembali_dishub).slice(0, 5)
+          : "08:00",
       jam_pengisian_siang: p.jadwal_siang?.jam_formulir_pengisian ? String(p.jadwal_siang.jam_formulir_pengisian).slice(0, 5) : "13:00",
       batas_keluar_siang: p.jadwal_siang?.batas_keluar_dishub ? String(p.jadwal_siang.batas_keluar_dishub).slice(0, 5) : "13:30",
-      batas_kembali_siang: p.jadwal_siang?.batas_tiba_start ? String(p.jadwal_siang.batas_tiba_start).slice(0, 5) : (p.jadwal_siang?.batas_kembali_dishub ? String(p.jadwal_siang.batas_kembali_dishub).slice(0, 5) : "14:30"),
+      batas_kembali_siang: p.jadwal_siang?.batas_tiba_start
+        ? String(p.jadwal_siang.batas_tiba_start).slice(0, 5)
+        : p.jadwal_siang?.batas_kembali_dishub
+          ? String(p.jadwal_siang.batas_kembali_dishub).slice(0, 5)
+          : "14:30",
     });
     setShowPenugasanModal(true);
   };
@@ -420,11 +438,7 @@ const ManageDriver = () => {
       const errStr = typeof errMsg === "string" ? errMsg : JSON.stringify(errMsg);
       showToast(errStr, "error");
 
-      if (
-        errStr.toLowerCase().includes("telah memulai") ||
-        errStr.toLowerCase().includes("telah mengirim") ||
-        errStr.toLowerCase().includes("operasional")
-      ) {
+      if (errStr.toLowerCase().includes("telah memulai") || errStr.toLowerCase().includes("telah mengirim") || errStr.toLowerCase().includes("operasional")) {
         setPenugasanToDelete(null);
         fetchPenugasan(true);
       }
@@ -456,9 +470,7 @@ const ManageDriver = () => {
       {toast.show && (
         <div
           className={`fixed top-5 right-5 z-50 px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-3 font-bold text-sm border animate-[slideDown_0.2s] ${
-            toast.type === "success"
-              ? "bg-[#E6F7ED] border-[#BCECD2] text-[#137333]"
-              : "bg-[#FCE8E6] border-[#FAD2CF] text-[#C5221F]"
+            toast.type === "success" ? "bg-[#E6F7ED] border-[#BCECD2] text-[#137333]" : "bg-[#FCE8E6] border-[#FAD2CF] text-[#C5221F]"
           }`}
         >
           {toast.type === "success" ? (
@@ -482,9 +494,7 @@ const ManageDriver = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-1">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] tracking-tight m-0">Kelola Driver</h2>
-          <p className="text-xs text-slate-500 font-normal mt-1">
-            Manajemen akun driver dan konfigurasi toleransi waktu cut-off operasional
-          </p>
+          <p className="text-xs text-slate-500 font-normal mt-1">Manajemen akun driver dan konfigurasi toleransi waktu cut-off operasional</p>
         </div>
 
         <button
@@ -494,13 +504,7 @@ const ManageDriver = () => {
           className="self-start sm:self-auto flex items-center gap-2 bg-white border border-slate-200 hover:border-blue-300 hover:text-blue-600 text-slate-700 px-4 py-2 rounded-xl font-semibold text-xs shadow-xs hover:shadow-sm hover:shadow-blue-500/10 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
           title="Segarkan data penugasan dan akun driver"
         >
-          <svg
-            className={`w-4 h-4 ${isRefreshing ? "animate-spin text-blue-600" : "text-blue-600"}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
+          <svg className={`w-4 h-4 ${isRefreshing ? "animate-spin text-blue-600" : "text-blue-600"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
           {isRefreshing ? "Memperbarui..." : "Segarkan Data"}
@@ -513,19 +517,11 @@ const ManageDriver = () => {
           type="button"
           onClick={() => setActiveTab("penugasan")}
           className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === "penugasan"
-              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
-              : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
+            activeTab === "penugasan" ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20" : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
           }`}
         >
           <span>Penugasan & Jadwal</span>
-          <span
-            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
-              activeTab === "penugasan"
-                ? "bg-white/20 text-white"
-                : "bg-white text-slate-600 border border-slate-200/80"
-            }`}
-          >
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${activeTab === "penugasan" ? "bg-white/20 text-white" : "bg-white text-slate-600 border border-slate-200/80"}`}>
             {(penugasanList || []).length}
           </span>
         </button>
@@ -534,19 +530,11 @@ const ManageDriver = () => {
           type="button"
           onClick={() => setActiveTab("supir")}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === "supir"
-              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
-              : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
+            activeTab === "supir" ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20" : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
           }`}
         >
           <span>Daftar Akun Driver</span>
-          <span
-            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
-              activeTab === "supir"
-                ? "bg-white/20 text-white"
-                : "bg-white text-slate-600 border border-slate-200/80"
-            }`}
-          >
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${activeTab === "supir" ? "bg-white/20 text-white" : "bg-white text-slate-600 border border-slate-200/80"}`}>
             {(drivers || []).length}
           </span>
         </button>
@@ -554,13 +542,7 @@ const ManageDriver = () => {
 
       {/* Active Tab View */}
       {activeTab === "supir" ? (
-        <UserDriverTable
-          drivers={drivers}
-          isLoading={isLoadingDrivers}
-          onAddDriver={handleOpenAddDriver}
-          onEditDriver={handleOpenEditDriver}
-          onDeleteDriver={(driver) => setDriverToDelete(driver)}
-        />
+        <UserDriverTable drivers={drivers} isLoading={isLoadingDrivers} onAddDriver={handleOpenAddDriver} onEditDriver={handleOpenEditDriver} onDeleteDriver={(driver) => setDriverToDelete(driver)} />
       ) : (
         <PenugasanTable
           penugasanList={penugasanList}
@@ -622,12 +604,8 @@ const ManageDriver = () => {
         description={
           penugasanToDelete ? (
             <>
-              Apakah Anda yakin ingin membatalkan & menghapus penugasan untuk{" "}
-              <span className="font-semibold text-rose-600">
-                {penugasanToDelete.users?.nama || penugasanToDelete.id_supir}
-              </span>{" "}
-              pada tanggal <span className="font-semibold text-slate-700">{penugasanToDelete.tanggal}</span>? Tindakan ini
-              tidak dapat dibatalkan.
+              Apakah Anda yakin ingin membatalkan & menghapus penugasan untuk <span className="font-semibold text-rose-600">{penugasanToDelete.users?.nama || penugasanToDelete.id_supir}</span> pada
+              tanggal <span className="font-semibold text-slate-700">{penugasanToDelete.tanggal}</span>? Tindakan ini tidak dapat dibatalkan.
             </>
           ) : null
         }
@@ -641,4 +619,3 @@ const ManageDriver = () => {
 };
 
 export default ManageDriver;
-

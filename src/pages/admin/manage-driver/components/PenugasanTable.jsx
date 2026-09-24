@@ -3,15 +3,7 @@ import React from "react";
 // ==============================================================================
 // KOMPONEN: TABEL PENUGASAN (DAFTAR PENUGASAN ARMADA, STATUS & JADWAL OPERASIONAL)
 // ==============================================================================
-const PenugasanTable = ({
-  penugasanList = [],
-  drivers = [],
-  isLoading = false,
-  onAddPenugasan,
-  onEditPenugasan,
-  onDeletePenugasan,
-  onBatalkanPenugasan,
-}) => {
+const PenugasanTable = ({ penugasanList = [], drivers = [], isLoading = false, onAddPenugasan, onEditPenugasan, onDeletePenugasan, onBatalkanPenugasan }) => {
   return (
     <div className="space-y-4 text-left">
       {/* Header Bar */}
@@ -58,9 +50,7 @@ const PenugasanTable = ({
                 {penugasanList.map((p, pIdx) => {
                   const driverName = p.users?.nama || p.users?.nama_lengkap || p.id_supir || "Driver";
                   const initials = driverName.slice(0, 2).toUpperCase();
-                  const matchedDriver = (drivers || []).find(
-                    (d) => (d.id || d.id_driver) === p.id_supir || (d.nama || d.nama_lengkap) === p.users?.nama
-                  );
+                  const matchedDriver = (drivers || []).find((d) => (d.id || d.id_driver) === p.id_supir || (d.nama || d.nama_lengkap) === p.users?.nama);
                   const driverPhoto = p?.foto_profil || p?.users?.foto_profil || matchedDriver?.foto_profil || null;
 
                   const pagiKeluar = p.jam_keluar_dishub_pagi || p.batas_keluar_pagi || "06:30";
@@ -69,7 +59,10 @@ const PenugasanTable = ({
                   const siangKeluar = p.jam_keluar_dishub_siang || p.batas_keluar_siang || "13:30";
                   const siangKembali = p.jam_kembali_dishub_siang || p.batas_kembali_siang || "14:30";
 
-                  const rawTipe = String(p.tipe_sesi || "SEMUA").replace(/'/g, "").trim().toUpperCase();
+                  const rawTipe = String(p.tipe_sesi || "SEMUA")
+                    .replace(/'/g, "")
+                    .trim()
+                    .toUpperCase();
                   let sessions = [];
                   if (rawTipe === "PAGI") {
                     sessions = [
@@ -124,9 +117,7 @@ const PenugasanTable = ({
                     return (
                       <tr
                         key={`${p.id || pIdx}_${sesi.key}`}
-                        className={`transition-colors bg-white hover:bg-sky-50/25 ${
-                          isLast ? "border-b-2 border-slate-200/90" : "border-b border-dashed border-slate-200/80"
-                        }`}
+                        className={`transition-colors bg-white hover:bg-sky-50/25 ${isLast ? "border-b-2 border-slate-200/90" : "border-b border-dashed border-slate-200/80"}`}
                       >
                         {/* 1. Tanggal */}
                         <td className="py-3.5 px-3.5 whitespace-nowrap">
@@ -152,8 +143,8 @@ const PenugasanTable = ({
                               sesi.isBatal
                                 ? "bg-rose-50 text-rose-800 border-rose-200/70"
                                 : sesi.isPagi
-                                ? "bg-amber-50 text-amber-800 border-amber-200/70"
-                                : "bg-blue-50 text-blue-800 border-blue-200/70"
+                                  ? "bg-amber-50 text-amber-800 border-amber-200/70"
+                                  : "bg-blue-50 text-blue-800 border-blue-200/70"
                             }`}
                           >
                             {sesi.name}
@@ -181,25 +172,19 @@ const PenugasanTable = ({
                             </div>
                             <div>
                               <span className="font-semibold text-xs text-[#00206B] uppercase tracking-tight block">{driverName}</span>
-                              <span className="inline-block px-1.5 py-0.5 rounded-md bg-slate-100 text-[10px] text-slate-500 font-semibold tracking-wider mt-0.5">
-                                {p.id_supir}
-                              </span>
+                              <span className="inline-block px-1.5 py-0.5 rounded-md bg-slate-100 text-[10px] text-slate-500 font-semibold tracking-wider mt-0.5">{p.id_supir}</span>
                             </div>
                           </div>
                         </td>
 
                         {/* 4. Trayek */}
                         <td className="py-3.5 px-2 text-center whitespace-nowrap">
-                          <span className="inline-block px-2.5 py-1 rounded-lg bg-sky-50 text-[#00206B] font-semibold text-xs border border-sky-200/70 shadow-2xs">
-                            {p.trayek || "-"}
-                          </span>
+                          <span className="inline-block px-2.5 py-1 rounded-lg bg-sky-50 text-[#00206B] font-semibold text-xs border border-sky-200/70 shadow-2xs">{p.trayek || "-"}</span>
                         </td>
 
                         {/* 5. Nopol */}
                         <td className="py-3.5 px-2 text-center whitespace-nowrap">
-                          <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold text-xs shadow-2xs">
-                            {p.nopol_kendaraan || "-"}
-                          </span>
+                          <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold text-xs shadow-2xs">{p.nopol_kendaraan || "-"}</span>
                         </td>
 
                         {/* 6. Armada & Kapasitas */}
@@ -212,9 +197,7 @@ const PenugasanTable = ({
 
                         {/* 7. Jam Toleransi Operasional */}
                         <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                          <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200/70 shadow-2xs">
-                            {sesi.jam}
-                          </span>
+                          <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200/70 shadow-2xs">{sesi.jam}</span>
                         </td>
 
                         {/* 8. Aksi */}
@@ -263,7 +246,11 @@ const PenugasanTable = ({
                                   title="Edit Penugasan (Belum Dimulai)"
                                 >
                                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                                    />
                                   </svg>
                                 </button>
                                 <button
@@ -273,7 +260,11 @@ const PenugasanTable = ({
                                   title="Hapus Penugasan (Belum Dimulai)"
                                 >
                                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                                    />
                                   </svg>
                                 </button>
                               </div>
@@ -300,7 +291,7 @@ const PenugasanTable = ({
                 />
               </svg>
             </div>
-            <h3 className="text-sm font-semibold text-[#00206B] m-0">Belum Ada Penugasan Trayek</h3>
+            <h3 className="text-sm font-semibold text-[#00206B] m-0">Belum Ada Penugasan Driver</h3>
             <p className="text-xs text-slate-400 mt-1">Klik tombol "Tugaskan Driver" untuk menjadwalkan operasional supir.</p>
           </div>
         )}
