@@ -113,14 +113,14 @@ const UserDriverModal = ({ isOpen = false, isEdit = false, initialData = null, d
           </div>
 
           <div>
-            <span className="text-xs font-semibold text-[#00206B] uppercase tracking-wider">Data Akun Login</span>
+            <span className="text-xs font-bold text-[#00206B] uppercase tracking-wider">DATA AKUN LOGIN</span>
             <div className="w-full h-[1px] bg-slate-200 mt-1 mb-3"></div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* ID Driver */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Driver</label>
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">ID DRIVER</label>
               <input
                 type="text"
                 name="id_driver"
@@ -146,7 +146,7 @@ const UserDriverModal = ({ isOpen = false, isEdit = false, initialData = null, d
 
             {/* Nama Lengkap */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Nama Lengkap</label>
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">NAMA LENGKAP</label>
               <input
                 type="text"
                 name="nama_lengkap"
@@ -167,7 +167,7 @@ const UserDriverModal = ({ isOpen = false, isEdit = false, initialData = null, d
 
             {/* Email */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email Akun Driver</label>
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">EMAIL AKUN DRIVER</label>
               <input
                 type="email"
                 name="email"
@@ -193,7 +193,9 @@ const UserDriverModal = ({ isOpen = false, isEdit = false, initialData = null, d
 
             {/* Password */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">{isEdit ? "Password Baru" : "Password Login"}</label>
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                {isEdit ? "PASSWORD BARU (OPSIONAL)" : "PASSWORD LOGIN"}
+              </label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -246,8 +248,8 @@ const UserDriverModal = ({ isOpen = false, isEdit = false, initialData = null, d
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                  Password Administrator (Konfirmasi) <span className="text-rose-500">*</span>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                  PASSWORD ADMINISTRATOR (KONFIRMASI) <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -304,15 +306,15 @@ const UserDriverModal = ({ isOpen = false, isEdit = false, initialData = null, d
           )}
 
           <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-            <button type="button" onClick={onClose} className="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs uppercase cursor-pointer">
-              Batal
+            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer">
+              BATAL
             </button>
             <button
               type="submit"
               disabled={isSubmitting || hasValidationError || (isEdit && !formData.password_admin?.trim())}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white font-semibold text-xs uppercase tracking-wider shadow-md shadow-blue-500/25 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+              className="px-6 py-2.5 rounded-xl bg-[#00206B] hover:bg-[#001850] text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-blue-900/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
             >
-              {isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan Driver"}
+              {isSubmitting ? "MENYIMPAN..." : isEdit ? "SIMPAN PERUBAHAN" : "SIMPAN DRIVER"}
             </button>
           </div>
         </form>

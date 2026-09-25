@@ -416,14 +416,14 @@ const ManageAdmin = () => {
 
               {/* 1. Nama Lengkap */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Nama Lengkap</label>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">NAMA LENGKAP</label>
                 <input
                   type="text"
                   name="new_admin_name"
                   autoComplete="off"
                   value={formStaff.nama_lengkap}
                   onChange={(e) => setFormStaff({ ...formStaff, nama_lengkap: e.target.value })}
-                  placeholder="Masukkan nama lengkap staff"
+                  placeholder="Masukkan nama lengkap staf"
                   className="w-full bg-white border border-slate-200 text-sm font-semibold text-slate-900 rounded-xl px-4 py-2.5 outline-none focus:border-[#00206B] focus:ring-2 focus:ring-[#00206B]/10 transition-all"
                   required
                   autoFocus
@@ -432,7 +432,7 @@ const ManageAdmin = () => {
 
               {/* 2. Email Akun (Single Input, otomatis @siclus.id) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email Akun</label>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">EMAIL KEDINASAN</label>
                 <input
                   type="text"
                   name="new_admin_email"
@@ -455,9 +455,9 @@ const ManageAdmin = () => {
                 />
               </div>
 
-              {/* 3. Kata Sandi (Dengan icon mata di dalam input dan placeholder netral) */}
+              {/* 3. Kata Sandi */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Kata Sandi</label>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">KATA SANDI</label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -492,12 +492,12 @@ const ManageAdmin = () => {
                     )}
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">Wajib min. 8 karakter, kombinasi huruf kapital, angka, dan simbol</p>
+                <p className="text-[11px] text-slate-400 mt-1 font-normal">Wajib min. 8 karakter, kombinasi huruf kapital, angka, dan simbol.</p>
               </div>
 
               {/* 4. ID Administrator (Otomatis & Terkunci) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Administrator</label>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">ID ADMINISTRATOR (OTOMATIS)</label>
                 <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-sm font-semibold text-slate-700 select-none">
                   <span>{nextStaffId}</span>
                   <div className="flex items-center gap-1.5 text-slate-400 text-xs font-normal">
@@ -521,16 +521,16 @@ const ManageAdmin = () => {
                     setFormStaff({ nama_lengkap: "", email: "", password: "" });
                     setShowPassword(false);
                   }}
-                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs transition-colors cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
                 >
-                  Batal
+                  BATAL
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-2.5 rounded-xl bg-[#00206B] hover:bg-[#001850] text-white font-semibold text-xs tracking-wide shadow-md shadow-blue-900/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                  className="px-6 py-2.5 rounded-xl bg-[#00206B] hover:bg-[#001850] text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-blue-900/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
                 >
-                  {isSubmitting ? "Menyimpan..." : "Simpan"}
+                  {isSubmitting ? "MENYIMPAN..." : "SIMPAN"}
                 </button>
               </div>
             </form>
@@ -567,13 +567,13 @@ const ManageAdmin = () => {
 
               {/* 1. Nama Lengkap (Editable) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Nama Lengkap</label>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">NAMA LENGKAP</label>
                 <input
                   type="text"
                   name="edit_admin_name"
                   value={formEditStaff.nama_lengkap}
                   onChange={(e) => setFormEditStaff({ ...formEditStaff, nama_lengkap: e.target.value })}
-                  placeholder="Masukkan nama lengkap staff"
+                  placeholder="Masukkan nama lengkap staf"
                   className="w-full bg-white border border-slate-200 text-sm font-semibold text-slate-900 rounded-xl px-4 py-2.5 outline-none focus:border-[#00206B] focus:ring-2 focus:ring-[#00206B]/10 transition-all"
                   required
                   autoFocus
@@ -582,7 +582,7 @@ const ManageAdmin = () => {
 
               {/* 2. Email Akun (Terkunci) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email Kedinasan (Terkunci)</label>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">EMAIL KEDINASAN (TERKUNCI)</label>
                 <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-sm font-semibold text-slate-700 select-none">
                   <span>{staffToEdit.email}</span>
                   <div className="flex items-center gap-1 text-slate-400 text-xs font-normal">
@@ -595,8 +595,8 @@ const ManageAdmin = () => {
 
               {/* 3. Kata Sandi Baru (Opsional) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                  Kata Sandi Baru <span className="text-slate-400 font-normal">(Opsional)</span>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                  PASSWORD BARU (OPSIONAL)
                 </label>
                 <div className="relative">
                   <input
@@ -631,14 +631,14 @@ const ManageAdmin = () => {
                     )}
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Isi hanya jika ingin mengganti kata sandi staf (min. 8 karakter, kombinasi huruf kapital, angka, dan simbol).
+                <p className="text-[11px] text-slate-400 mt-1 font-normal">
+                  Kosongkan jika tidak diganti. Min. 8 karakter kombinasi huruf kapital, angka, dan simbol.
                 </p>
               </div>
 
               {/* 4. ID Administrator (Terkunci) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">ID Administrator</label>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">ID ADMINISTRATOR (TERKUNCI)</label>
                 <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-sm font-semibold text-slate-700 select-none">
                   <span>{staffToEdit.id}</span>
                   <div className="flex items-center gap-1.5 text-slate-400 text-xs font-normal">
@@ -673,8 +673,8 @@ const ManageAdmin = () => {
 
               {/* Input Password Admin Konfirmasi */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                  Password Administrator (Konfirmasi) <span className="text-rose-500">*</span>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                  PASSWORD ADMINISTRATOR (KONFIRMASI) <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -732,16 +732,16 @@ const ManageAdmin = () => {
                 <button
                   type="button"
                   onClick={() => setStaffToEdit(null)}
-                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs transition-colors cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
                 >
-                  Batal
+                  BATAL
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting || !formEditStaff.password_admin?.trim()}
-                  className="px-6 py-2.5 rounded-xl bg-[#00206B] hover:bg-[#001850] text-white font-semibold text-xs tracking-wide shadow-md shadow-blue-900/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                  className="px-6 py-2.5 rounded-xl bg-[#00206B] hover:bg-[#001850] text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-blue-900/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
                 >
-                  {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+                  {isSubmitting ? "MENYIMPAN..." : "SIMPAN PERUBAHAN"}
                 </button>
               </div>
             </form>
@@ -821,7 +821,7 @@ const ManageAdmin = () => {
 
               {/* Email Admin */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Email Administrator</label>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">EMAIL ADMINISTRATOR</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -845,7 +845,7 @@ const ManageAdmin = () => {
 
               {/* Password Admin */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Password Administrator</label>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">PASSWORD ADMINISTRATOR</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -916,7 +916,7 @@ const ManageAdmin = () => {
                   disabled={isSubmitting}
                   className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs uppercase cursor-pointer transition-colors disabled:opacity-50"
                 >
-                  Batal
+                  BATAL
                 </button>
                 <button
                   type="submit"
@@ -929,10 +929,10 @@ const ManageAdmin = () => {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                       </svg>
-                      <span>Memvalidasi...</span>
+                      <span>MEMVALIDASI...</span>
                     </>
                   ) : (
-                    <span>Konfirmasi Hapus</span>
+                    <span>KONFIRMASI HAPUS</span>
                   )}
                 </button>
               </div>

@@ -96,9 +96,9 @@ const BatalOperasionalModal = ({
             type="button"
             disabled={isSubmitting}
             onClick={onClose}
-            className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs uppercase tracking-wider cursor-pointer transition-colors disabled:opacity-50"
+            className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer transition-colors disabled:opacity-50"
           >
-            Kembali
+            BATAL
           </button>
           <button
             type="button"
@@ -128,10 +128,10 @@ const BatalOperasionalModal = ({
                     d="M4 12a8 8 0 018-8v8H4z"
                   ></path>
                 </svg>
-                Memproses...
+                MEMPROSES...
               </>
             ) : (
-              "Ya, Batalkan Sisa Sesi"
+              "YA, BATALKAN SISA SESI"
             )}
           </button>
         </div>

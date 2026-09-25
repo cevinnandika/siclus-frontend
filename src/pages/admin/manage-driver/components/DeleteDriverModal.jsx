@@ -116,7 +116,7 @@ const DeleteDriverModal = ({ isOpen, driver, currentAdminEmail = "", isSubmittin
         <form onSubmit={handleSubmit} className="space-y-3.5">
           {/* Email Admin */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Email Administrator</label>
+            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">EMAIL ADMINISTRATOR</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -140,7 +140,7 @@ const DeleteDriverModal = ({ isOpen, driver, currentAdminEmail = "", isSubmittin
 
           {/* Password Admin */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Password Administrator</label>
+            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">PASSWORD ADMINISTRATOR</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -204,14 +204,14 @@ const DeleteDriverModal = ({ isOpen, driver, currentAdminEmail = "", isSubmittin
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs uppercase cursor-pointer transition-colors disabled:opacity-50"
+              className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer transition-colors disabled:opacity-50"
             >
-              Batal
+              BATAL
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !passwordAdmin || !emailAdmin.trim()}
-              className="flex-1 py-3 px-4 bg-rose-600 hover:bg-rose-700 active:scale-98 text-white font-bold rounded-xl text-xs uppercase shadow-md shadow-rose-600/20 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              className="flex-1 py-3 px-4 bg-rose-600 hover:bg-rose-700 active:scale-98 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md shadow-rose-600/20 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>
@@ -219,10 +219,10 @@ const DeleteDriverModal = ({ isOpen, driver, currentAdminEmail = "", isSubmittin
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                   </svg>
-                  <span>Memvalidasi...</span>
+                  <span>MEMVALIDASI...</span>
                 </>
               ) : (
-                <span>Konfirmasi Hapus</span>
+                <span>KONFIRMASI HAPUS</span>
               )}
             </button>
           </div>
