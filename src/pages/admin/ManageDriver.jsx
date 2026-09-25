@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import { apiService } from "../../services/api";
 import UserDriverTable from "./manage-driver/components/UserDriverTable";
 import UserDriverModal from "./manage-driver/components/UserDriverModal";
@@ -42,13 +43,14 @@ const ManageDriver = () => {
   const savedAdminUser = JSON.parse(localStorage.getItem("siclus_user") || "{}");
   const currentAdminEmail = savedAdminUser?.email || "";
 
-  // Toast State
-  const [toast, setToast] = useState({ show: false, message: "", type: "success" });
-
+  // Helper showToast menggunakan react-hot-toast (selalu tampil di atas modal / z-index tertinggi)
   const showToast = (message, type = "success") => {
     const msgStr = typeof message === "string" ? message : JSON.stringify(message);
-    setToast({ show: true, message: msgStr, type });
-    setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3500);
+    if (type === "error") {
+      toast.error(msgStr);
+    } else {
+      toast.success(msgStr);
+    }
   };
 
   // Driver Modals State
@@ -466,29 +468,6 @@ const ManageDriver = () => {
 
   return (
     <div className="space-y-3.5 text-left max-w-6xl mx-auto pb-8 animate-[fadeIn_0.3s]">
-      {/* Toast Notification */}
-      {toast.show && (
-        <div
-          className={`fixed top-5 right-5 z-50 px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-3 font-bold text-sm border animate-[slideDown_0.2s] ${
-            toast.type === "success" ? "bg-[#E6F7ED] border-[#BCECD2] text-[#137333]" : "bg-[#FCE8E6] border-[#FAD2CF] text-[#C5221F]"
-          }`}
-        >
-          {toast.type === "success" ? (
-            <svg className="w-5 h-5 text-[#137333] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5 text-[#C5221F] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-              />
-            </svg>
-          )}
-          <span>{toast.message}</span>
-        </div>
-      )}
 
       {/* Page Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-1">

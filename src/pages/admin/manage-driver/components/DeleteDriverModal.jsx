@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 
 // ==============================================================================
 // KOMPONEN: MODAL HAPUS DRIVER (KONFIRMASI KREDENSIAL ADMINISTRATOR)
@@ -7,15 +8,12 @@ const DeleteDriverModal = ({ isOpen, driver, currentAdminEmail = "", isSubmittin
   const [emailAdmin, setEmailAdmin] = useState("");
   const [passwordAdmin, setPasswordAdmin] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-
   // Reset & inisialisasi state saat modal dibuka
   useEffect(() => {
     if (isOpen) {
       setEmailAdmin(currentAdminEmail || "");
       setPasswordAdmin("");
       setShowPassword(false);
-      setErrorMessage("");
     }
   }, [isOpen, currentAdminEmail]);
 
@@ -27,15 +25,14 @@ const DeleteDriverModal = ({ isOpen, driver, currentAdminEmail = "", isSubmittin
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorMessage("");
 
     if (!emailAdmin.trim()) {
-      setErrorMessage("Email administrator wajib diisi.");
+      toast.error("Email administrator wajib diisi.");
       return;
     }
 
     if (!passwordAdmin) {
-      setErrorMessage("Password administrator wajib diisi untuk verifikasi keamanan.");
+      toast.error("Password administrator wajib diisi untuk verifikasi keamanan.");
       return;
     }
 
@@ -45,9 +42,7 @@ const DeleteDriverModal = ({ isOpen, driver, currentAdminEmail = "", isSubmittin
         password_admin: passwordAdmin,
       });
     } catch (err) {
-      const detail = err.response?.data?.detail;
-      const msg = typeof detail === "string" ? detail : Array.isArray(detail) ? detail.map((d) => d.msg).join(", ") : "Gagal memverifikasi kredensial admin.";
-      setErrorMessage(msg);
+      // Feedback toast kegagalan sudah ditangani via toast.error
     }
   };
 
@@ -188,15 +183,6 @@ const DeleteDriverModal = ({ isOpen, driver, currentAdminEmail = "", isSubmittin
             </div>
           </div>
 
-          {/* Error Message */}
-          {errorMessage && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs px-3.5 py-2.5 rounded-xl flex items-start gap-2 animate-[fadeIn_0.15s]">
-              <svg className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-              </svg>
-              <span>{errorMessage}</span>
-            </div>
-          )}
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 pt-2">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 
 // ==============================================================================
 // KOMPONEN: MODAL AKUN DRIVER (FORM PENDAFTARAN & PERUBAHAN DATA PENGEMUDI)
@@ -87,8 +88,18 @@ const UserDriverModal = ({ isOpen = false, isEdit = false, initialData = null, d
 
   const handleSubmitForm = (e) => {
     e.preventDefault();
-    if (hasValidationError) return;
-    if (isEdit && !formData.password_admin?.trim()) return;
+    if (isInvalidEmailDomain) {
+      toast.error("Email driver wajib berakhiran @siclus.id!");
+      return;
+    }
+    if (duplicateAddId || duplicateAddName || duplicateAddEmail || duplicateEditName || duplicateEditEmail) {
+      toast.error("Terdapat data driver yang sudah terdaftar. Silakan periksa kembali formulir.");
+      return;
+    }
+    if (isEdit && !formData.password_admin?.trim()) {
+      toast.error("Password administrator wajib diisi untuk verifikasi keamanan!");
+      return;
+    }
     onSubmit(formData);
   };
 
@@ -311,7 +322,7 @@ const UserDriverModal = ({ isOpen = false, isEdit = false, initialData = null, d
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || hasValidationError || (isEdit && !formData.password_admin?.trim())}
+              disabled={isSubmitting}
               className="px-6 py-2.5 rounded-xl bg-[#00206B] hover:bg-[#001850] text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-blue-900/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
             >
               {isSubmitting ? "MENYIMPAN..." : isEdit ? "SIMPAN PERUBAHAN" : "SIMPAN DRIVER"}

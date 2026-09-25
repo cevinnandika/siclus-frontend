@@ -26,7 +26,6 @@ const ManageAdmin = () => {
   const [deleteEmailAdmin, setDeleteEmailAdmin] = useState("");
   const [deletePasswordAdmin, setDeletePasswordAdmin] = useState("");
   const [showDeletePassword, setShowDeletePassword] = useState(false);
-  const [deleteErrorMessage, setDeleteErrorMessage] = useState("");
 
   // State Modal Edit Staf
   const [formEditStaff, setFormEditStaff] = useState({
@@ -124,20 +123,18 @@ const ManageAdmin = () => {
     setDeleteEmailAdmin(currentAdminEmail || "");
     setDeletePasswordAdmin("");
     setShowDeletePassword(false);
-    setDeleteErrorMessage("");
   };
 
   const handleDeleteStaff = async (e) => {
     if (e) e.preventDefault();
     if (!staffToDelete) return;
 
-    setDeleteErrorMessage("");
     if (!deleteEmailAdmin.trim()) {
-      setDeleteErrorMessage("Email administrator wajib diisi.");
+      toast.error("Email administrator wajib diisi.");
       return;
     }
     if (!deletePasswordAdmin) {
-      setDeleteErrorMessage("Password administrator wajib diisi untuk verifikasi keamanan.");
+      toast.error("Password administrator wajib diisi untuk verifikasi keamanan.");
       return;
     }
 
@@ -158,7 +155,7 @@ const ManageAdmin = () => {
       console.error("Gagal menghapus staf:", err);
       const detail = err.response?.data?.detail;
       const msg = typeof detail === "string" ? detail : Array.isArray(detail) ? detail.map((d) => d.msg).join(", ") : "Gagal menghapus staf admin.";
-      setDeleteErrorMessage(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -898,15 +895,6 @@ const ManageAdmin = () => {
                 </div>
               </div>
 
-              {/* Error Message */}
-              {deleteErrorMessage && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs px-3.5 py-2.5 rounded-xl flex items-start gap-2 animate-[fadeIn_0.15s]">
-                  <svg className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                  </svg>
-                  <span>{deleteErrorMessage}</span>
-                </div>
-              )}
 
               {/* Action Buttons */}
               <div className="flex items-center gap-2.5 pt-2">
