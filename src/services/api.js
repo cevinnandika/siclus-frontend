@@ -3,7 +3,7 @@ import axios from "axios";
 // ==============================================================================
 // KONFIGURASI INSTANCE API CLIENT (AXIOS)
 // ==============================================================================
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://siclus-backend.vercel.app/api";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://siclus-api.vercel.app/api";
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
