@@ -95,9 +95,9 @@ const UserDriverTable = ({ drivers = [], isLoading = false, onAddDriver, onEditD
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto w-full max-h-[calc(100vh-280px)] min-h-[320px] overflow-y-auto custom-scrollbar">
+          <div className="overflow-x-auto w-full min-h-[300px]">
             <table className="w-full text-left border-collapse min-w-[850px]">
-              <thead className="sticky top-0 z-10 bg-slate-50 shadow-xs">
+              <thead className="bg-slate-50 border-b border-slate-200/80">
                 <tr className="border-b border-slate-200/80 bg-gradient-to-r from-slate-50 via-sky-50/40 to-slate-50 text-xs font-semibold text-slate-500 tracking-wider uppercase">
                   <th className="py-4 px-6">Driver</th>
                   <th className="py-4 px-6 text-center">ID Driver</th>

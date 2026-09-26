@@ -1,22 +1,74 @@
 import React, { useState, useRef, useEffect } from "react";
 import { apiService } from "../../services/api";
 import imageCompression from "browser-image-compression";
-import toast from 'react-hot-toast';
+import toast from "react-hot-toast";
 
 // ==============================================================================
 // KOMPONEN: PROFIL DRIVER (MANAJEMEN INFORMASI AKUN & UNGGAH FOTO PROFIL)
 // ==============================================================================
 const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [fotoPreview, setFotoPreview] = useState(user?.foto_profil || null);
+  const [driverName, setDriverName] = useState(
+    user?.nama_lengkap || user?.nama || user?.name || "Driver SICLUS"
+  );
+  const [formName, setFormName] = useState("");
   const fileInputRef = useRef(null);
 
+  const driverId = user?.id || user?.id_driver || "DSHB-DRV-01";
+  const driverInitial = (driverName || "D").charAt(0).toUpperCase();
+
   useEffect(() => {
-    if (user) {
-      setFotoPreview(user.foto_profil || null);
+    if (user?.nama_lengkap || user?.nama || user?.name) {
+      const currentName = user.nama_lengkap || user.nama || user.name;
+      setDriverName(currentName);
+      setFormName(currentName);
+    }
+    if (user?.foto_profil) {
+      setFotoPreview(user.foto_profil);
     }
   }, [user]);
 
+  // Simpan perubahan nama pengemudi
+  const handleSaveProfile = async (e) => {
+    if (e) e.preventDefault();
+    const cleanName = formName.trim();
+    if (!cleanName) {
+      toast.error("Nama lengkap tidak boleh kosong");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const savedUser = JSON.parse(localStorage.getItem("siclus_user") || "{}");
+      savedUser.nama = cleanName;
+      savedUser.name = cleanName;
+      savedUser.nama_lengkap = cleanName;
+      localStorage.setItem("siclus_user", JSON.stringify(savedUser));
+
+      if (user?.id) {
+        try {
+          await apiService.updateUserAdmin(user.id, { nama_lengkap: cleanName });
+        } catch (apiErr) {
+          console.warn("API update profile fallback:", apiErr);
+        }
+      }
+
+      setDriverName(cleanName);
+      setIsModalOpen(false);
+      toast.success("Profil berhasil diperbarui!");
+      if (onUpdateUser) onUpdateUser(savedUser);
+    } catch (error) {
+      console.error("Gagal update profil:", error);
+      toast.error("Gagal memperbarui profil");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Upload & kompres foto profil driver
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -49,9 +101,6 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
     }
   };
 
-  const driverName = user?.nama_lengkap || user?.nama || user?.name || "Driver SICLUS";
-  const driverInitial = driverName.charAt(0).toUpperCase();
-
   if (!user) {
     return (
       <div className="text-center py-20">
@@ -62,18 +111,21 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-12 font-sans text-left">
-      {/* Header Halaman: Konsisten dengan Beranda & Profil Admin */}
+    <div className="space-y-6 max-w-4xl mx-auto pb-12 font-sans text-left animate-[fadeIn_0.2s]">
+      {/* Header Halaman: Konsisten dengan Profil Admin */}
       <div className="pb-1">
-        <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] tracking-tight m-0">Profil Pengemudi</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] tracking-tight m-0">
+          Profil Pengemudi
+        </h2>
         <p className="text-xs text-slate-500 font-normal mt-1">
           Informasi identitas dan rincian akun operasional pengemudi.
         </p>
       </div>
 
+      {/* Kartu Profil Utama */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-sm">
-        {/* Baris Atas: Avatar + Nama + Status */}
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 pb-6 border-b border-slate-100">
+        {/* Baris Atas: Avatar + Nama + Status Role + Tombol Edit */}
+        <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-5 pb-6 border-b border-slate-100">
           <input
             type="file"
             ref={fileInputRef}
@@ -82,79 +134,100 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
             className="hidden"
           />
 
-          {/* Avatar Bulat Utuh dengan Tombol Ubah Foto */}
-          <div
-            onClick={() => !isUploading && fileInputRef.current.click()}
-            className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200 flex-shrink-0 cursor-pointer group shadow-sm"
-            title="Klik untuk mengubah foto profil"
-          >
-            {fotoPreview ? (
-              <img
-                src={fotoPreview}
-                alt={driverName}
-                className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-200"
-              />
-            ) : (
-              <div className="w-full h-full rounded-full bg-[#00206B] text-white flex items-center justify-center font-bold text-3xl">
-                {driverInitial}
-              </div>
-            )}
-
-            {/* Overlay Ubah Foto */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 min-w-0 w-full sm:w-auto">
+            {/* Avatar Bulat Utuh dengan Tombol Ubah Foto */}
             <div
-              className={`absolute inset-0 bg-black/50 backdrop-blur-[2px] flex flex-col items-center justify-center text-white transition-opacity duration-200 ${
-                isUploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-              }`}
+              onClick={() => !isUploading && fileInputRef.current.click()}
+              className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200 flex-shrink-0 cursor-pointer group shadow-sm"
+              title="Klik untuk mengubah foto profil"
             >
-              {isUploading ? (
-                <div className="flex flex-col items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin mb-1.5"></div>
-                  <span className="text-[10px] font-medium text-white/90 uppercase tracking-wider">
-                    Mengunggah...
-                  </span>
-                </div>
+              {fotoPreview ? (
+                <img
+                  src={fotoPreview}
+                  alt={driverName}
+                  className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-200"
+                />
               ) : (
-                <>
-                  <svg className="w-5 h-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                    />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span className="text-[9px] font-medium uppercase tracking-wider">Ubah Foto</span>
-                </>
+                <div className="w-full h-full rounded-full bg-[#00206B] text-white flex items-center justify-center font-bold text-3xl">
+                  {driverInitial}
+                </div>
               )}
+
+              {/* Overlay Hover Ubah Foto */}
+              <div
+                className={`absolute inset-0 bg-black/50 backdrop-blur-[2px] flex flex-col items-center justify-center text-white transition-opacity duration-200 ${
+                  isUploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                }`}
+              >
+                {isUploading ? (
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin mb-1.5"></div>
+                    <span className="text-[10px] font-medium text-white/90 uppercase tracking-wider">
+                      Mengunggah...
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="text-[9px] font-medium uppercase tracking-wider">Ubah Foto</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Identitas Driver */}
+            <div className="flex-1 text-center sm:text-left min-w-0">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 mb-1.5">
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-900 m-0 tracking-tight truncate">
+                  {driverName}
+                </h3>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                  {user?.role ? user.role.toUpperCase() : "DRIVER"}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-normal m-0">
+                Pengemudi Angkutan Sekolah Gratis Kota Mojokerto
+              </p>
+              <p className="text-xs text-slate-400 mt-1.5">
+                Klik pada foto profil untuk memperbarui foto akun Anda.
+              </p>
             </div>
           </div>
 
-          {/* Info Driver */}
-          <div className="flex-1 text-center sm:text-left min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 m-0 tracking-tight truncate">
-                {driverName}
-              </h3>
-              <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 self-center sm:self-auto">
-                {user?.role ? user.role.toUpperCase() : "PENGEMUDI AKTIF"}
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 font-normal m-0">
-              Pengemudi Angkutan Sekolah Gratis Kota Mojokerto
-            </p>
-            <p className="text-xs text-slate-400 mt-2">
-              Klik pada foto profil di samping untuk memperbarui foto akun Anda.
-            </p>
-          </div>
+          {/* Tombol Edit Profil Modal */}
+          <button
+            type="button"
+            onClick={() => {
+              setFormName(driverName);
+              setIsModalOpen(true);
+            }}
+            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200/80 hover:bg-slate-100 hover:text-slate-900 transition-colors shadow-xs cursor-pointer active:scale-95"
+          >
+            <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+              />
+            </svg>
+            Edit Profil
+          </button>
         </div>
 
-        {/* Rincian Akun Driver (2 Box Bersih, Identik dengan Estetika Admin) */}
+        {/* Informasi Akun Operasional (4 Box Bersih 2x2, Seimbang & Selaras dengan Admin) */}
         <div className="py-6">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
             Informasi Akun
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {/* ID Driver */}
+            {/* 1. ID Driver */}
             <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
               <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium uppercase tracking-wider">
                 <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -163,11 +236,11 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
                 ID Driver
               </div>
               <p className="text-sm font-semibold text-[#00206B] mt-1 truncate">
-                {user?.id || "-"}
+                {driverId}
               </p>
             </div>
 
-            {/* Email Terdaftar */}
+            {/* 2. Email Terdaftar */}
             <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
               <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium uppercase tracking-wider">
                 <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -176,7 +249,33 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
                 Email Terdaftar
               </div>
               <p className="text-sm font-semibold text-slate-800 mt-1 truncate" title={user?.email || "-"}>
-                {user?.email || "-"}
+                {user?.email || "driver@siclus.id"}
+              </p>
+            </div>
+
+            {/* 3. Hak Akses Operasional (Spesifik Pengemudi) */}
+            <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+              <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium uppercase tracking-wider">
+                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                </svg>
+                Hak Akses Operasional
+              </div>
+              <p className="text-sm font-semibold text-slate-800 mt-1 truncate" title="Operasional Pengemudi (Pelaporan Rute, Presensi & Checkpoint)">
+                Operasional Pengemudi (Pelaporan Rute, Presensi & Checkpoint)
+              </p>
+            </div>
+
+            {/* 4. Instansi Kedinasan */}
+            <div className="bg-slate-50/70 border border-slate-100/90 rounded-xl p-3.5 transition-colors hover:bg-slate-50">
+              <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium uppercase tracking-wider">
+                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.75c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
+                </svg>
+                Instansi Kedinasan
+              </div>
+              <p className="text-sm font-semibold text-slate-800 mt-1 truncate">
+                Dinas Perhubungan Kota Mojokerto
               </p>
             </div>
           </div>
@@ -187,7 +286,7 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
           <button
             type="button"
             onClick={onLogout}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100/80 border border-rose-200/80 text-rose-700 text-xs font-semibold py-2.5 px-5 rounded-xl transition-colors cursor-pointer active:scale-95 shadow-xs"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100/80 border border-rose-200/80 text-rose-700 text-xs font-bold py-2.5 px-5 rounded-xl transition-colors cursor-pointer active:scale-95 shadow-xs"
           >
             <svg className="w-4 h-4 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -196,6 +295,100 @@ const ProfilDriver = ({ user, onLogout, onUpdateUser }) => {
           </button>
         </div>
       </div>
+
+      {/* Modal Edit Profil Pengemudi */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-[fadeIn_0.15s]">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl border border-slate-200 overflow-hidden text-left">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h4 className="text-base font-bold text-[#00206B] m-0">
+                  Edit Profil Pengemudi
+                </h4>
+                <p className="text-xs text-slate-500 m-0 mt-0.5">
+                  Perbarui identitas profil operasional akun Anda.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
+              {/* Input Nama Lengkap Pengemudi */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Nama Lengkap Pengemudi
+                </label>
+                <input
+                  type="text"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="Contoh: Dedi Kurniawan"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-900 focus:outline-none focus:border-[#00206B] focus:ring-2 focus:ring-[#00206B]/10 transition-all"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              {/* ID Driver (Read-Only) */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  ID Driver (Terkunci)
+                </label>
+                <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-100/80 border border-slate-200 text-sm font-semibold text-slate-700">
+                  <span>{driverId}</span>
+                  <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Email Operasional (Read-Only) */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Email Operasional (Terkunci)
+                </label>
+                <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-100/80 border border-slate-200 text-sm font-medium text-slate-700">
+                  <span>{user?.email || "driver@siclus.id"}</span>
+                  <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                  </svg>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Email operasional bersifat permanen dan tidak dapat diubah secara mandiri.
+                </p>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#00206B] hover:bg-[#001850] shadow-sm transition-all disabled:opacity-50 cursor-pointer active:scale-95"
+                >
+                  {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

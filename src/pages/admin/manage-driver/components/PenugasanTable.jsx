@@ -32,9 +32,9 @@ const PenugasanTable = ({ penugasanList = [], drivers = [], isLoading = false, o
             <p className="text-xs font-medium text-slate-400 mt-4">Memuat data penugasan & jadwal...</p>
           </div>
         ) : penugasanList.length > 0 ? (
-          <div className="overflow-x-auto w-full max-h-[calc(100vh-280px)] min-h-[320px] overflow-y-auto custom-scrollbar">
+          <div className="overflow-x-auto w-full min-h-[300px]">
             <table className="w-full text-left border-collapse min-w-[760px]">
-              <thead className="sticky top-0 z-10 bg-slate-50 shadow-xs">
+              <thead className="bg-slate-50 border-b border-slate-200/80">
                 <tr className="border-b border-slate-200/80 bg-gradient-to-r from-slate-50 via-sky-50/40 to-slate-50 text-xs font-semibold text-slate-500 tracking-wider uppercase">
                   <th className="py-4 px-3.5 whitespace-nowrap">Tanggal</th>
                   <th className="py-4 px-2 text-center whitespace-nowrap">Sesi</th>
