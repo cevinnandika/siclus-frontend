@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocation, NavLink } from 'react-router-dom';
+import { isMasterAdmin } from '../../utils/roleHelper';
 
 // ==============================================================================
 // KOMPONEN: BOTTOM NAVIGATION (NAVIGASI BAWAH RESPONSIVE MOBILE DRIVER & ADMIN)
@@ -45,6 +46,17 @@ const BottomNav = ({ user = null }) => {
         </svg>
       ),
     },
+    ...(isMasterAdmin(user) ? [{
+      id: 'kelola-admin',
+      label: 'Admin',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <circle cx="12" cy="10" r="3" />
+          <path d="M7 17.5c1.3-1.8 3.1-2.5 5-2.5s3.7.7 5 2.5" />
+        </svg>
+      ),
+    }] : []),
     {
       id: 'akun',
       label: 'Profil',

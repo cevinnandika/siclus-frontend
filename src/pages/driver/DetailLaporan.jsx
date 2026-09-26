@@ -113,18 +113,45 @@ const DetailLaporan = ({ report, user: propUser, onBack }) => {
 
   // Helper Penugasan Armada Otomatis
   const getPenugasanData = (sesi) => {
-    const rawNopol = sesi?.nopol_kendaraan || report.bus || propUser?.bus || propUser?.nomer_kendaraan || "-";
-    let jenis = propUser?.jenis_kendaraan || "-";
-    let nopol = rawNopol;
+    const rawNopol =
+      sesi?.nopol_kendaraan ||
+      report?.bus ||
+      report?.nopol_kendaraan ||
+      report?.penugasan?.nopol_kendaraan ||
+      propUser?.bus ||
+      propUser?.nomer_kendaraan ||
+      "-";
 
+    let nopol = rawNopol;
+    let jenisFromNopol = "";
     if (rawNopol.includes(" - ")) {
       const parts = rawNopol.split(" - ");
-      jenis = parts[0] || jenis;
+      jenisFromNopol = parts[0] || "";
       nopol = parts[1] || nopol;
     }
 
-    const trayek = report.trayek || propUser?.trayek || "-";
-    const kapasitas = propUser?.kapasitas ? `${propUser.kapasitas} Siswa` : report.kapasitas ? `${report.kapasitas} Siswa` : "-";
+    const jenis =
+      report?.jenis_kendaraan ||
+      report?.penugasan?.jenis_kendaraan ||
+      sesi?.jenis_kendaraan ||
+      jenisFromNopol ||
+      propUser?.jenis_kendaraan ||
+      "-";
+
+    const trayek =
+      report?.trayek ||
+      report?.penugasan?.trayek ||
+      propUser?.trayek ||
+      "-";
+
+    const rawKapasitas =
+      report?.kapasitas_penumpang ||
+      report?.kapasitas ||
+      report?.penugasan?.kapasitas_penumpang ||
+      sesi?.kapasitas ||
+      propUser?.kapasitas;
+
+    const kapasitas = rawKapasitas && String(rawKapasitas) !== "-" ? `${rawKapasitas} Siswa` : "-";
 
     return { trayek, jenis, nopol, kapasitas };
   };

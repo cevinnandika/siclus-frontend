@@ -75,6 +75,9 @@ const RiwayatDriver = ({ onViewDetail, user }) => {
             date: item.tanggal,
             trayek: item.trayek,
             bus: item.bus,
+            jenis_kendaraan: item.jenis_kendaraan || item.penugasan?.jenis_kendaraan || user?.jenis_kendaraan || "-",
+            kapasitas: item.kapasitas || item.kapasitas_penumpang || item.penugasan?.kapasitas_penumpang || user?.kapasitas || "-",
+            kapasitas_penumpang: item.kapasitas_penumpang || item.kapasitas || item.penugasan?.kapasitas_penumpang || user?.kapasitas || "-",
             statusLabel,
             hasActivity: sesiList.length > 0,
           };

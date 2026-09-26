@@ -147,12 +147,17 @@ export const groupRekapData = (rawData = [], startDate = "", endDate = "", searc
     const driverName = curr.users?.nama || curr.users?.name || curr.nama_supir || curr.nama || "Driver";
     const driverPhoto = curr.users?.foto_profil || curr.foto_profil || curr.pengemudi?.foto_profil || null;
 
+    const isNonaktif =
+      String(curr.users?.role || "").toLowerCase() === "nonaktif" ||
+      String(curr.role || "").toLowerCase() === "nonaktif";
+
     if (!acc[supirId]) {
       acc[supirId] = {
         id_supir: supirId,
         nama_supir: driverName,
         nama_lengkap: driverName,
         foto_profil: driverPhoto,
+        is_nonaktif: isNonaktif,
         trayek_utama: curr.trayek || curr.users?.trayek || "-",
         bus_utama: curr.bus || curr.users?.bus || "-",
         total_hari_jalan: 0,
@@ -162,8 +167,13 @@ export const groupRekapData = (rawData = [], startDate = "", endDate = "", searc
         list_laporan: [],
         riwayat: [],
       };
-    } else if (!acc[supirId].foto_profil && driverPhoto) {
-      acc[supirId].foto_profil = driverPhoto;
+    } else {
+      if (!acc[supirId].foto_profil && driverPhoto) {
+        acc[supirId].foto_profil = driverPhoto;
+      }
+      if (isNonaktif) {
+        acc[supirId].is_nonaktif = true;
+      }
     }
 
     acc[supirId].total_hari_jalan += 1;

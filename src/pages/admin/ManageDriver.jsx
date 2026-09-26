@@ -59,6 +59,21 @@ const ManageDriver = () => {
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [driverToDelete, setDriverToDelete] = useState(null);
 
+  // Perhitungan otomatis ID driver berikutnya (Format: DSHB-DRV-01, DSHB-DRV-02, ..., DSHB-DRV-10, dst)
+  const getNextDriverId = () => {
+    const existingNumbers = (drivers || [])
+      .map((d) => {
+        const idStr = String(d.id || d.id_driver || d.id_supir || "");
+        const match = idStr.match(/(?:DSHB-)?DRV-(\d+)/i);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((n) => !isNaN(n));
+    const maxNum = existingNumbers.length > 0 ? Math.max(...existingNumbers, 0) : 0;
+    return `DSHB-DRV-${String(maxNum + 1).padStart(2, "0")}`;
+  };
+
+  const nextDriverId = getNextDriverId();
+
   // Penugasan Modals State
   const [showPenugasanModal, setShowPenugasanModal] = useState(false);
   const [isEditPenugasanMode, setIsEditPenugasanMode] = useState(false);
@@ -187,9 +202,9 @@ const ManageDriver = () => {
   };
 
   const handleSubmitDriverForm = async (formData) => {
-    const idDriverTrimmed = (formData.id_driver || "").trim();
-    if (!idDriverTrimmed || idDriverTrimmed === "DRV-") {
-      showToast("Mohon lengkapi ID Driver setelah 'DRV-'! (Bebas terserah admin)", "error");
+    const idDriverTrimmed = (formData.id_driver || nextDriverId || "").trim();
+    if (!idDriverTrimmed) {
+      showToast("ID Driver tidak valid.", "error");
       return;
     }
     if (!formData.nama_lengkap?.trim()) {
@@ -276,7 +291,7 @@ const ManageDriver = () => {
         email_admin: email_admin.trim(),
         password_admin: password_admin,
       });
-      showToast(`Akun driver ${driverToDelete.nama_lengkap || driverToDelete.nama || driverToDelete.name} berhasil dihapus!`);
+      showToast(`Akun driver ${driverToDelete.nama_lengkap || driverToDelete.nama || driverToDelete.name} berhasil dinonaktifkan!`);
       if (driverToDelete?.email) {
         localStorage.setItem("siclus_revoked_account", JSON.stringify({ email: driverToDelete.email, time: Date.now() }));
       }
@@ -540,6 +555,7 @@ const ManageDriver = () => {
         isEdit={isEditDriverMode}
         initialData={selectedDriver}
         drivers={drivers}
+        nextDriverId={nextDriverId}
         isSubmitting={isSubmitting}
         onClose={() => setShowDriverModal(false)}
         onSubmit={handleSubmitDriverForm}

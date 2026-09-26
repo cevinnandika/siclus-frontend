@@ -48,9 +48,6 @@ apiClient.interceptors.response.use(
 // SERVICE: API INTEGRASI SICLUS
 // ==============================================================================
 export const apiService = {
-  // ==============================================================================
-  // MODUL: AUTENTIKASI & PENGGUNA
-  // ==============================================================================
   login: async (email, password) => {
     const payload = {
       email: email,

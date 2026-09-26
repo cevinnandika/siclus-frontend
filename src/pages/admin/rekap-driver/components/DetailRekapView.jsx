@@ -50,8 +50,12 @@ const DetailRekapView = ({ selectedDriver, startDate, endDate, onBack, onApplyDa
             </div>
             <div>
               <span className="text-xs font-semibold uppercase text-slate-500 tracking-wider block">DETAIL OPERASIONAL</span>
-              <h2 className="text-2xl md:text-3xl font-bold text-[#00206B] m-0 tracking-tight">{selectedDriver.nama_supir}</h2>
-              <span className="inline-block px-2.5 py-0.5 rounded-md bg-slate-100 text-[10px] text-slate-500 font-semibold tracking-wider mt-1">ID : {selectedDriver.id_supir}</span>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="inline-block px-2.5 py-0.5 rounded-md bg-slate-100 text-[10px] text-slate-500 font-semibold tracking-wider">ID : {selectedDriver.id_supir}</span>
+                {selectedDriver.is_nonaktif && (
+                  <span className="inline-block px-2.5 py-0.5 rounded-md bg-slate-100 text-[10px] text-slate-500 font-bold border border-slate-200">Nonaktif</span>
+                )}
+              </div>
             </div>
           </div>
 

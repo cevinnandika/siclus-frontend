@@ -8,7 +8,7 @@ const DeleteDriverModal = ({ isOpen, driver, currentAdminEmail = "", isSubmittin
   const [emailAdmin, setEmailAdmin] = useState("");
   const [passwordAdmin, setPasswordAdmin] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  // Reset & inisialisasi state saat modal dibuka
+
   useEffect(() => {
     if (isOpen) {
       setEmailAdmin(currentAdminEmail || "");
@@ -41,9 +41,7 @@ const DeleteDriverModal = ({ isOpen, driver, currentAdminEmail = "", isSubmittin
         email_admin: emailAdmin.trim(),
         password_admin: passwordAdmin,
       });
-    } catch (err) {
-      // Feedback toast kegagalan sudah ditangani via toast.error
-    }
+    } catch (err) {}
   };
 
   return (
@@ -62,8 +60,8 @@ const DeleteDriverModal = ({ isOpen, driver, currentAdminEmail = "", isSubmittin
 
         {/* Title */}
         <div className="text-center space-y-1">
-          <h3 className="text-xl font-bold text-[#00206B] tracking-tight">Hapus Akun Driver?</h3>
-          <p className="text-xs text-slate-500 font-normal">Tindakan ini bersifat permanen. Seluruh data akun & akses supir akan dicabut dari sistem.</p>
+          <h3 className="text-xl font-bold text-[#00206B] tracking-tight">Nonaktifkan Akun Driver?</h3>
+          <p className="text-xs text-slate-500 font-normal">Akses login dan penugasan driver akan dinonaktifkan. Seluruh riwayat laporan operasional akan tetap tersimpan aman.</p>
         </div>
 
         {/* Driver Card Info */}
@@ -183,7 +181,6 @@ const DeleteDriverModal = ({ isOpen, driver, currentAdminEmail = "", isSubmittin
             </div>
           </div>
 
-
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 pt-2">
             <button
@@ -208,7 +205,7 @@ const DeleteDriverModal = ({ isOpen, driver, currentAdminEmail = "", isSubmittin
                   <span>MEMVALIDASI...</span>
                 </>
               ) : (
-                <span>KONFIRMASI HAPUS</span>
+                <span>KONFIRMASI NONAKTIFKAN</span>
               )}
             </button>
           </div>

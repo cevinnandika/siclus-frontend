@@ -475,8 +475,14 @@ const BerandaAdmin = ({ user }) => {
               </div>
             ) : driversList.length === 0 ? (
               <div className="text-center py-16 bg-white border border-slate-100 rounded-3xl shadow-sm">
-                <div className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-300 flex items-center justify-center mx-auto mb-4 border border-slate-100">
-                  <BusIcon />
+                <div className="w-14 h-14 border border-slate-100 bg-slate-50 text-slate-300 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.948c0-.621-.504-1.125-1.125-1.125H5.625a1.125 1.125 0 00-1.125 1.125v1.206"
+                    />
+                  </svg>
                 </div>
                 <h4 className="text-sm font-semibold text-[#00206B] m-0">Belum Ada Penugasan</h4>
                 <p className="text-xs text-slate-500 font-normal mt-1">Silakan atur penugasan driver untuk hari ini.</p>
